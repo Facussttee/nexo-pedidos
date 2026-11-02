@@ -6,7 +6,14 @@ Primer tramo local: demo sintética aislada, configuración pública explícita 
 
 ## Probar la demo
 
-Con Node.js disponible, desde esta carpeta:
+Probado con Node.js 26.13.0. En otra computadora, iniciar sesión en GitHub con acceso al repositorio y clonar la rama principal:
+
+```powershell
+git clone https://github.com/Facussttee/nexo-pedidos.git
+cd nexo-pedidos
+```
+
+Con Node.js disponible, desde esa carpeta:
 
 ```powershell
 node bot/serve-demo.js --host 127.0.0.1 --port 3000
@@ -42,4 +49,4 @@ El build público admite únicamente `<sourceRoot>/dist/public` y copia cuatro a
 
 Los documentos `docs/01` a `docs/05`, `PROJECT.md` y `AGENT.md` conservan contexto histórico de MiHuerta; las reglas de esta copia están en `AGENTS.md`. No prueban el estado de servicios desplegados.
 
-Copia Git independiente con historial, sin remoto nuevo ni publicación. `upstream` referencia al original con push bloqueado. No se asignó una licencia nueva: el baseline no contenía `LICENSE`; resolver derechos y dependencias antes de distribuir. No se modificaron MiHuerta ni sus servicios productivos.
+Repositorio independiente privado: [Facussttee/nexo-pedidos](https://github.com/Facussttee/nexo-pedidos), rama principal `main`. `origin` apunta a Nexo Pedidos; `upstream` referencia a MiHuerta con push bloqueado. No se asignó una licencia nueva: el baseline no contenía `LICENSE`; resolver derechos y dependencias antes de distribuir. No se modificaron MiHuerta ni sus servicios productivos.

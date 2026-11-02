@@ -9,6 +9,11 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const REPO_ROOT = path.resolve(__dirname, "..");
 
 export const MIME_TYPES = Object.freeze({
   ".html": "text/html; charset=utf-8",
@@ -98,6 +103,13 @@ export function createStaticServer({ publicRoot } = {}) {
   }
 
   const resolvedRoot = path.resolve(publicRoot);
+  if (
+    path.relative(REPO_ROOT, resolvedRoot) === "" ||
+    (fs.existsSync(path.join(resolvedRoot, "bot", "static-server.js")) &&
+      fs.existsSync(path.join(resolvedRoot, "scripts", "build-public.mjs")))
+  ) {
+    throw new Error("Refusing to serve repository root as publicRoot.");
+  }
 
   const server = http.createServer(async (req, res) => {
     const method = req.method || "GET";

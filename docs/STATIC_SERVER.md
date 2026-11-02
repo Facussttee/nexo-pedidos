@@ -4,12 +4,20 @@ Nexo Pedidos separa estrictamente la raíz pública entregada al navegador (`dis
 
 ## 1. Construcción de la raíz pública por allowlist (`scripts/build-public.mjs`)
 
-El script [`scripts/build-public.mjs`](file:///d:/Escritorio/nexo-pedidos-worktrees/NP-003/scripts/build-public.mjs) genera `dist/public` limpiando cualquier contenido previo y copiando exclusivamente la lista blanca (`PUBLIC_ALLOWLIST`) de activos necesarios en el navegador:
+El script [`scripts/build-public.mjs`](file:///d:/Escritorio/nexo-pedidos-worktrees/NP-003/scripts/build-public.mjs) genera exclusivamente `<sourceRoot>/dist/public` limpiando cualquier contenido previo y copiando únicamente la lista blanca (`PUBLIC_ALLOWLIST`) de activos necesarios en el navegador:
 
 - `index.html`
 - `css/style.css`
 - `js/public-config.js`
 - `js/bundle.js`
+
+### Confinamiento del constructor antes de tocar el disco
+
+Antes de ejecutar cualquier `fs.rmSync`, `fs.mkdirSync` o `fs.copyFileSync`, `buildPublic`:
+1. Verifica que `sourceRoot` sea un directorio real (no symlink ni *junction*) y resuelve su ruta canónica (`fs.realpathSync`).
+2. Exige que `outDir` coincida **exactamente** con `<sourceRoot>/dist/public`. Rechaza inmediatamente `sourceRoot`, cualquier directorio ancestro, `<sourceRoot>/dist` o cualquier ruta arbitraria sin borrar ni modificar archivos.
+3. Inspecciona con `fs.lstatSync` y `fs.realpathSync` tanto `<sourceRoot>/dist` como `<sourceRoot>/dist/public` (y cualquier entrada preexistente dentro de `dist/public`), abortando si existe cualquier symlink o *junction*.
+4. Recorre cada segmento padre de entrada (`css/`, `js/`) y cada archivo de `PUBLIC_ALLOWLIST` verificando `lstatSync` (sin symlinks/junctions) y `realpathSync` contenido dentro de `sourceRoot`.
 
 Quedan **fuera de `dist/public`**:
 - Variables de entorno y secretos (`.env`, `.env.local`, `bot/.env`).
@@ -27,13 +35,14 @@ node scripts/build-public.mjs
 
 ## 2. Contrato del servidor importable (`bot/static-server.js`)
 
-El módulo [`bot/static-server.js`](file:///d:/Escritorio/nexo-pedidos-worktrees/NP-003/bot/static-server.js) depende únicamente de módulos core de Node.js (`node:http`, `node:fs`, `node:path`). No importa ni inicializa `@whiskeysockets/baileys`, `@supabase/supabase-js`, `dotenv`, `pino` ni `qrcode-terminal`, por lo que puede importarse y probarse sin instalar dependencias del bot.
+El módulo [`bot/static-server.js`](file:///d:/Escritorio/nexo-pedidos-worktrees/NP-003/bot/static-server.js) depende únicamente de módulos core de Node.js (`node:http`, `node:fs`, `node:path`, `node:url`). No importa ni inicializa `@whiskeysockets/baileys`, `@supabase/supabase-js`, `dotenv`, `pino` ni `qrcode-terminal`, por lo que puede importarse y probarse sin instalar dependencias del bot.
 
 ```js
 import { createStaticServer } from "./bot/static-server.js";
 
 const server = createStaticServer({ publicRoot: "dist/public" });
 // No ejecuta server.listen() al importar ni al construir la instancia.
+// Rechaza servir directamente la raíz del repositorio Git.
 ```
 
 ### Reglas de seguridad y confinamiento
@@ -62,6 +71,7 @@ node bot/serve-demo.js
 ```
 
 Por defecto:
+- Valida mediante `resolveAndValidateOutputRoot` que `publicRoot` sea exactamente `<sourceRoot>/dist/public` (rechazando cualquier otro `--public-root` incluso cuando se indica `--no-build`).
 - Ejecuta `buildPublic()` para actualizar `dist/public` por allowlist.
 - Escucha exclusivamente en `127.0.0.1:3000` (configurable con `--port <puerto>`, `--host <host>` o `--no-build`).
 - Expone el catálogo en `http://127.0.0.1:3000/` y la barra del simulador de roles en `http://127.0.0.1:3000/?demo=1`.
@@ -79,4 +89,4 @@ Por defecto:
 node tests/test-static-server.test.mjs
 ```
 
-La suite levanta instancias efímeras en `127.0.0.1:0` con fixtures temporales fuera y dentro de la raíz pública, marcadores sintéticos en memoria, *junctions* hacia directorios externos y pruebas de supervivencia tras errores `400`/`403`/`404`/`405`.
+La suite ejecuta 24 pruebas sobre instancias efímeras en `127.0.0.1:0` con `sourceRoot` sintéticos temporales, marcadores secretos en memoria, regresiones de preservación de marcadores (`KEEP_SOURCE`, `KEEP_ANCESTOR`, `KEEP_EXTERNAL_VICTIM`) ante `outDir` inválidos o padres `junction` en entrada/salida, y supervivencia tras errores `400`/`403`/`404`/`405`.

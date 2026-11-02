@@ -4,8 +4,10 @@
  * Pruebas empíricas HTTP reales con módulos core de Node.js (sin levantar bot,
  * Baileys ni Supabase):
  * 1. Contrato de importación y factory `createStaticServer({ publicRoot })`
- *    sin efectos colaterales ni listen automático.
- * 2. Construcción de `dist/public` por allowlist (`scripts/build-public.mjs`).
+ *    sin efectos colaterales ni listen automático y rechazo de raíz Git.
+ * 2. Construcción de `<sourceRoot>/dist/public` por allowlist (`scripts/build-public.mjs`)
+ *    y regresiones con marcadores intactos ante `outDir` fuente/ancestro/arbitrario
+ *    y padres `junction` en entrada (`css`/`js`) o salida (`dist`/`dist/public`).
  * 3. Respuestas GET/HEAD con MIME correcto y reproducción de la demo NP-002.
  * 4. Rechazo de métodos distintos de GET/HEAD (405).
  * 5. Confinamiento adversarial con fixtures temporales y marcadores sintéticos:
@@ -13,7 +15,8 @@
  *    backslashes Windows, colisión de prefijo hermano y junction/symlink externo.
  * 6. URLs malformadas, bytes NUL, rutas inexistentes sin fallback HTML y
  *    supervivencia del servidor tras errores.
- * 7. CLI demo aislado (`bot/serve-demo.js`) en 127.0.0.1 y verificación de `bot/index.js`.
+ * 7. CLI demo aislado (`bot/serve-demo.js`) en 127.0.0.1, rechazo de `--public-root`
+ *    fuera de `<sourceRoot>/dist/public` incluso con `--no-build`, y verificación de `bot/index.js`.
  */
 
 import assert from "node:assert/strict";
@@ -36,6 +39,21 @@ let passed = 0;
 function pass(label) {
   passed++;
   console.log(`  [PASS] ${label}`);
+}
+
+/**
+ * Crea un `sourceRoot` sintético temporal con los 4 activos públicos de la allowlist
+ * copiados desde REPO_ROOT para ejecutar `buildPublic` de forma aislada sobre `<sourceRoot>/dist/public`.
+ */
+function createSyntheticSourceRoot(targetSourceRoot) {
+  fs.mkdirSync(targetSourceRoot, { recursive: true });
+  for (const relPath of PUBLIC_ALLOWLIST) {
+    const src = path.join(REPO_ROOT, relPath);
+    const dst = path.join(targetSourceRoot, relPath);
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.copyFileSync(src, dst);
+  }
+  return targetSourceRoot;
 }
 
 /**
@@ -139,7 +157,11 @@ console.log("--- SUITE 1: Module Isolation & Factory Contract ---");
     assert.throws(() => createStaticServer(), TypeError);
     assert.throws(() => createStaticServer({ publicRoot: "" }), TypeError);
     assert.throws(() => createStaticServer({ publicRoot: "bad\0path" }), TypeError);
-    pass("1.3 createStaticServer rechaza argumentos publicRoot vacíos o con byte NUL");
+    assert.throws(
+      () => createStaticServer({ publicRoot: REPO_ROOT }),
+      /Refusing to serve repository root/
+    );
+    pass("1.3 createStaticServer rechaza publicRoot vacíos, con NUL o apuntando a la raíz del repositorio Git");
 
     // Verificación unitaria directa de isPathInsideRoot frente a prefijo hermano
     const rootA = path.resolve(tempDir, "public");
@@ -155,30 +177,28 @@ console.log("--- SUITE 1: Module Isolation & Factory Contract ---");
 }
 
 // ===========================================================================
-// SUITE 2: ALLOWLIST PUBLIC BUILD & REPRODUCCIÓN DE DEMO NP-002
+// SUITE 2: ALLOWLIST PUBLIC BUILD, CONFINAMIENTO DE BUILD Y REPRODUCCIÓN DEMO NP-002
 // ===========================================================================
-console.log("\n--- SUITE 2: Public Build Allowlist & NP-002 Demo over HTTP ---");
+console.log("\n--- SUITE 2: Public Build Allowlist, Build Confinement & NP-002 Demo over HTTP ---");
 
 {
-  const tempBuildRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-build-"));
-  const customOutDir = path.join(tempBuildRoot, "dist", "public");
+  const tempWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-build-"));
+  const syntheticSource = createSyntheticSourceRoot(path.join(tempWorkspace, "repo"));
+  const expectedOutDir = path.join(syntheticSource, "dist", "public");
 
   try {
-    // Sembrar un archivo residual previo para comprobar limpieza
-    fs.mkdirSync(customOutDir, { recursive: true });
-    fs.writeFileSync(path.join(customOutDir, "stale-secret.txt"), "stale");
+    // Sembrar un archivo residual previo dentro de <sourceRoot>/dist/public para comprobar limpieza
+    fs.mkdirSync(expectedOutDir, { recursive: true });
+    fs.writeFileSync(path.join(expectedOutDir, "stale-secret.txt"), "stale");
 
-    const buildRes = buildPublic({ sourceRoot: REPO_ROOT, outDir: customOutDir });
-    const builtFiles = listFilesRecursive(customOutDir);
+    const buildRes = buildPublic({ sourceRoot: syntheticSource });
+    const builtFiles = listFilesRecursive(expectedOutDir);
     const expectedFiles = [...PUBLIC_ALLOWLIST].sort();
 
+    assert.equal(buildRes.outDir, fs.realpathSync(expectedOutDir));
     assert.deepEqual(builtFiles, expectedFiles, "dist/public sólo debe contener los archivos de PUBLIC_ALLOWLIST");
-    assert.equal(fs.existsSync(path.join(customOutDir, "stale-secret.txt")), false, "buildPublic debe limpiar archivos previos");
-    assert.throws(
-      () => buildPublic({ sourceRoot: REPO_ROOT, outDir: REPO_ROOT }),
-      /Refusing to use sourceRoot as outDir/
-    );
-    pass("2.1 buildPublic genera exclusivamente la allowlist (index.html, css/style.css, js/public-config.js, js/bundle.js)");
+    assert.equal(fs.existsSync(path.join(expectedOutDir, "stale-secret.txt")), false, "buildPublic debe limpiar archivos previos en dist/public");
+    pass("2.1 buildPublic genera exclusivamente la allowlist en <sourceRoot>/dist/public");
 
     const server = createStaticServer({ publicRoot: buildRes.outDir });
     const port = await listenOnEphemeralPort(server);
@@ -319,8 +339,119 @@ console.log("\n--- SUITE 2: Public Build Allowlist & NP-002 Demo over HTTP ---")
     } finally {
       await closeServer(server);
     }
+
+    // 2.6 Regresión: outDir apuntando a sourceRoot, ancestro, <sourceRoot>/dist o directorio arbitrario
+    //     falla ANTES de rmSync y conserva todos los marcadores KEEP_* intactos.
+    const ancestorMarker = path.join(tempWorkspace, "KEEP_ANCESTOR.txt");
+    const sourceMarker = path.join(syntheticSource, "KEEP_SOURCE.txt");
+    const distSiblingMarker = path.join(syntheticSource, "dist", "KEEP_DIST_PARENT.txt");
+    const arbitraryDir = path.join(tempWorkspace, "arbitrary-target");
+    const arbitraryMarker = path.join(arbitraryDir, "KEEP_ARBITRARY.txt");
+
+    fs.mkdirSync(arbitraryDir, { recursive: true });
+    fs.writeFileSync(ancestorMarker, "KEEP_ANCESTOR");
+    fs.writeFileSync(sourceMarker, "KEEP_SOURCE");
+    fs.writeFileSync(distSiblingMarker, "KEEP_DIST_PARENT");
+    fs.writeFileSync(arbitraryMarker, "KEEP_ARBITRARY");
+
+    assert.throws(
+      () => buildPublic({ sourceRoot: syntheticSource, outDir: syntheticSource }),
+      /Refusing outDir/
+    );
+    assert.throws(
+      () => buildPublic({ sourceRoot: syntheticSource, outDir: tempWorkspace }),
+      /Refusing outDir/
+    );
+    assert.throws(
+      () => buildPublic({ sourceRoot: syntheticSource, outDir: path.join(syntheticSource, "dist") }),
+      /Refusing outDir/
+    );
+    assert.throws(
+      () => buildPublic({ sourceRoot: syntheticSource, outDir: arbitraryDir }),
+      /Refusing outDir/
+    );
+    assert.throws(
+      () => buildPublic({ sourceRoot: syntheticSource, outDir: `${syntheticSource}${path.sep}dist${path.sep}..${path.sep}dist${path.sep}public` }),
+      /Refusing outDir/
+    );
+
+    assert.equal(fs.existsSync(ancestorMarker), true, "El marcador en directorio ancestro debe permanecer intacto");
+    assert.equal(fs.existsSync(sourceMarker), true, "El marcador KEEP_SOURCE en sourceRoot debe permanecer intacto");
+    assert.equal(fs.existsSync(distSiblingMarker), true, "El marcador en dist/ debe permanecer intacto");
+    assert.equal(fs.existsSync(arbitraryMarker), true, "El marcador en directorio arbitrario debe permanecer intacto");
+    assert.equal(fs.existsSync(path.join(syntheticSource, "index.html")), true, "index.html en sourceRoot debe permanecer intacto");
+    pass("2.6 buildPublic rechaza outDir fuente, ancestro, dist/ o arbitrario sin borrar ningún archivo marcador (KEEP_SOURCE intacto)");
+
+    // 2.7 Regresión: padre de entrada (css/ o js/) reemplazado por junction hacia fuera
+    const junctionInputWs = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-in-junc-"));
+    try {
+      const repoWithBadParent = createSyntheticSourceRoot(path.join(junctionInputWs, "repo"));
+      const outsideCssDir = path.join(junctionInputWs, "outside-css");
+      fs.mkdirSync(outsideCssDir, { recursive: true });
+      fs.writeFileSync(path.join(outsideCssDir, "style.css"), "/* outside secret css */");
+
+      // Reemplazar repo/css por una junction apuntando a outsideCssDir
+      fs.rmSync(path.join(repoWithBadParent, "css"), { recursive: true, force: true });
+      fs.symlinkSync(outsideCssDir, path.join(repoWithBadParent, "css"), process.platform === "win32" ? "junction" : "dir");
+
+      // Sembrar marcador en repo/dist/public para comprobar que no se toca antes de abortar
+      const preExistingOut = path.join(repoWithBadParent, "dist", "public");
+      fs.mkdirSync(preExistingOut, { recursive: true });
+      const keepOutMarker = path.join(preExistingOut, "KEEP_EXISTING_OUT.txt");
+      fs.writeFileSync(keepOutMarker, "KEEP_EXISTING_OUT");
+
+      assert.throws(
+        () => buildPublic({ sourceRoot: repoWithBadParent }),
+        /Unsafe source parent/
+      );
+      assert.equal(fs.existsSync(keepOutMarker), true, "No debe ejecutar rmSync en dist/public cuando falla validación de entrada");
+      pass("2.7 buildPublic detecta y rechaza padre de entrada (css/ o js/) que sea junction/symlink hacia fuera antes de rmSync");
+    } finally {
+      fs.rmSync(junctionInputWs, { recursive: true, force: true });
+    }
+
+    // 2.8 Regresión: padre de salida (dist o dist/public) reemplazado por junction hacia fuera
+    const junctionOutWs = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-out-junc-"));
+    try {
+      const repoA = createSyntheticSourceRoot(path.join(junctionOutWs, "repo-a"));
+      const repoB = createSyntheticSourceRoot(path.join(junctionOutWs, "repo-b"));
+      const externalVictim = path.join(junctionOutWs, "external-victim");
+      fs.mkdirSync(externalVictim, { recursive: true });
+      const victimMarker = path.join(externalVictim, "KEEP_EXTERNAL_VICTIM.txt");
+      fs.writeFileSync(victimMarker, "KEEP_EXTERNAL_VICTIM");
+
+      // Caso A: <sourceRoot>/dist es una junction apuntando a externalVictim
+      fs.symlinkSync(externalVictim, path.join(repoA, "dist"), process.platform === "win32" ? "junction" : "dir");
+      assert.throws(
+        () => buildPublic({ sourceRoot: repoA }),
+        /Unsafe output parent/
+      );
+      assert.equal(fs.existsSync(victimMarker), true, "KEEP_EXTERNAL_VICTIM debe permanecer intacto cuando dist es junction");
+
+      // Caso B: <sourceRoot>/dist/public es una junction apuntando a externalVictim
+      fs.mkdirSync(path.join(repoB, "dist"), { recursive: true });
+      fs.symlinkSync(externalVictim, path.join(repoB, "dist", "public"), process.platform === "win32" ? "junction" : "dir");
+      assert.throws(
+        () => buildPublic({ sourceRoot: repoB }),
+        /Unsafe output directory/
+      );
+      assert.equal(fs.existsSync(victimMarker), true, "KEEP_EXTERNAL_VICTIM debe permanecer intacto cuando dist/public es junction");
+
+      // Caso C: <sourceRoot>/dist/public/css es una junction anidada apuntando a externalVictim
+      const repoC = createSyntheticSourceRoot(path.join(junctionOutWs, "repo-c"));
+      fs.mkdirSync(path.join(repoC, "dist", "public"), { recursive: true });
+      fs.symlinkSync(externalVictim, path.join(repoC, "dist", "public", "css"), process.platform === "win32" ? "junction" : "dir");
+      assert.throws(
+        () => buildPublic({ sourceRoot: repoC }),
+        /Unsafe symlink\/junction found inside output tree/
+      );
+      assert.equal(fs.existsSync(victimMarker), true, "KEEP_EXTERNAL_VICTIM debe permanecer intacto cuando dist/public/css es junction");
+      pass("2.8 buildPublic detecta y rechaza padres/subdirectorios de salida (dist, dist/public, dist/public/css) que sean junction/symlink sin borrar el destino externo");
+    } finally {
+      fs.rmSync(junctionOutWs, { recursive: true, force: true });
+    }
   } finally {
-    fs.rmSync(tempBuildRoot, { recursive: true, force: true });
+    fs.rmSync(tempWorkspace, { recursive: true, force: true });
   }
 }
 
@@ -331,33 +462,35 @@ console.log("\n--- SUITE 3: Adversarial Confinement, Dotfiles, Sibling Prefix & 
 
 {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-adv-"));
-  const publicRoot = path.join(fixtureRoot, "public");
-  const siblingPrefixDir = path.join(fixtureRoot, "public-private");
+  const syntheticSource = createSyntheticSourceRoot(path.join(fixtureRoot, "repo"));
+  const publicRoot = path.join(syntheticSource, "dist", "public");
+  const siblingPrefixDir = path.join(syntheticSource, "dist", "public-private");
   const outsideSecretDir = path.join(fixtureRoot, "outside-vault");
 
   // Marcador sintético en memoria para verificar que ningún byte privado se filtre jamás
   const SECRET_MARKER = ["NEXO", "SYNTHETIC", "PRIVATE", "MARKER", "998877"].join("_");
 
   try {
-    // 1. Construir raíz pública legítima en fixtureRoot/public
-    buildPublic({ sourceRoot: REPO_ROOT, outDir: publicRoot });
+    // 1. Construir raíz pública legítima en <syntheticSource>/dist/public
+    buildPublic({ sourceRoot: syntheticSource });
 
     // 2. Crear archivos privados FUERA de publicRoot con el marcador sintético
     fs.mkdirSync(siblingPrefixDir, { recursive: true });
     fs.mkdirSync(outsideSecretDir, { recursive: true });
-    fs.mkdirSync(path.join(fixtureRoot, ".git"), { recursive: true });
-    fs.mkdirSync(path.join(fixtureRoot, "bot", "auth_info_baileys"), { recursive: true });
-    fs.mkdirSync(path.join(fixtureRoot, "supabase"), { recursive: true });
-    fs.mkdirSync(path.join(fixtureRoot, "coordination"), { recursive: true });
+    fs.mkdirSync(path.join(syntheticSource, ".git"), { recursive: true });
+    fs.mkdirSync(path.join(syntheticSource, "bot", "auth_info_baileys"), { recursive: true });
+    fs.mkdirSync(path.join(syntheticSource, "supabase"), { recursive: true });
+    fs.mkdirSync(path.join(syntheticSource, "coordination"), { recursive: true });
 
-    fs.writeFileSync(path.join(fixtureRoot, ".env"), `TOKEN=${SECRET_MARKER}\n`);
-    fs.writeFileSync(path.join(fixtureRoot, ".cooldowns.json"), `{"secret":"${SECRET_MARKER}"}`);
-    fs.writeFileSync(path.join(fixtureRoot, ".git", "config"), `[core]\nmarker = ${SECRET_MARKER}\n`);
-    fs.writeFileSync(path.join(fixtureRoot, "bot", ".env"), `BOT_SECRET=${SECRET_MARKER}\n`);
-    fs.writeFileSync(path.join(fixtureRoot, "bot", ".cooldowns.json"), `{"bot":"${SECRET_MARKER}"}`);
-    fs.writeFileSync(path.join(fixtureRoot, "bot", "auth_info_baileys", "creds.json"), `{"me":"${SECRET_MARKER}"}`);
-    fs.writeFileSync(path.join(fixtureRoot, "supabase", "schema.sql"), `-- ${SECRET_MARKER}`);
-    fs.writeFileSync(path.join(fixtureRoot, "coordination", "secret.md"), SECRET_MARKER);
+    fs.writeFileSync(path.join(syntheticSource, ".env"), `TOKEN=${SECRET_MARKER}\n`);
+    fs.writeFileSync(path.join(syntheticSource, "dist", ".env"), `DIST_TOKEN=${SECRET_MARKER}\n`);
+    fs.writeFileSync(path.join(syntheticSource, ".cooldowns.json"), `{"secret":"${SECRET_MARKER}"}`);
+    fs.writeFileSync(path.join(syntheticSource, ".git", "config"), `[core]\nmarker = ${SECRET_MARKER}\n`);
+    fs.writeFileSync(path.join(syntheticSource, "bot", ".env"), `BOT_SECRET=${SECRET_MARKER}\n`);
+    fs.writeFileSync(path.join(syntheticSource, "bot", ".cooldowns.json"), `{"bot":"${SECRET_MARKER}"}`);
+    fs.writeFileSync(path.join(syntheticSource, "bot", "auth_info_baileys", "creds.json"), `{"me":"${SECRET_MARKER}"}`);
+    fs.writeFileSync(path.join(syntheticSource, "supabase", "schema.sql"), `-- ${SECRET_MARKER}`);
+    fs.writeFileSync(path.join(syntheticSource, "coordination", "secret.md"), SECRET_MARKER);
     fs.writeFileSync(path.join(siblingPrefixDir, "leak.txt"), SECRET_MARKER);
     fs.writeFileSync(path.join(outsideSecretDir, "vault.txt"), SECRET_MARKER);
     fs.writeFileSync(path.join(outsideSecretDir, "index.html"), `<html>${SECRET_MARKER}</html>`);
@@ -387,7 +520,7 @@ console.log("\n--- SUITE 3: Adversarial Confinement, Dotfiles, Sibling Prefix & 
     const fileSymlinkPath = path.join(publicRoot, "linked-env.txt");
     let fileSymlinkCreated = false;
     try {
-      fs.symlinkSync(path.join(fixtureRoot, ".env"), fileSymlinkPath, "file");
+      fs.symlinkSync(path.join(syntheticSource, ".env"), fileSymlinkPath, "file");
       fileSymlinkCreated = true;
     } catch {
       fileSymlinkCreated = false;
@@ -464,18 +597,18 @@ console.log("\n--- SUITE 3: Adversarial Confinement, Dotfiles, Sibling Prefix & 
         "/../.env",
         "/../../.env",
         "/css/../../.env",
-        "/js/../../bot/.env",
+        "/js/../../../bot/.env",
         "/../public/index.html",
         "/../public-private/leak.txt",
-        "/../outside-vault/vault.txt",
-        "/css/../../../outside-vault/vault.txt",
+        "/../../../outside-vault/vault.txt",
+        "/css/../../../../outside-vault/vault.txt",
         "/%2e%2e/.env",
         "/%2e%2e/%2e%2e/.env",
         "/..%2f.env",
         "/%2e%2e%2f.env",
         "/%2e%2e/public-private/leak.txt",
-        "/%2e%2e/outside-vault/vault.txt",
-        "/css/%2e%2e/%2e%2e/outside-vault/vault.txt",
+        "/%2e%2e/%2e%2e/%2e%2e/outside-vault/vault.txt",
+        "/css/%2e%2e/%2e%2e/%2e%2e/%2e%2e/outside-vault/vault.txt",
         "/%252e%252e/.env",
         "/%252e%252e%252f.env",
         "/..%252f.env",
@@ -487,7 +620,7 @@ console.log("\n--- SUITE 3: Adversarial Confinement, Dotfiles, Sibling Prefix & 
       }
       pass("3.3 Traversal literal, URL-encoded, doble decoding y prefijo hermano (public-private) bloqueados con 403");
 
-      // 3.4 Backslashes de Windows y dos puntos (unidades / NTFS ADS)
+      // 3.4 Backslashes de Windows y dos puntos (unidades / NTFS ADS / dispositivos)
       const windowsVectors = [
         "/\\..\\.env",
         "/css\\..\\..\\.env",
@@ -507,7 +640,7 @@ console.log("\n--- SUITE 3: Adversarial Confinement, Dotfiles, Sibling Prefix & 
       for (const vec of windowsVectors) {
         await assertBlocked(vec, [403]);
       }
-      pass("3.4 Backslashes de Windows (literales y %5c) y rutas con ':' bloqueados con 403");
+      pass("3.4 Backslashes de Windows (literales y %5c), dispositivos reservados y ':' bloqueados con 403");
 
       // 3.5 Junction y symlink apuntando fuera de publicRoot
       assert.equal(junctionCreated, true, "Debe haberse creado la junction de prueba hacia el directorio externo");
@@ -536,9 +669,9 @@ console.log("\n--- SUITE 4: Malformed URLs, NUL Bytes, 405 Methods, 404 No-Fallb
 
 {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-malformed-"));
-  const pubDir = path.join(tempRoot, "public");
+  const syntheticSource = createSyntheticSourceRoot(path.join(tempRoot, "repo"));
   try {
-    buildPublic({ sourceRoot: REPO_ROOT, outDir: pubDir });
+    const { outDir: pubDir } = buildPublic({ sourceRoot: syntheticSource });
     const server = createStaticServer({ publicRoot: pubDir });
     const port = await listenOnEphemeralPort(server);
 
@@ -627,15 +760,54 @@ console.log("\n--- SUITE 5: Isolated Demo CLI & Worker Root Verification ---");
   assert.equal(parsedCustom.host, "127.0.0.1");
   assert.equal(parsedCustom.port, 4123);
   assert.equal(parsedCustom.build, false);
-  pass("5.1 bot/serve-demo.js usa 127.0.0.1:3000 por defecto y parsea argumentos de CLI sin efectos laterales");
+
+  // Rechazar --public-root fuera de <sourceRoot>/dist/public incluso con --no-build
+  assert.throws(
+    () => parseDemoCliArgs(["--public-root", REPO_ROOT], {}),
+    /Refusing outDir/
+  );
+  assert.throws(
+    () => parseDemoCliArgs(["--no-build", "--public-root", REPO_ROOT], {}),
+    /Refusing outDir/
+  );
+  assert.throws(
+    () => parseDemoCliArgs(["--no-build", "--public-root", path.resolve(REPO_ROOT, "..")], {}),
+    /Refusing outDir/
+  );
+  pass("5.1 bot/serve-demo.js usa 127.0.0.1:3000 por defecto y rechaza --public-root fuera de dist/public incluso con --no-build");
 
   const tempCliDir = fs.mkdtempSync(path.join(os.tmpdir(), "nexo-np003-cli-"));
-  const tempPublic = path.join(tempCliDir, "dist", "public");
+  const syntheticSource = createSyntheticSourceRoot(path.join(tempCliDir, "repo"));
+  const tempPublic = path.join(syntheticSource, "dist", "public");
   try {
+    // Verificar que startDemoServer rechaza publicRoot inválido incluso con build: false
+    assert.throws(
+      () =>
+        startDemoServer({
+          host: "127.0.0.1",
+          port: 0,
+          sourceRoot: syntheticSource,
+          publicRoot: syntheticSource,
+          build: false
+        }),
+      /Refusing outDir/
+    );
+    assert.throws(
+      () =>
+        startDemoServer({
+          host: "127.0.0.1",
+          port: 0,
+          sourceRoot: syntheticSource,
+          publicRoot: tempCliDir,
+          build: false
+        }),
+      /Refusing outDir/
+    );
+
     const running = await startDemoServer({
       host: "127.0.0.1",
       port: 0,
-      sourceRoot: REPO_ROOT,
+      sourceRoot: syntheticSource,
       publicRoot: tempPublic,
       build: true
     });
@@ -648,7 +820,7 @@ console.log("\n--- SUITE 5: Isolated Demo CLI & Worker Root Verification ---");
 
       const blocked = await rawHttpRequest({ host: "127.0.0.1", port: running.port, method: "GET", rawPath: "/../.env" });
       assert.equal(blocked.statusCode, 403);
-      pass("5.2 startDemoServer construye dist/public, escucha en 127.0.0.1 y sirve la demo bloqueando traversal");
+      pass("5.2 startDemoServer construye <sourceRoot>/dist/public, escucha en 127.0.0.1 y rechaza destinos arbitrarios con o sin build");
     } finally {
       await closeServer(running.server);
     }

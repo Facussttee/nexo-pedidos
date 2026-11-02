@@ -11,3 +11,5 @@ GitHub conectado: identidad Facussttee; nexo-pedidos devolvió 404 (ausente o no
 DB descartable: no configurada. No usar DB original. No se inició bot ni se ejecutaron tests con efectos de red.
 Escrituras fuera de workspace original requieren ejecución escalada aprobada; usarla para esta copia. No confundir shell disponible con control visual.
 - E0 completado por UI: 58 s iniciales, una corrección de precisión, commits 6943b95/ee61771 revisados e integrados. Para NP-002/003 se elige Claude Opus 5.5 Medium (opción observada), por cambios entre módulos y confinamiento de archivos; cuota/costo no visible. No se cambiaron permisos Turbo heredados. Playwright disponible en runtime empaquetado para verificación independiente con red externa bloqueada.
+
+- Cierre del primer tramo: modo A nativo validado, E0/NP-002/NP-003 implementados por Antigravity y revisados por Codex. SO real: Microsoft Windows NT 10.0.26100.0. Worktrees separados y pruebas locales sin worker; ver CHECKPOINT para cuotas observadas, commits y límites. Servidor efímero de QA cerrado.

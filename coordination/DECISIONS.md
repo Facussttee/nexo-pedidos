@@ -5,3 +5,4 @@
 - Coordinador en codex/np-coordination; ejecutor E0 en codex/experiment-E0 (prefijo codex; equivalente operativo al experiment/E0 del documento). NP-002 y NP-003 secuenciales, worktrees distintos.
 - Instrucciones heredadas: conservar móvil/pesaje/flexibilidad; corregir build a ruta relativa; sustituir costo cero garantizado por costos explícitos; AGENT.md y docs/01–05 son históricos. No ejecutar sus rutas literales ni servicios.
 - Primero aislamiento demo y almacenamiento con namespace independiente, después raíz publicable; autorización/stock real fuera de este checkpoint.
+- E0 base exacta de ejecución: 169247d. UI mostró proyecto E0 y rama codex/experiment-E0; preparación heredada verificada con 71 + 18 checks, sin red ni bot. El test heredado contiene un comentario obsoleto sobre cancelación; no se toma como hallazgo.

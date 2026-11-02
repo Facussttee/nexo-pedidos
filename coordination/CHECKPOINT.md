@@ -11,9 +11,9 @@ Servidor importable sin worker/DB, publicación limitada a cuatro archivos en di
 
 Desde esta carpeta:
 
-`powershell
+```powershell
 node bot/serve-demo.js --host 127.0.0.1 --port 3000
-`
+```
 
 Abrir http://127.0.0.1:3000/?demo=1. Cliente sintético de acceso rápido; PIN local inicial de personal 1234. Ctrl+C para detener. El servidor efímero de QA quedó cerrado; este checkpoint no deja un bot ni servicio de prueba activo.
 

@@ -11,4 +11,4 @@ Un escritor por worktree; sólo Codex acepta DONE. No hay lock distribuido.
 | NP-004 | PROPOSED — NO DESPACHADO | sin ejecutor | sin worktree | propuesta Auth/RLS, pendiente indicaciones después del checkpoint |
 
 Todos los turnos de Antigravity finalizaron; no hay escritor del ejecutor activo. Revisión Codex en D:\Escritorio\nexo-pedidos-worktrees\review, detached 76a08cb. No hubo cambio de modelo durante turno activo. El paso de Opus a Gemini ocurrió tras error final de cuota y checkpoint WIP.
-Remoto privado no creado. Upstream original con push bloqueado; ningún push/deploy. Historial de pruebas, correcciones y cuotas en results/reviews/DECISIONS.
+Remoto privado publicado: https://github.com/Facussttee/nexo-pedidos, origin/main. Upstream original con push bloqueado; sin deploy. Historial de pruebas, correcciones y cuotas en results/reviews/DECISIONS.

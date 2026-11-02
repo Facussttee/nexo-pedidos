@@ -11,3 +11,4 @@
 - E0: RUNNING confirmado visualmente, 15:01 local aprox.; conversación Implement E0 Nexo Pedidos Map, mensaje enviado una vez, Sonnet 5.5 Low. Coordinador sólo prepara contratos en su worktree.
 
 - NP-002: asignado en exclusiva a Antigravity; worktree D:\Escritorio\nexo-pedidos-worktrees\NP-002, rama codex/np-002-demo, base producto 2f9bfc0 y contrato fijado bfe06c6. Pendiente envío confirmado; modelo Opus 5.5 Medium.
+- NP-002 DISPATCHED: mensaje enviado una vez por UI 15:06 aprox.; Opus 5.5 Medium confirmado, rama codex/np-002-demo visible. No otro escritor en ese worktree.

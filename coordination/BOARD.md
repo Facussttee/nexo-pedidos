@@ -8,3 +8,4 @@
 | NP-002 | BLOCKED | Antigravity | por crear tras E0 | depende de E0 aceptado |
 | NP-003 | BLOCKED | Antigravity | por crear tras NP-002 | depende de demo aceptada |
 
+- E0: RUNNING confirmado visualmente, 15:01 local aprox.; conversación Implement E0 Nexo Pedidos Map, mensaje enviado una vez, Sonnet 5.5 Low. Coordinador sólo prepara contratos en su worktree.

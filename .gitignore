@@ -24,3 +24,6 @@ bot/.cooldowns.json
 
 # Metadatos de agentes
 .agents/
+
+# Raíz pública generada por allowlist
+dist/

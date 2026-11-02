@@ -23,9 +23,10 @@ import pino from "pino";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
-import http from "http";
 import os from "os";
 import { fileURLToPath } from "url";
+import { createStaticServer } from "./static-server.js";
+import { buildPublic, DEFAULT_PUBLIC_ROOT } from "../scripts/build-public.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,60 +70,17 @@ const CATALOG_WEB_URL =
 const COOLDOWN_MINUTES = Number(process.env.COOLDOWN_MINUTES || 180);
 const PAYMENT_ALIAS = process.env.PAYMENT_ALIAS || "mihuerta.verduras";
 
-// Servidor Web Local Integrado para servir el catálogo a PCs y celulares
+// Servidor Web Local Integrado para servir únicamente la raíz pública generada (dist/public)
 function startLocalWebServer() {
-  const rootDir = path.resolve(__dirname, "..");
-  const mimeTypes = {
-    ".html": "text/html; charset=utf-8",
-    ".js": "application/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon"
-  };
+  const publicRoot = DEFAULT_PUBLIC_ROOT;
+  buildPublic({ outDir: publicRoot });
 
-  const server = http.createServer((req, res) => {
-    let reqPath = decodeURI(req.url.split("?")[0]);
-    if (reqPath === "/" || reqPath === "") {
-      reqPath = "/index.html";
-    }
-
-    const safePath = path.normalize(path.join(rootDir, reqPath));
-    if (!safePath.startsWith(rootDir)) {
-      res.writeHead(403);
-      return res.end("Forbidden");
-    }
-
-    fs.stat(safePath, (err, stats) => {
-      let targetFile = safePath;
-      if (err || stats.isDirectory()) {
-        targetFile = path.join(rootDir, "index.html");
-      }
-
-      const ext = path.extname(targetFile).toLowerCase();
-      const contentType = mimeTypes[ext] || "application/octet-stream";
-
-      fs.readFile(targetFile, (readErr, content) => {
-        if (readErr) {
-          res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-          res.end("404 Not Found");
-        } else {
-          res.writeHead(200, {
-            "Content-Type": contentType,
-            "Access-Control-Allow-Origin": "*"
-          });
-          res.end(content);
-        }
-      });
-    });
-  });
+  const server = createStaticServer({ publicRoot });
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`\n========================================================`);
     console.log(`[SERVIDOR WEB LOCAL ACTIVO]`);
+    console.log(`* Raíz pública confinada: ${publicRoot}`);
     console.log(`* En tu PC: http://localhost:${PORT}`);
     if (localIp !== "localhost") {
       console.log(`* En celulares en la misma red Wi-Fi: http://${localIp}:${PORT}`);

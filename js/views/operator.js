@@ -50,7 +50,7 @@ export function renderOperatorView(container) {
 
             <!-- Botones de Acción de Cabecera -->
             <div class="flex items-center gap-1.5">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 text-xs font-bold flex items-center gap-1 border border-slate-700 transition tap-feedback touch-target"
                 title="Cambiar tema claro / oscuro"
@@ -59,16 +59,16 @@ export function renderOperatorView(container) {
                 <span>Tema:</span>
                 <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
               </button>
-              <button 
-                id="btn-test-sound" 
-                title="Probar timbre de pedido" 
+              <button
+                id="btn-test-sound"
+                title="Probar timbre de pedido"
                 class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 border border-slate-700 transition tap-feedback touch-target"
               >
                 <span>Timbre</span>
               </button>
-              <button 
-                id="btn-operator-logout" 
-                title="Salir y bloquear" 
+              <button
+                id="btn-operator-logout"
+                title="Salir y bloquear"
                 class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/60 transition tap-feedback touch-target flex items-center justify-center"
               >
                 Salir
@@ -78,8 +78,8 @@ export function renderOperatorView(container) {
 
           <!-- Pestañas del Kanban (Mobile-First) -->
           <div class="grid grid-cols-4 gap-1 mt-3 bg-slate-800/90 p-1 rounded-2xl text-center">
-            <button 
-              data-tab="PENDIENTE" 
+            <button
+              data-tab="PENDIENTE"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "PENDIENTE" ? "bg-amber-400 text-slate-950 font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -90,8 +90,8 @@ export function renderOperatorView(container) {
               }">${counts.PENDIENTE}</span>
             </button>
 
-            <button 
-              data-tab="EN_PREPARACION" 
+            <button
+              data-tab="EN_PREPARACION"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "EN_PREPARACION" ? "bg-blue-600 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -102,8 +102,8 @@ export function renderOperatorView(container) {
               }">${counts.EN_PREPARACION}</span>
             </button>
 
-            <button 
-              data-tab="LISTO" 
+            <button
+              data-tab="LISTO"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "LISTO" ? "bg-emerald-600 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -114,8 +114,8 @@ export function renderOperatorView(container) {
               }">${counts.LISTO}</span>
             </button>
 
-            <button 
-              data-tab="ENTREGADO" 
+            <button
+              data-tab="ENTREGADO"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "ENTREGADO" ? "bg-slate-700 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -212,21 +212,21 @@ export function renderOperatorView(container) {
 
                 <!-- Acciones Principales y de Gestión -->
                 <div class="mt-3 space-y-2">
-                  <button 
-                    data-start-id="${order.id}" 
+                  <button
+                    data-start-id="${order.id}"
                     class="btn-start-prep w-full min-h-[48px] bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-xs transition tap-feedback touch-target flex items-center justify-center gap-2"
                   >
                     <span>Tomar y Pesar en Balanza</span>
                   </button>
 
                   <div class="grid grid-cols-2 gap-2">
-                    <button 
+                    <button
                       data-edit-order-id="${order.id}"
                       class="btn-open-edit min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-slate-700"
                     >
                       <span>Editar datos</span>
                     </button>
-                    <button 
+                    <button
                       data-cancel-order-id="${order.id}"
                       data-delete-order-id="${order.id}"
                       class="btn-cancel-order min-h-[44px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-rose-900/50"
@@ -259,7 +259,7 @@ export function renderOperatorView(container) {
 
               return `
               <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border-2 border-blue-200/80 dark:border-blue-900/60 shadow-md">
-                
+
                 <!-- Header de la tarjeta -->
                 <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div>
@@ -320,7 +320,7 @@ export function renderOperatorView(container) {
 
                           <!-- Acciones por ítem: Sin Stock y Quitar -->
                           <div class="flex items-center gap-1.5 shrink-0">
-                            <button 
+                            <button
                               type="button"
                               data-toggle-stock-order="${order.id}"
                               data-item-index="${idx}"
@@ -334,7 +334,7 @@ export function renderOperatorView(container) {
                               ${item.sin_stock ? "Anulado" : "Sin Stock"}
                             </button>
 
-                            <button 
+                            <button
                               type="button"
                               data-remove-item-order="${order.id}"
                               data-item-index="${idx}"
@@ -366,8 +366,8 @@ export function renderOperatorView(container) {
                               </button>
 
                               <div class="relative w-28">
-                                <input 
-                                  type="text" 
+                                <input
+                                  type="text"
                                   inputmode="decimal"
                                   data-order-id="${order.id}"
                                   data-item-idx="${idx}"
@@ -400,7 +400,7 @@ export function renderOperatorView(container) {
                               </button>
 
                               <!-- Botón rápido para copiar lo solicitado -->
-                              <button 
+                              <button
                                 type="button"
                                 data-copy-requested-order="${order.id}"
                                 data-item-idx="${idx}"
@@ -457,15 +457,15 @@ export function renderOperatorView(container) {
                         <div>
                           <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Cantidad / Peso inicial</label>
                           <div class="flex gap-2">
-                            <input 
-                              type="number" 
-                              id="input-new-quantity" 
-                              value="1.0" 
-                              step="0.5" 
-                              min="0.1" 
+                            <input
+                              type="number"
+                              id="input-new-quantity"
+                              value="1.0"
+                              step="0.5"
+                              min="0.1"
                               class="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-base font-black text-center outline-none focus:border-blue-600 text-slate-900 dark:text-white"
                             />
-                            <button 
+                            <button
                               data-confirm-add-order="${order.id}"
                               class="btn-confirm-add-item min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 rounded-xl text-xs transition tap-feedback touch-target shrink-0 flex items-center justify-center"
                             >
@@ -477,7 +477,7 @@ export function renderOperatorView(container) {
                     </div>
                   `
                       : `
-                    <button 
+                    <button
                       data-toggle-add-order="${order.id}"
                       class="btn-open-add-product w-full min-h-[44px] py-2.5 px-3 border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-950/50 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 tap-feedback touch-target"
                     >
@@ -489,7 +489,7 @@ export function renderOperatorView(container) {
 
                 <!-- Cierre de Pesaje y Acciones Secundarias -->
                 <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                  <button 
+                  <button
                     data-finish-order-id="${order.id}"
                     class="btn-finish-weighing w-full min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-slate-950/15 text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition tap-feedback touch-target"
                   >
@@ -497,14 +497,14 @@ export function renderOperatorView(container) {
                   </button>
 
                   <div class="grid grid-cols-2 gap-2">
-                    <button 
+                    <button
                       data-edit-order-id="${order.id}"
                       class="btn-open-edit min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-slate-700"
                     >
                       <span>Cambiar entrega/datos</span>
                     </button>
 
-                    <button 
+                    <button
                       data-cancel-order-id="${order.id}"
                       data-delete-order-id="${order.id}"
                       class="btn-cancel-order min-h-[44px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-rose-900/50"
@@ -528,8 +528,6 @@ export function renderOperatorView(container) {
           ${tabOrders
             .map((order) => {
               const waSummary = generateWhatsAppSummary(order);
-              const waMessage = encodeURIComponent(waSummary);
-              const waLink = `https://wa.me/549${order.cliente.telefono}?text=${waMessage}`;
 
               return `
               <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-xs">
@@ -553,24 +551,25 @@ export function renderOperatorView(container) {
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 mt-4">
-                  <a 
-                    href="${waLink}" 
-                    target="_blank"
-                    class="min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center tap-feedback touch-target"
+                  <button
+                    type="button"
+                    data-wa-order-id="${order.id}"
+                    class="btn-send-wa min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center tap-feedback touch-target"
                   >
-                    <span>Enviar WhatsApp</span>
-                  </a>
-                  <button 
+                    <span>${store.isDemo() ? "Simular WhatsApp (Demo)" : "Enviar WhatsApp"}</span>
+                  </button>
+                  <button
                     data-deliver-order-id="${order.id}"
                     class="btn-deliver-order min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-3 px-3 rounded-xl text-xs transition tap-feedback touch-target border border-transparent dark:border-slate-700 flex items-center justify-center"
                   >
                     Marcar Cobrado
                   </button>
                 </div>
+                <p id="wa-sim-feedback-${order.id}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
 
                 <!-- Opción de Cancelar / Eliminar Pedido Listo -->
                 <div class="mt-2 text-right">
-                  <button 
+                  <button
                     data-cancel-order-id="${order.id}"
                     data-delete-order-id="${order.id}"
                     class="btn-cancel-order min-h-[44px] px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition tap-feedback touch-target inline-flex items-center justify-center"
@@ -625,7 +624,7 @@ export function renderOperatorView(container) {
               <h3 class="font-black text-base text-slate-900 dark:text-white">Pedido #${order.id}</h3>
             </div>
             <div class="flex items-center gap-1.5">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback touch-target flex items-center gap-1 text-xs font-bold"
                 title="Cambiar tema claro / oscuro"
@@ -643,10 +642,10 @@ export function renderOperatorView(container) {
           <form id="edit-order-form" class="space-y-3 text-left">
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Nombre del cliente</label>
-              <input 
-                type="text" 
-                id="edit-name" 
-                value="${order.cliente.nombre}" 
+              <input
+                type="text"
+                id="edit-name"
+                value="${order.cliente.nombre}"
                 class="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-800 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
                 required
               />
@@ -654,13 +653,13 @@ export function renderOperatorView(container) {
 
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Teléfono / WhatsApp</label>
-              <input 
-                type="tel" 
-                id="edit-phone" 
-                inputmode="numeric" 
+              <input
+                type="tel"
+                id="edit-phone"
+                inputmode="numeric"
                 pattern="[0-9]{8,15}"
                 maxlength="15"
-                value="${(order.cliente.telefono || "").replace(/\D/g, "")}" 
+                value="${(order.cliente.telefono || "").replace(/\D/g, "")}"
                 class="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-800 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
                 required
               />
@@ -682,25 +681,25 @@ export function renderOperatorView(container) {
 
             <div id="edit-address-container" class="${order.tipo_entrega === "DELIVERY" ? "" : "hidden"}">
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Dirección de entrega</label>
-              <input 
-                type="text" 
-                id="edit-address" 
-                value="${order.direccion_entrega || ""}" 
+              <input
+                type="text"
+                id="edit-address"
+                value="${order.direccion_entrega || ""}"
                 placeholder="Calle, altura, depto..."
                 class="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-800 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
               />
             </div>
 
             <div class="pt-2 flex gap-2">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 id="btn-cancel-edit-modal"
                 class="flex-1 min-h-[44px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition border border-transparent dark:border-slate-700 tap-feedback touch-target flex items-center justify-center"
               >
                 Volver
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 class="flex-1 min-h-[44px] py-3 bg-slate-900 hover:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md tap-feedback touch-target flex items-center justify-center"
               >
                 Guardar cambios
@@ -721,14 +720,17 @@ export function renderOperatorView(container) {
 
     const total = order.total_real || order.total_estimado;
 
-    return `Hola ${order.cliente.nombre}. Tu pedido #${order.id} en Mi Huerta ya fue pesado y está listo:
+    const business = store.getBusinessProfile();
+    const businessName = business.name || "Comercio Demo Nexo";
+    const businessAlias = business.alias || "alias.demo.nexo";
+    return `Hola ${order.cliente.nombre}. Tu pedido #${order.id} en ${businessName} ya fue pesado y está listo:
 
 ${itemsLines}
 
 Total exacto en balanza: $${total.toLocaleString("es-AR")}
 ${order.tipo_entrega === "DELIVERY" ? "El cadete está coordinado con tu dirección de entrega." : "Ya podés pasar a retirarlo por el mostrador."}
 
-Alias para transferir: mihuerta.verduras
+Alias para transferir: ${businessAlias}
 (O podés abonar en efectivo al recibir).`;
   }
 
@@ -997,6 +999,25 @@ Alias para transferir: mihuerta.verduras
         store.finalizeOrderWeighing(id, weightsMap);
         activeTab = "LISTO";
         update();
+      });
+    });
+
+    container.querySelectorAll(".btn-send-wa").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.waOrderId);
+        const order = orders.find((o) => o.id === id);
+        if (!order) return;
+        const summary = generateWhatsAppSummary(order);
+        const res = store.sendWhatsAppMessage({
+          to: `549${order.cliente.telefono}`,
+          text: summary,
+          kind: "order_ready"
+        });
+        const fb = container.querySelector(`#wa-sim-feedback-${id}`);
+        if (fb && res.simulated) {
+          fb.textContent = `Envío simulado en Modo Demo para #${order.id} (${order.cliente.telefono}). No se contactó ningún número real.`;
+          fb.classList.remove("hidden");
+        }
       });
     });
 

@@ -481,8 +481,9 @@ function installDemoNetworkGuard(win, onBlocked) {
 
 // ==============================================================================
 // Nexo Pedidos - Datos sintéticos de demostración
-// Todas las personas, teléfonos, direcciones y alias son ficticios y están
-// marcados como "Demo". Rango telefónico reservado 11000000xx (no asignado).
+// Todas las personas, teléfonos, direcciones y alias son valores sintéticos
+// usados exclusivamente con mensajería bloqueada/simulada (no se verificó la
+// asignación real de esos números telefónicos).
 // ==============================================================================
 
 const DEMO_CUSTOMERS = Object.freeze({
@@ -600,6 +601,7 @@ function safeRemove(key) {
 class Store {
   constructor(config = NEXO_CONFIG) {
     this.config = config;
+    this.storageKeys = config.storageKeys || STORAGE_KEYS;
     this.listeners = new Set();
     this.blockedNetwork = [];
     this.supabase = null;
@@ -616,10 +618,10 @@ class Store {
     // Sincronización en tiempo real entre pestañas
     if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
       window.addEventListener("storage", (e) => {
-        if (e.key === STORAGE_KEYS.THEME) {
+        if (e.key === this.storageKeys.THEME) {
           this.applyTheme(this.getTheme());
           this.notify("theme_changed");
-        } else if (Object.values(STORAGE_KEYS).includes(e.key)) {
+        } else if (Object.values(this.storageKeys).includes(e.key)) {
           this.notify("storage_sync");
         }
       });
@@ -629,7 +631,7 @@ class Store {
         try {
           const mq = window.matchMedia("(prefers-color-scheme: dark)");
           const handler = (e) => {
-            const saved = safeGet(STORAGE_KEYS.THEME, null);
+            const saved = safeGet(this.storageKeys.THEME, null);
             if (!saved) {
               this.applyTheme(e.matches ? "dark" : "light");
               this.notify("theme_changed");
@@ -673,16 +675,16 @@ class Store {
 
     if (this.isDemo()) {
       // 1. Catálogo sintético
-      if (!safeGet(STORAGE_KEYS.PRODUCTS, null)) {
-        safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+      if (!safeGet(this.storageKeys.PRODUCTS, null)) {
+        safeSet(this.storageKeys.PRODUCTS, INITIAL_PRODUCTS);
       }
       // 2. Clientes sintéticos
-      if (!safeGet(STORAGE_KEYS.CUSTOMERS, null)) {
-        safeSet(STORAGE_KEYS.CUSTOMERS, cloneDemoCustomers());
+      if (!safeGet(this.storageKeys.CUSTOMERS, null)) {
+        safeSet(this.storageKeys.CUSTOMERS, cloneDemoCustomers());
       }
       // 3. Pedidos sintéticos
-      if (!safeGet(STORAGE_KEYS.ORDERS, null)) {
-        safeSet(STORAGE_KEYS.ORDERS, buildDemoOrders());
+      if (!safeGet(this.storageKeys.ORDERS, null)) {
+        safeSet(this.storageKeys.ORDERS, buildDemoOrders());
       }
     }
 
@@ -709,7 +711,7 @@ class Store {
 
   // --- Ajustes locales (PIN de UI) ---
   getLocalSettings() {
-    const stored = safeGet(STORAGE_KEYS.LOCAL_SETTINGS, null);
+    const stored = safeGet(this.storageKeys.LOCAL_SETTINGS, null);
     const pin = stored && typeof stored.staffPin === "string" ? stored.staffPin.trim() : "";
     return { staffPin: pin || "1234" };
   }
@@ -718,7 +720,7 @@ class Store {
     const current = this.getLocalSettings();
     const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
     const updated = { staffPin: pin.length >= 4 ? pin : current.staffPin };
-    safeSet(STORAGE_KEYS.LOCAL_SETTINGS, updated);
+    safeSet(this.storageKeys.LOCAL_SETTINGS, updated);
     this.notify("local_settings_changed", { staffPin: "****" });
     return updated;
   }
@@ -739,17 +741,17 @@ class Store {
     const { staffPin } = this.getLocalSettings();
     const ok = String(inputPin).trim() === String(staffPin).trim();
     if (ok) {
-      safeSet(STORAGE_KEYS.PIN_UNLOCKED, true);
+      safeSet(this.storageKeys.PIN_UNLOCKED, true);
     }
     return ok;
   }
 
   isStaffUnlocked() {
-    return Boolean(safeGet(STORAGE_KEYS.PIN_UNLOCKED, false));
+    return Boolean(safeGet(this.storageKeys.PIN_UNLOCKED, false));
   }
 
   lockStaff() {
-    safeRemove(STORAGE_KEYS.PIN_UNLOCKED);
+    safeRemove(this.storageKeys.PIN_UNLOCKED);
     this.notify("staff_locked");
   }
 
@@ -817,11 +819,11 @@ class Store {
           precio: Number(p.precio),
           paso: Number(p.paso || 0.5)
         }));
-        safeSet(STORAGE_KEYS.PRODUCTS, mappedProducts);
+        safeSet(this.storageKeys.PRODUCTS, mappedProducts);
       }
 
       if (cliRes && cliRes.data && cliRes.data.length > 0) {
-        const customerMap = safeGet(STORAGE_KEYS.CUSTOMERS, {}) || {};
+        const customerMap = safeGet(this.storageKeys.CUSTOMERS, {}) || {};
         cliRes.data.forEach((c) => {
           customerMap[c.telefono] = {
             telefono: c.telefono,
@@ -829,7 +831,7 @@ class Store {
             direccion: c.direccion || ""
           };
         });
-        safeSet(STORAGE_KEYS.CUSTOMERS, customerMap);
+        safeSet(this.storageKeys.CUSTOMERS, customerMap);
       }
 
       if (ordRes.data) {
@@ -848,7 +850,7 @@ class Store {
           total_real: o.total_real !== null ? Number(o.total_real) : null,
           items: Array.isArray(o.items) ? o.items : []
         }));
-        safeSet(STORAGE_KEYS.ORDERS, mappedOrders);
+        safeSet(this.storageKeys.ORDERS, mappedOrders);
       }
 
       this.notify("storage_sync");
@@ -922,10 +924,10 @@ class Store {
         at: new Date().toISOString(),
         simulated: true
       };
-      const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+      const log = safeGet(this.storageKeys.SIMULATED_MESSAGES, []);
       const list = Array.isArray(log) ? log : [];
       list.unshift(entry);
-      safeSet(STORAGE_KEYS.SIMULATED_MESSAGES, list.slice(0, 50));
+      safeSet(this.storageKeys.SIMULATED_MESSAGES, list.slice(0, 50));
       this.notify("whatsapp_simulated", entry);
       return { simulated: true, sent: false, entry };
     }
@@ -942,7 +944,7 @@ class Store {
   }
 
   getSimulatedMessages() {
-    const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+    const log = safeGet(this.storageKeys.SIMULATED_MESSAGES, []);
     return Array.isArray(log) ? log : [];
   }
 
@@ -958,8 +960,9 @@ class Store {
 
   // --- Productos ---
   getProducts() {
+    if (!this.config.ok) return [];
     // Producción no muestra catálogo de ejemplo: sólo datos sincronizados.
-    return safeGet(STORAGE_KEYS.PRODUCTS, this.isDemo() ? INITIAL_PRODUCTS : []);
+    return safeGet(this.storageKeys.PRODUCTS, this.isDemo() ? INITIAL_PRODUCTS : []);
   }
 
   updateProductPrice(productId, newPrice) {
@@ -970,7 +973,7 @@ class Store {
       }
       return p;
     });
-    safeSet(STORAGE_KEYS.PRODUCTS, products);
+    safeSet(this.storageKeys.PRODUCTS, products);
     if (this.supabase) {
       this.supabase.from("productos").update({ precio: cleanPrice, updated_at: new Date().toISOString() }).eq("id", productId).then(() => {});
     }
@@ -986,7 +989,7 @@ class Store {
       }
       return p;
     });
-    safeSet(STORAGE_KEYS.PRODUCTS, products);
+    safeSet(this.storageKeys.PRODUCTS, products);
     if (this.supabase) {
       this.supabase.from("productos").update({ disponible: newStatus, updated_at: new Date().toISOString() }).eq("id", productId).then(() => {});
     }
@@ -995,7 +998,7 @@ class Store {
 
   // --- Clientes ---
   getCustomers() {
-    return safeGet(STORAGE_KEYS.CUSTOMERS, {});
+    return safeGet(this.storageKeys.CUSTOMERS, {});
   }
 
   getCustomer(phone) {
@@ -1012,7 +1015,7 @@ class Store {
     if (!cleanPhone) return null;
     const customers = this.getCustomers();
     customers[cleanPhone] = { ...customer, telefono: cleanPhone };
-    safeSet(STORAGE_KEYS.CUSTOMERS, customers);
+    safeSet(this.storageKeys.CUSTOMERS, customers);
     if (this.supabase) {
       this.supabase.from("clientes").upsert({
         telefono: cleanPhone,
@@ -1027,23 +1030,23 @@ class Store {
   }
 
   getCurrentUser() {
-    return safeGet(STORAGE_KEYS.CURRENT_USER, null);
+    return safeGet(this.storageKeys.CURRENT_USER, null);
   }
 
   setCurrentUser(user) {
-    safeSet(STORAGE_KEYS.CURRENT_USER, user);
+    safeSet(this.storageKeys.CURRENT_USER, user);
     this.notify("user_changed", user);
   }
 
   logoutUser() {
-    safeRemove(STORAGE_KEYS.CURRENT_USER);
+    safeRemove(this.storageKeys.CURRENT_USER);
     this.clearCart();
     this.notify("user_changed", null);
   }
 
   // --- Carrito ---
   getCart() {
-    return safeGet(STORAGE_KEYS.CART, {});
+    return safeGet(this.storageKeys.CART, {});
   }
 
   addToCart(productId, quantityDelta) {
@@ -1069,14 +1072,14 @@ class Store {
       };
     }
 
-    safeSet(STORAGE_KEYS.CART, cart);
+    safeSet(this.storageKeys.CART, cart);
     this.notify("cart_changed");
   }
 
   removeFromCart(productId) {
     const cart = this.getCart();
     delete cart[productId];
-    safeSet(STORAGE_KEYS.CART, cart);
+    safeSet(this.storageKeys.CART, cart);
     this.notify("cart_changed");
   }
 
@@ -1100,12 +1103,12 @@ class Store {
       subtotal_estimado: Math.round(cleanQty * product.precio)
     };
 
-    safeSet(STORAGE_KEYS.CART, cart);
+    safeSet(this.storageKeys.CART, cart);
     this.notify("cart_changed");
   }
 
   clearCart() {
-    safeRemove(STORAGE_KEYS.CART);
+    safeRemove(this.storageKeys.CART);
     this.notify("cart_changed");
   }
 
@@ -1119,18 +1122,18 @@ class Store {
 
   // --- Pedidos ---
   getOrders() {
-    return safeGet(STORAGE_KEYS.ORDERS, []);
+    return safeGet(this.storageKeys.ORDERS, []);
   }
 
   getActiveOrderId() {
-    return safeGet(STORAGE_KEYS.ACTIVE_ORDER, null);
+    return safeGet(this.storageKeys.ACTIVE_ORDER, null);
   }
 
   setActiveOrderId(orderId) {
     if (orderId) {
-      safeSet(STORAGE_KEYS.ACTIVE_ORDER, Number(orderId));
+      safeSet(this.storageKeys.ACTIVE_ORDER, Number(orderId));
     } else {
-      safeRemove(STORAGE_KEYS.ACTIVE_ORDER);
+      safeRemove(this.storageKeys.ACTIVE_ORDER);
     }
     this.notify("active_order_changed", orderId);
   }
@@ -1214,7 +1217,7 @@ class Store {
     };
 
     orders.unshift(newOrder);
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     this.syncOrderToSupabase(newOrder);
     this.setActiveOrderId(newOrder.id);
     this.clearCart();
@@ -1232,7 +1235,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -1243,7 +1246,7 @@ class Store {
       if (order.id === orderId) {
         const items = [...order.items];
         const item = { ...items[itemIndex] };
-        
+
         const peso = Math.max(0, Number(pesoReal));
         item.peso_real = peso;
         item.subtotal = Math.round(peso * item.precio_unitario);
@@ -1262,7 +1265,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     if (notify) {
       this.notify("orders_changed");
@@ -1293,7 +1296,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -1333,7 +1336,7 @@ class Store {
       return order;
     });
 
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
     this.notify("order_ready", orderId);
@@ -1342,7 +1345,7 @@ class Store {
   // Eliminar o cancelar completamente un pedido
   deleteOrder(orderId) {
     const orders = this.getOrders().filter((o) => o.id !== orderId);
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (this.supabase) {
       this.supabase.from("pedidos").delete().eq("id", orderId).then(() => {});
     }
@@ -1366,7 +1369,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);
@@ -1393,7 +1396,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -1439,7 +1442,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -1463,7 +1466,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -1472,7 +1475,7 @@ class Store {
   // GESTION DE MODO OSCURO / CLARO
   // ========================================================
   getTheme() {
-    const saved = safeGet(STORAGE_KEYS.THEME, null);
+    const saved = safeGet(this.storageKeys.THEME, null);
     if (saved === "dark" || saved === "light") {
       return saved;
     }
@@ -1489,7 +1492,7 @@ class Store {
   setTheme(theme) {
     const validTheme = theme === "dark" ? "dark" : "light";
     // Sólo namespace Nexo (no se escribe la clave genérica "theme")
-    safeSet(STORAGE_KEYS.THEME, validTheme);
+    safeSet(this.storageKeys.THEME, validTheme);
     this.applyTheme(validTheme);
     this.notify("theme_changed");
     return validTheme;
@@ -1596,18 +1599,18 @@ function renderClientView(container) {
     container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-8 pb-16 min-h-[85vh] flex flex-col justify-center">
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/40 border border-slate-200/80 dark:border-slate-800 text-left">
-          
+
           <div class="mb-6 flex items-start justify-between gap-2">
             <div>
               <span class="inline-block text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 mb-2">
                 Verdulería Digital
               </span>
-              <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Mi Huerta</h1>
+              <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">${store.getBusinessProfile().name || "Nexo Pedidos"}</h1>
               <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                 Catálogo fresco del día, pedidos directos desde tu celular y pesaje transparente en balanza.
               </p>
             </div>
-            <button 
+            <button
               type="button"
               class="theme-toggle-btn shrink-0 min-h-[44px] text-[11px] font-bold tracking-wider px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback flex items-center gap-1.5 touch-target"
               title="Cambiar tema claro / oscuro"
@@ -1626,15 +1629,15 @@ function renderClientView(container) {
                 <span class="absolute left-4 text-slate-400 dark:text-slate-500 font-semibold text-base select-none pointer-events-none">
                   +54 9
                 </span>
-                <input 
-                  type="tel" 
-                  id="phone-input" 
-                  required 
-                  inputmode="numeric" 
+                <input
+                  type="tel"
+                  id="phone-input"
+                  required
+                  inputmode="numeric"
                   pattern="[0-9]{8,15}"
                   maxlength="15"
                   autocomplete="tel"
-                  placeholder="11 2345 6789" 
+                  placeholder="11 0000 0001"
                   value="${(store.prefilledPhone || "").replace(/\D/g, "")}"
                   class="w-full pl-20 pr-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white font-bold text-base outline-none transition"
                 />
@@ -1655,14 +1658,14 @@ function renderClientView(container) {
                   </label>
                   <span class="text-[10px] font-bold text-rose-500 dark:text-rose-400">Requerido</span>
                 </div>
-                <input 
-                  type="text" 
-                  id="name-input" 
+                <input
+                  type="text"
+                  id="name-input"
                   required
                   minlength="2"
                   maxlength="60"
                   autocomplete="name"
-                  placeholder="Ej: Facundo Gómez" 
+                  placeholder="Ej: Ana Demo (sintética)"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
                 <p id="name-error" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
@@ -1674,17 +1677,17 @@ function renderClientView(container) {
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Dirección de entrega (opcional)
                 </label>
-                <input 
-                  type="text" 
-                  id="address-input" 
-                  placeholder="Ej: Av. Rivadavia 4520, Piso 3 B" 
+                <input
+                  type="text"
+                  id="address-input"
+                  placeholder="Ej: Calle Ficticia 101 (demo)"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
               </div>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               class="w-full mt-2 min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-slate-950/15 dark:shadow-emerald-950/30 transition tap-feedback text-sm flex items-center justify-center gap-2"
             >
               <span>Ingresar al Catálogo</span>
@@ -1693,12 +1696,12 @@ function renderClientView(container) {
 
           <!-- Acceso rápido demo -->
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button 
+            <button
               id="btn-quick-demo-user"
               type="button"
               class="w-full min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold py-2.5 px-3 rounded-xl transition tap-feedback text-center border border-transparent dark:border-slate-700"
             >
-              Probar como Facundo Gómez (Cliente demo)
+              Probar como ${DEMO_QUICK_CUSTOMER.nombre}
             </button>
           </div>
 
@@ -1809,11 +1812,7 @@ function renderClientView(container) {
     }
 
     btnQuickDemo?.addEventListener("click", () => {
-      const demoUser = store.saveCustomer({
-        telefono: "1123456789",
-        nombre: "Facundo Gómez",
-        direccion: "Av. Rivadavia 4520, Piso 3 B"
-      });
+      const demoUser = store.saveCustomer({ ...DEMO_QUICK_CUSTOMER });
       store.setCurrentUser(demoUser);
       deliveryAddress = demoUser.direccion || "";
       update();
@@ -1893,13 +1892,13 @@ function renderClientView(container) {
 
     container.innerHTML = `
       <div class="max-w-md mx-auto pb-32 sm:pb-36 w-full overflow-x-hidden safe-pb">
-        
+
         <!-- Banner de Pedido Activo en Curso (si existe) -->
         ${
           activeOrder && activeOrder.estado !== "ENTREGADO"
             ? `
           <div class="px-4 pt-3">
-            <button 
+            <button
               id="btn-banner-active-order"
               class="w-full min-h-[48px] bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 p-3 rounded-2xl text-left flex items-center justify-between transition tap-feedback shadow-xs touch-target"
             >
@@ -1937,10 +1936,10 @@ function renderClientView(container) {
                 Abierto
               </span>
             </div>
-            
+
             <div class="flex items-center shrink-0">
-              <button 
-                id="btn-header-cart" 
+              <button
+                id="btn-header-cart"
                 class="relative min-h-[44px] px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-200 dark:border-slate-700 tap-feedback touch-target"
                 title="Ver pedido"
                 aria-label="Ver pedido"
@@ -1960,7 +1959,7 @@ function renderClientView(container) {
               <button id="btn-change-user" class="min-h-[44px] min-w-[44px] inline-flex items-center px-1 text-slate-400 dark:text-slate-500 underline hover:text-slate-600 dark:hover:text-slate-300 text-[11px] touch-target shrink-0">Cambiar</button>
             </div>
             <div class="flex items-center shrink-0">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] px-2.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-slate-200 dark:border-slate-700 tap-feedback touch-target"
                 title="Cambiar tema claro / oscuro"
@@ -1974,10 +1973,10 @@ function renderClientView(container) {
 
           <!-- Buscador con tamaño de fuente accesible para evitar zoom iOS -->
           <div class="mt-2.5 relative">
-            <input 
-              type="text" 
-              id="search-input" 
-              placeholder="Buscar productos..." 
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Buscar productos..."
               value="${searchQuery}"
               autocomplete="off"
               autocorrect="off"
@@ -1996,7 +1995,7 @@ function renderClientView(container) {
           <div class="mt-2.5 flex gap-2 overflow-x-auto no-scrollbar overscroll-x-contain py-1 -mx-4 px-4">
             ${CATEGORIAS.map(
               (cat) => `
-              <button 
+              <button
                 data-category="${cat}"
                 class="category-pill shrink-0 whitespace-nowrap min-h-[44px] px-4 py-2.5 rounded-full text-xs font-bold transition tap-feedback touch-target flex items-center gap-1.5 ${
                   selectedCategory === cat
@@ -2024,7 +2023,7 @@ function renderClientView(container) {
 
         <!-- Footer discreto para acceso a personal del local -->
         <footer class="mt-8 mb-16 text-center text-xs text-slate-400 dark:text-slate-500">
-          <p>Verdulería Mi Huerta <span class="opacity-40 font-light">|</span> Catálogo y Pesaje en Balanza</p>
+          <p>${store.getBusinessProfile().name || "Nexo Pedidos"} <span class="opacity-40 font-light">|</span> Catálogo y Pesaje en Balanza</p>
           <a href="?view=operario" class="min-h-[44px] inline-flex items-center justify-center py-2 px-3 mt-2 text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline touch-target">
             Acceso Personal del Local
           </a>
@@ -2035,7 +2034,7 @@ function renderClientView(container) {
           totalItems > 0
             ? `
           <div class="fixed left-4 right-4 z-30 max-w-md mx-auto pointer-events-auto safe-floating-bottom">
-            <button 
+            <button
               id="btn-open-cart"
               class="w-full min-h-[52px] bg-slate-950 dark:bg-slate-900 hover:bg-slate-900 dark:hover:bg-slate-800 active:bg-black text-white p-3.5 px-4 rounded-2xl shadow-xl shadow-slate-950/30 flex items-center justify-between transition tap-feedback border border-slate-800 dark:border-slate-700"
             >
@@ -2106,12 +2105,12 @@ function renderClientView(container) {
           <div class="relative bg-white dark:bg-slate-900 rounded-2xl p-4 border transition ${
             inCart ? "border-emerald-500/60 bg-emerald-50/15 dark:bg-emerald-950/20 shadow-xs" : "border-slate-200/80 dark:border-slate-800 shadow-xs"
           } ${!product.disponible ? "opacity-40 grayscale pointer-events-none" : ""}">
-            
+
             <!-- Botón de Descarte Rápido '×' (Visible sólo si Qty > 0, 44x44px táctil) -->
             ${
               inCart && product.disponible
                 ? `
-              <button 
+              <button
                 type="button"
                 data-quick-discard-id="${product.id}"
                 class="btn-quick-discard absolute top-2.5 right-2.5 min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center rounded-xl text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 active:bg-rose-100 dark:active:bg-rose-900/60 transition tap-feedback touch-target z-10"
@@ -2175,7 +2174,7 @@ function renderClientView(container) {
                   product.disponible
                     ? !inCart
                       ? `
-                      <button 
+                      <button
                         data-add-id="${product.id}"
                         data-step="${step}"
                         class="btn-add-initial min-h-[44px] min-w-[96px] bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border dark:border-slate-700 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition tap-feedback touch-target flex items-center justify-center gap-1.5 shadow-xs"
@@ -2186,7 +2185,7 @@ function renderClientView(container) {
                     `
                       : `
                       <div class="flex items-center bg-emerald-600 text-white rounded-xl p-0.5 shadow-xs min-h-[44px]">
-                        <button 
+                        <button
                           type="button"
                           data-dec-id="${product.id}"
                           data-step="${step}"
@@ -2199,7 +2198,7 @@ function renderClientView(container) {
                         <span class="px-2 text-xs font-black min-w-[40px] text-center tracking-tight select-none">
                           ${currentQty} ${unitLabel}
                         </span>
-                        <button 
+                        <button
                           type="button"
                           data-inc-id="${product.id}"
                           data-step="${step}"
@@ -2223,27 +2222,27 @@ function renderClientView(container) {
               <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Ajuste rápido:</span>
                 <div class="flex items-center gap-1.5">
-                  <button 
-                    data-quick-weight-id="${product.id}" 
-                    data-weight="0.5" 
+                  <button
+                    data-quick-weight-id="${product.id}"
+                    data-weight="0.5"
                     class="btn-quick-weight min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition tap-feedback touch-target ${
                       currentQty === 0.5 ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/60"
                     }"
                   >
                     500g
                   </button>
-                  <button 
-                    data-quick-weight-id="${product.id}" 
-                    data-weight="1" 
+                  <button
+                    data-quick-weight-id="${product.id}"
+                    data-weight="1"
                     class="btn-quick-weight min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition tap-feedback touch-target ${
                       currentQty === 1 ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/60"
                     }"
                   >
                     1 kg
                   </button>
-                  <button 
-                    data-quick-weight-id="${product.id}" 
-                    data-weight="2" 
+                  <button
+                    data-quick-weight-id="${product.id}"
+                    data-weight="2"
                     class="btn-quick-weight min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition tap-feedback touch-target ${
                       currentQty === 2 ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/60"
                     }"
@@ -2382,7 +2381,7 @@ function renderClientView(container) {
         <div id="cart-drawer-sheet" class="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-3xl max-h-[85vh] max-h-[85dvh] flex flex-col shadow-2xl ${
           isDrawerFirstOpen ? "animate-slide-up" : ""
         } border-t border-slate-200 dark:border-slate-800">
-          
+
           <!-- Handle bar táctil -->
           <div class="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mt-3"></div>
 
@@ -2393,7 +2392,7 @@ function renderClientView(container) {
               <p class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Revisá las cantidades antes de confirmar</p>
             </div>
             <div class="flex items-center gap-1.5">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback flex items-center gap-1 text-xs font-bold touch-target"
                 title="Cambiar tema claro / oscuro"
@@ -2402,8 +2401,8 @@ function renderClientView(container) {
                 <span>Tema:</span>
                 <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
               </button>
-              <button 
-                id="btn-close-cart" 
+              <button
+                id="btn-close-cart"
                 class="min-h-[44px] px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 flex items-center justify-center font-bold text-xs tap-feedback touch-target border border-transparent dark:border-slate-700"
                 title="Cerrar pedido"
               >
@@ -2421,8 +2420,8 @@ function renderClientView(container) {
                   <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 mb-2">Pedido Vacío</span>
                   <h4 class="font-extrabold text-slate-800 dark:text-slate-200 text-sm">Tu pedido no tiene productos</h4>
                   <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs mx-auto">Seleccioná frutas y verduras del catálogo para coordinar el pesaje en balanza.</p>
-                  <button 
-                    id="btn-drawer-empty-back" 
+                  <button
+                    id="btn-drawer-empty-back"
                     type="button"
                     class="mt-4 min-h-[44px] px-5 py-2.5 bg-slate-900 dark:bg-emerald-600 text-white text-xs font-bold rounded-xl transition tap-feedback shadow-sm"
                   >
@@ -2448,9 +2447,9 @@ function renderClientView(container) {
                   <!-- Stepper en Carrito y Botón con la cruz '×' accesible (44x44px touch-target) -->
                   <div class="flex items-center gap-2 shrink-0">
                     <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 shadow-xs min-h-[44px]">
-                      <button 
+                      <button
                         type="button"
-                        data-drawer-dec="${item.producto_id}" 
+                        data-drawer-dec="${item.producto_id}"
                         class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 rounded-lg font-black text-base tap-feedback touch-target"
                         title="Restar cantidad"
                         aria-label="Restar cantidad"
@@ -2460,9 +2459,9 @@ function renderClientView(container) {
                       <span class="px-1 text-xs font-black min-w-[32px] text-center text-slate-900 dark:text-white select-none">
                         ${item.cantidad}
                       </span>
-                      <button 
+                      <button
                         type="button"
-                        data-drawer-inc="${item.producto_id}" 
+                        data-drawer-inc="${item.producto_id}"
                         class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 rounded-lg font-black text-base tap-feedback touch-target"
                         title="Sumar cantidad"
                         aria-label="Sumar cantidad"
@@ -2472,7 +2471,7 @@ function renderClientView(container) {
                     </div>
 
                     <!-- Botón tipográfico con cruz '×' para eliminar el ítem completo de 1 toque (44x44px touch-target) -->
-                    <button 
+                    <button
                       type="button"
                       data-drawer-remove="${item.producto_id}"
                       class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:active:bg-rose-900/80 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-900/60 transition tap-feedback shadow-xs shrink-0 touch-target"
@@ -2528,10 +2527,10 @@ function renderClientView(container) {
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Dirección exacta de entrega
               </label>
-              <input 
-                type="text" 
-                id="delivery-address-input" 
-                value="${deliveryAddress}" 
+              <input
+                type="text"
+                id="delivery-address-input"
+                value="${deliveryAddress}"
                 placeholder="Calle, número, piso y departamento"
                 class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-base font-medium outline-none focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900 dark:focus:ring-emerald-500 transition"
               />
@@ -2565,7 +2564,7 @@ function renderClientView(container) {
             ${
               isEmpty
                 ? `
-              <button 
+              <button
                 id="btn-confirm-order"
                 disabled
                 class="w-full min-h-[50px] bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-black py-4 rounded-2xl text-sm cursor-not-allowed opacity-60 text-center"
@@ -2574,7 +2573,7 @@ function renderClientView(container) {
               </button>
             `
                 : `
-              <button 
+              <button
                 id="btn-confirm-order"
                 class="w-full min-h-[50px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-950/20 text-sm transition tap-feedback flex items-center justify-center gap-2"
               >
@@ -2738,24 +2737,21 @@ function renderClientView(container) {
       stepDesc = "Pedido finalizado exitosamente. ¡Muchas gracias por tu compra!";
     }
 
-    const waHelpText = encodeURIComponent(
-      `Hola! Consulto por mi pedido #${currentOrder.id} a nombre de ${currentOrder.cliente.nombre}.`
-    );
-    const waHelpLink = `https://wa.me/5491123456789?text=${waHelpText}`;
+    const waHelpRawText = `Hola! Consulto por mi pedido #${currentOrder.id} a nombre de ${currentOrder.cliente.nombre}.`;
 
     container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-4 pb-28 safe-pb">
-        
+
         <!-- Botón para volver a ver catálogo sin perder el pedido y toggle de tema -->
         <div class="flex items-center justify-between mb-3">
-          <button 
-            id="btn-back-to-catalog" 
+          <button
+            id="btn-back-to-catalog"
             class="min-h-[44px] px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition tap-feedback flex items-center gap-1.5 touch-target"
           >
             <span>Volver al Catálogo</span>
           </button>
 
-          <button 
+          <button
             type="button"
             class="theme-toggle-btn min-h-[44px] px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition tap-feedback flex items-center gap-1.5 touch-target"
             title="Cambiar tema claro / oscuro"
@@ -2767,7 +2763,7 @@ function renderClientView(container) {
         </div>
 
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl shadow-slate-200/50 dark:shadow-black/40 border border-slate-200/80 dark:border-slate-800 text-left">
-          
+
           <!-- Encabezado de la Orden -->
           <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
@@ -2880,21 +2876,22 @@ function renderClientView(container) {
             </div>
           </div>
 
-          <!-- Botón de consulta al local por WhatsApp -->
-          <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <a 
-              href="${waHelpLink}" 
-              target="_blank"
+          <!-- Botón de consulta al local por WhatsApp (simulado en Modo Demo) -->
+          <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <button
+              type="button"
+              id="btn-wa-help"
               class="w-full min-h-[44px] bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 active:bg-emerald-200 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold py-2.5 px-3 rounded-xl text-xs transition tap-feedback flex items-center justify-center gap-1.5"
             >
-              <span>Consultar al local por WhatsApp</span>
-            </a>
+              <span>${store.isDemo() ? "Simular consulta por WhatsApp (Demo)" : "Consultar al local por WhatsApp"}</span>
+            </button>
+            <p id="wa-help-feedback" class="hidden text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2.5 text-center"></p>
           </div>
 
           <!-- Acciones de Seguimiento -->
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-            <button 
-              id="btn-new-order" 
+            <button
+              id="btn-new-order"
               class="w-full min-h-[46px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 text-slate-800 dark:text-slate-200 border border-transparent dark:border-slate-700 font-bold rounded-xl text-xs transition tap-feedback"
             >
               Realizar Otro Pedido
@@ -2907,6 +2904,20 @@ function renderClientView(container) {
     container.querySelector("#btn-back-to-catalog")?.addEventListener("click", () => {
       viewingActiveOrder = false;
       update();
+    });
+
+    container.querySelector("#btn-wa-help")?.addEventListener("click", () => {
+      const business = store.getBusinessProfile();
+      const res = store.sendWhatsAppMessage({
+        to: business.whatsapp,
+        text: waHelpRawText,
+        kind: "client_help"
+      });
+      const fb = container.querySelector("#wa-help-feedback");
+      if (fb && res.simulated) {
+        fb.textContent = `Consulta simulada en Modo Demo (destinatario sintético ${business.whatsappDisplay || business.whatsapp}). No se envió ningún mensaje real.`;
+        fb.classList.remove("hidden");
+      }
     });
 
     container.querySelector("#btn-new-order")?.addEventListener("click", () => {
@@ -2990,7 +3001,7 @@ function renderOperatorView(container) {
 
             <!-- Botones de Acción de Cabecera -->
             <div class="flex items-center gap-1.5">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 text-xs font-bold flex items-center gap-1 border border-slate-700 transition tap-feedback touch-target"
                 title="Cambiar tema claro / oscuro"
@@ -2999,16 +3010,16 @@ function renderOperatorView(container) {
                 <span>Tema:</span>
                 <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
               </button>
-              <button 
-                id="btn-test-sound" 
-                title="Probar timbre de pedido" 
+              <button
+                id="btn-test-sound"
+                title="Probar timbre de pedido"
                 class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 border border-slate-700 transition tap-feedback touch-target"
               >
                 <span>Timbre</span>
               </button>
-              <button 
-                id="btn-operator-logout" 
-                title="Salir y bloquear" 
+              <button
+                id="btn-operator-logout"
+                title="Salir y bloquear"
                 class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/60 transition tap-feedback touch-target flex items-center justify-center"
               >
                 Salir
@@ -3018,8 +3029,8 @@ function renderOperatorView(container) {
 
           <!-- Pestañas del Kanban (Mobile-First) -->
           <div class="grid grid-cols-4 gap-1 mt-3 bg-slate-800/90 p-1 rounded-2xl text-center">
-            <button 
-              data-tab="PENDIENTE" 
+            <button
+              data-tab="PENDIENTE"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "PENDIENTE" ? "bg-amber-400 text-slate-950 font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -3030,8 +3041,8 @@ function renderOperatorView(container) {
               }">${counts.PENDIENTE}</span>
             </button>
 
-            <button 
-              data-tab="EN_PREPARACION" 
+            <button
+              data-tab="EN_PREPARACION"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "EN_PREPARACION" ? "bg-blue-600 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -3042,8 +3053,8 @@ function renderOperatorView(container) {
               }">${counts.EN_PREPARACION}</span>
             </button>
 
-            <button 
-              data-tab="LISTO" 
+            <button
+              data-tab="LISTO"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "LISTO" ? "bg-emerald-600 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -3054,8 +3065,8 @@ function renderOperatorView(container) {
               }">${counts.LISTO}</span>
             </button>
 
-            <button 
-              data-tab="ENTREGADO" 
+            <button
+              data-tab="ENTREGADO"
               class="tab-btn min-h-[48px] py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition flex flex-col items-center justify-center leading-tight tap-feedback touch-target ${
                 activeTab === "ENTREGADO" ? "bg-slate-700 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
@@ -3152,21 +3163,21 @@ function renderOperatorView(container) {
 
                 <!-- Acciones Principales y de Gestión -->
                 <div class="mt-3 space-y-2">
-                  <button 
-                    data-start-id="${order.id}" 
+                  <button
+                    data-start-id="${order.id}"
                     class="btn-start-prep w-full min-h-[48px] bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-xs transition tap-feedback touch-target flex items-center justify-center gap-2"
                   >
                     <span>Tomar y Pesar en Balanza</span>
                   </button>
 
                   <div class="grid grid-cols-2 gap-2">
-                    <button 
+                    <button
                       data-edit-order-id="${order.id}"
                       class="btn-open-edit min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-slate-700"
                     >
                       <span>Editar datos</span>
                     </button>
-                    <button 
+                    <button
                       data-cancel-order-id="${order.id}"
                       data-delete-order-id="${order.id}"
                       class="btn-cancel-order min-h-[44px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-rose-900/50"
@@ -3199,7 +3210,7 @@ function renderOperatorView(container) {
 
               return `
               <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border-2 border-blue-200/80 dark:border-blue-900/60 shadow-md">
-                
+
                 <!-- Header de la tarjeta -->
                 <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div>
@@ -3260,7 +3271,7 @@ function renderOperatorView(container) {
 
                           <!-- Acciones por ítem: Sin Stock y Quitar -->
                           <div class="flex items-center gap-1.5 shrink-0">
-                            <button 
+                            <button
                               type="button"
                               data-toggle-stock-order="${order.id}"
                               data-item-index="${idx}"
@@ -3274,7 +3285,7 @@ function renderOperatorView(container) {
                               ${item.sin_stock ? "Anulado" : "Sin Stock"}
                             </button>
 
-                            <button 
+                            <button
                               type="button"
                               data-remove-item-order="${order.id}"
                               data-item-index="${idx}"
@@ -3306,8 +3317,8 @@ function renderOperatorView(container) {
                               </button>
 
                               <div class="relative w-28">
-                                <input 
-                                  type="text" 
+                                <input
+                                  type="text"
                                   inputmode="decimal"
                                   data-order-id="${order.id}"
                                   data-item-idx="${idx}"
@@ -3340,7 +3351,7 @@ function renderOperatorView(container) {
                               </button>
 
                               <!-- Botón rápido para copiar lo solicitado -->
-                              <button 
+                              <button
                                 type="button"
                                 data-copy-requested-order="${order.id}"
                                 data-item-idx="${idx}"
@@ -3397,15 +3408,15 @@ function renderOperatorView(container) {
                         <div>
                           <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Cantidad / Peso inicial</label>
                           <div class="flex gap-2">
-                            <input 
-                              type="number" 
-                              id="input-new-quantity" 
-                              value="1.0" 
-                              step="0.5" 
-                              min="0.1" 
+                            <input
+                              type="number"
+                              id="input-new-quantity"
+                              value="1.0"
+                              step="0.5"
+                              min="0.1"
                               class="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-base font-black text-center outline-none focus:border-blue-600 text-slate-900 dark:text-white"
                             />
-                            <button 
+                            <button
                               data-confirm-add-order="${order.id}"
                               class="btn-confirm-add-item min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 rounded-xl text-xs transition tap-feedback touch-target shrink-0 flex items-center justify-center"
                             >
@@ -3417,7 +3428,7 @@ function renderOperatorView(container) {
                     </div>
                   `
                       : `
-                    <button 
+                    <button
                       data-toggle-add-order="${order.id}"
                       class="btn-open-add-product w-full min-h-[44px] py-2.5 px-3 border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-950/50 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 tap-feedback touch-target"
                     >
@@ -3429,7 +3440,7 @@ function renderOperatorView(container) {
 
                 <!-- Cierre de Pesaje y Acciones Secundarias -->
                 <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                  <button 
+                  <button
                     data-finish-order-id="${order.id}"
                     class="btn-finish-weighing w-full min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-slate-950/15 text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition tap-feedback touch-target"
                   >
@@ -3437,14 +3448,14 @@ function renderOperatorView(container) {
                   </button>
 
                   <div class="grid grid-cols-2 gap-2">
-                    <button 
+                    <button
                       data-edit-order-id="${order.id}"
                       class="btn-open-edit min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-slate-700"
                     >
                       <span>Cambiar entrega/datos</span>
                     </button>
 
-                    <button 
+                    <button
                       data-cancel-order-id="${order.id}"
                       data-delete-order-id="${order.id}"
                       class="btn-cancel-order min-h-[44px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-rose-900/50"
@@ -3468,8 +3479,6 @@ function renderOperatorView(container) {
           ${tabOrders
             .map((order) => {
               const waSummary = generateWhatsAppSummary(order);
-              const waMessage = encodeURIComponent(waSummary);
-              const waLink = `https://wa.me/549${order.cliente.telefono}?text=${waMessage}`;
 
               return `
               <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-xs">
@@ -3493,24 +3502,25 @@ function renderOperatorView(container) {
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 mt-4">
-                  <a 
-                    href="${waLink}" 
-                    target="_blank"
-                    class="min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center tap-feedback touch-target"
+                  <button
+                    type="button"
+                    data-wa-order-id="${order.id}"
+                    class="btn-send-wa min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center tap-feedback touch-target"
                   >
-                    <span>Enviar WhatsApp</span>
-                  </a>
-                  <button 
+                    <span>${store.isDemo() ? "Simular WhatsApp (Demo)" : "Enviar WhatsApp"}</span>
+                  </button>
+                  <button
                     data-deliver-order-id="${order.id}"
                     class="btn-deliver-order min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-3 px-3 rounded-xl text-xs transition tap-feedback touch-target border border-transparent dark:border-slate-700 flex items-center justify-center"
                   >
                     Marcar Cobrado
                   </button>
                 </div>
+                <p id="wa-sim-feedback-${order.id}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
 
                 <!-- Opción de Cancelar / Eliminar Pedido Listo -->
                 <div class="mt-2 text-right">
-                  <button 
+                  <button
                     data-cancel-order-id="${order.id}"
                     data-delete-order-id="${order.id}"
                     class="btn-cancel-order min-h-[44px] px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition tap-feedback touch-target inline-flex items-center justify-center"
@@ -3565,7 +3575,7 @@ function renderOperatorView(container) {
               <h3 class="font-black text-base text-slate-900 dark:text-white">Pedido #${order.id}</h3>
             </div>
             <div class="flex items-center gap-1.5">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback touch-target flex items-center gap-1 text-xs font-bold"
                 title="Cambiar tema claro / oscuro"
@@ -3583,10 +3593,10 @@ function renderOperatorView(container) {
           <form id="edit-order-form" class="space-y-3 text-left">
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Nombre del cliente</label>
-              <input 
-                type="text" 
-                id="edit-name" 
-                value="${order.cliente.nombre}" 
+              <input
+                type="text"
+                id="edit-name"
+                value="${order.cliente.nombre}"
                 class="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-800 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
                 required
               />
@@ -3594,13 +3604,13 @@ function renderOperatorView(container) {
 
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Teléfono / WhatsApp</label>
-              <input 
-                type="tel" 
-                id="edit-phone" 
-                inputmode="numeric" 
+              <input
+                type="tel"
+                id="edit-phone"
+                inputmode="numeric"
                 pattern="[0-9]{8,15}"
                 maxlength="15"
-                value="${(order.cliente.telefono || "").replace(/\D/g, "")}" 
+                value="${(order.cliente.telefono || "").replace(/\D/g, "")}"
                 class="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-800 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
                 required
               />
@@ -3622,25 +3632,25 @@ function renderOperatorView(container) {
 
             <div id="edit-address-container" class="${order.tipo_entrega === "DELIVERY" ? "" : "hidden"}">
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Dirección de entrega</label>
-              <input 
-                type="text" 
-                id="edit-address" 
-                value="${order.direccion_entrega || ""}" 
+              <input
+                type="text"
+                id="edit-address"
+                value="${order.direccion_entrega || ""}"
                 placeholder="Calle, altura, depto..."
                 class="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-800 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
               />
             </div>
 
             <div class="pt-2 flex gap-2">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 id="btn-cancel-edit-modal"
                 class="flex-1 min-h-[44px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition border border-transparent dark:border-slate-700 tap-feedback touch-target flex items-center justify-center"
               >
                 Volver
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 class="flex-1 min-h-[44px] py-3 bg-slate-900 hover:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md tap-feedback touch-target flex items-center justify-center"
               >
                 Guardar cambios
@@ -3661,14 +3671,17 @@ function renderOperatorView(container) {
 
     const total = order.total_real || order.total_estimado;
 
-    return `Hola ${order.cliente.nombre}. Tu pedido #${order.id} en Mi Huerta ya fue pesado y está listo:
+    const business = store.getBusinessProfile();
+    const businessName = business.name || "Comercio Demo Nexo";
+    const businessAlias = business.alias || "alias.demo.nexo";
+    return `Hola ${order.cliente.nombre}. Tu pedido #${order.id} en ${businessName} ya fue pesado y está listo:
 
 ${itemsLines}
 
 Total exacto en balanza: $${total.toLocaleString("es-AR")}
 ${order.tipo_entrega === "DELIVERY" ? "El cadete está coordinado con tu dirección de entrega." : "Ya podés pasar a retirarlo por el mostrador."}
 
-Alias para transferir: mihuerta.verduras
+Alias para transferir: ${businessAlias}
 (O podés abonar en efectivo al recibir).`;
   }
 
@@ -3940,6 +3953,25 @@ Alias para transferir: mihuerta.verduras
       });
     });
 
+    container.querySelectorAll(".btn-send-wa").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.waOrderId);
+        const order = orders.find((o) => o.id === id);
+        if (!order) return;
+        const summary = generateWhatsAppSummary(order);
+        const res = store.sendWhatsAppMessage({
+          to: `549${order.cliente.telefono}`,
+          text: summary,
+          kind: "order_ready"
+        });
+        const fb = container.querySelector(`#wa-sim-feedback-${id}`);
+        if (fb && res.simulated) {
+          fb.textContent = `Envío simulado en Modo Demo para #${order.id} (${order.cliente.telefono}). No se contactó ningún número real.`;
+          fb.classList.remove("hidden");
+        }
+      });
+    });
+
     container.querySelectorAll(".btn-deliver-order").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
@@ -3988,8 +4020,9 @@ function renderAdminView(container) {
   function update() {
     container.innerHTML = "";
     const products = store.getProducts();
-    const cloudConfig = store.getCloudConfig();
+    const localSettings = store.getLocalSettings();
     const isConnected = store.isCloudConnected();
+    const isDemo = store.isDemo();
 
     const filtered = products.filter((p) => {
       const matchCat = selectedCategory === "Todos" || p.categoria === selectedCategory;
@@ -4005,6 +4038,12 @@ function renderAdminView(container) {
           : products.filter((p) => p.categoria === cat).length;
     });
 
+    const statusBadgeLabel = isDemo
+      ? "Modo Demo (sin red)"
+      : isConnected
+        ? "Cloud Online"
+        : "Sin Conexión Cloud";
+
     container.innerHTML = `
       <div class="max-w-xl mx-auto p-4 pb-32 overflow-x-hidden safe-pb">
         <!-- Header del Panel -->
@@ -4019,12 +4058,14 @@ function renderAdminView(container) {
             </div>
             <div class="flex flex-col items-end gap-1.5">
               <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                isConnected ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                isConnected
+                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300"
+                  : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
               }">
-                ${isConnected ? "Cloud Online" : "Modo Local"}
+                ${statusBadgeLabel}
               </span>
               <div class="flex items-center gap-1.5">
-                <button 
+                <button
                   type="button"
                   class="theme-toggle-btn min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition tap-feedback touch-target flex items-center gap-1"
                   title="Cambiar tema claro / oscuro"
@@ -4033,7 +4074,7 @@ function renderAdminView(container) {
                   <span>Tema:</span>
                   <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
                 </button>
-                <button 
+                <button
                   id="btn-toggle-cloud"
                   class="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold border transition tap-feedback touch-target flex items-center justify-center ${
                     isConnected
@@ -4041,11 +4082,11 @@ function renderAdminView(container) {
                       : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }"
                 >
-                  ${showCloudSettings ? "Cerrar Config" : "Config Cloud"}
+                  ${showCloudSettings ? "Cerrar PIN" : "Config PIN"}
                 </button>
-                <button 
-                  id="btn-admin-logout" 
-                  title="Salir y bloquear panel" 
+                <button
+                  id="btn-admin-logout"
+                  title="Salir y bloquear panel"
                   class="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition tap-feedback touch-target flex items-center justify-center"
                 >
                   Salir
@@ -4056,10 +4097,10 @@ function renderAdminView(container) {
 
           <!-- Buscador rápido para celular -->
           <div class="mt-3.5 relative">
-            <input 
-              type="text" 
-              id="admin-search-input" 
-              placeholder="Buscar producto por nombre..." 
+            <input
+              type="text"
+              id="admin-search-input"
+              placeholder="Buscar producto por nombre..."
               value="${searchQuery}"
               class="w-full pl-3.5 pr-14 py-2.5 min-h-[44px] bg-slate-100 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 border border-transparent focus:border-slate-300 dark:focus:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-base font-medium outline-none transition"
             />
@@ -4075,7 +4116,7 @@ function renderAdminView(container) {
               ? `
             <div class="mt-3 p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 animate-fade-in text-xs space-y-3">
               <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-                <span class="font-black text-slate-200 uppercase tracking-wider text-[11px]">Sincronización Cloud & PIN</span>
+                <span class="font-black text-slate-200 uppercase tracking-wider text-[11px]">Seguridad Local & Estado de Instalación</span>
                 ${
                   configSavedToast
                     ? `<span class="text-[10px] font-bold text-emerald-400 uppercase bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">Guardado</span>`
@@ -4083,46 +4124,32 @@ function renderAdminView(container) {
                 }
               </div>
 
+              <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300 leading-relaxed">
+                ${
+                  isDemo
+                    ? "Modo Demo activo: las conexiones a endpoints externos están bloqueadas desde este panel. Para configurar una instalación productiva editá exclusivamente <code class='font-mono text-amber-300'>js/public-config.js</code>."
+                    : "Modo Producción: la conexión pública se define exclusivamente en <code class='font-mono text-emerald-300'>js/public-config.js</code> (sin secretos)."
+                }
+              </div>
+
               <form id="cloud-config-form" class="space-y-2.5">
                 <div>
-                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">PIN del Negocio (Staff)</label>
-                  <input 
-                    type="password" 
-                    id="cfg-pin" 
+                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">PIN del Negocio (Staff UI local)</label>
+                  <input
+                    type="password"
+                    id="cfg-pin"
                     maxlength="6"
-                    value="${cloudConfig.staffPin || "1234"}" 
+                    value="${localSettings.staffPin || "1234"}"
                     class="w-full min-h-[44px] p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-base font-bold outline-none focus:border-emerald-500"
                   />
                 </div>
 
-                <div>
-                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Supabase URL</label>
-                  <input 
-                    type="url" 
-                    id="cfg-url" 
-                    value="${cloudConfig.supabaseUrl || ""}" 
-                    placeholder="https://xyz.supabase.co"
-                    class="w-full min-h-[44px] p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-base outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Supabase Anon Key</label>
-                  <input 
-                    type="password" 
-                    id="cfg-key" 
-                    value="${cloudConfig.supabaseAnonKey || ""}" 
-                    placeholder="eyJhbG..."
-                    class="w-full min-h-[44px] p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-base outline-none focus:border-emerald-500"
-                  />
-                </div>
-
                 <div class="pt-1 flex gap-2">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     class="w-full min-h-[44px] py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition tap-feedback touch-target flex items-center justify-center"
                   >
-                    Guardar y Conectar
+                    Guardar PIN Local
                   </button>
                 </div>
               </form>
@@ -4135,7 +4162,7 @@ function renderAdminView(container) {
           <div class="mt-3.5 flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-4 px-4">
             ${CATEGORIAS.map(
               (cat) => `
-              <button 
+              <button
                 data-admin-cat="${cat}"
                 class="admin-cat-pill shrink-0 whitespace-nowrap min-h-[44px] px-4 py-2 rounded-full text-xs font-bold transition tap-feedback touch-target flex items-center gap-1.5 ${
                   selectedCategory === cat
@@ -4199,7 +4226,7 @@ function renderAdminView(container) {
               </div>
 
               <!-- Stock availability button (min 44x44px) -->
-              <button 
+              <button
                 type="button"
                 data-toggle-stock="${p.id}"
                 class="btn-stock-toggle min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition tap-feedback touch-target shrink-0 flex items-center justify-center ${
@@ -4216,7 +4243,7 @@ function renderAdminView(container) {
             <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span class="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Precio:</span>
 
-              <button 
+              <button
                 type="button"
                 data-step-price="${p.id}"
                 data-delta="-100"
@@ -4229,10 +4256,10 @@ function renderAdminView(container) {
 
               <div class="relative flex-1">
                 <span class="absolute left-3 top-3 text-sm font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none">$</span>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   data-product-id="${p.id}"
-                  value="${p.precio}" 
+                  value="${p.precio}"
                   step="50"
                   min="0"
                   inputmode="numeric"
@@ -4241,7 +4268,7 @@ function renderAdminView(container) {
                 <span class="absolute right-3 top-3 text-xs font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none">${unit}</span>
               </div>
 
-              <button 
+              <button
                 type="button"
                 data-step-price="${p.id}"
                 data-delta="100"
@@ -4301,13 +4328,7 @@ function renderAdminView(container) {
       cloudForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const pin = container.querySelector("#cfg-pin")?.value || "";
-        const url = container.querySelector("#cfg-url")?.value || "";
-        const key = container.querySelector("#cfg-key")?.value || "";
-        store.saveCloudConfig({
-          staffPin: pin,
-          supabaseUrl: url,
-          supabaseAnonKey: key
-        });
+        store.saveLocalSettings({ staffPin: pin });
         configSavedToast = true;
         update();
       });
@@ -4392,6 +4413,8 @@ function renderAdminView(container) {
 class App {
   constructor() {
     this.container = document.getElementById("app-content");
+    this.topStack = document.getElementById("nexo-top-stack");
+    this.demoBanner = document.getElementById("nexo-demo-banner");
     this.simulatorBar = document.getElementById("simulator-bar");
     this.navButtons = document.querySelectorAll(".nav-switch");
     this.btnLockPin = document.getElementById("btn-lock-pin");
@@ -4403,31 +4426,59 @@ class App {
   }
 
   init() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasClientPhoneLink = urlParams.has("tel");
-    const isRealMode = urlParams.get("modo") === "real" || hasClientPhoneLink;
+    const configErrors = store.getConfigErrors();
 
-    const updateSimBarHeight = () => {
-      if (this.simulatorBar && !this.simulatorBar.classList.contains("hidden")) {
-        const h = this.simulatorBar.offsetHeight || 46;
-        document.documentElement.style.setProperty("--sim-bar-h", `${h}px`);
-      } else {
-        document.documentElement.style.setProperty("--sim-bar-h", "0px");
+    // Si la configuración pública de producción es incompleta o inválida,
+    // fallar claramente y NO iniciar vistas ni simular éxito local.
+    if (configErrors.length > 0) {
+      if (this.demoBanner) {
+        this.demoBanner.classList.remove("hidden");
+        this.demoBanner.classList.add("is-error");
+        this.demoBanner.textContent = "ERROR DE CONFIGURACIÓN PRODUCTIVA · La aplicación se detuvo antes de conectar.";
       }
+      if (this.simulatorBar) {
+        this.simulatorBar.classList.add("hidden");
+      }
+      this.renderConfigErrorGate(configErrors);
+      return;
+    }
+
+    // Mostrar aviso persistente cuando corre en modo demo
+    if (store.isDemo() && this.demoBanner) {
+      this.demoBanner.classList.remove("hidden", "is-error");
+    } else if (this.demoBanner) {
+      this.demoBanner.classList.add("hidden");
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const updateTopOffset = () => {
+      let h = 0;
+      if (this.topStack) {
+        h = this.topStack.offsetHeight || 0;
+      } else {
+        if (this.demoBanner && !this.demoBanner.classList.contains("hidden")) {
+          h += this.demoBanner.offsetHeight || 28;
+        }
+        if (this.simulatorBar && !this.simulatorBar.classList.contains("hidden")) {
+          h += this.simulatorBar.offsetHeight || 46;
+        }
+      }
+      document.documentElement.style.setProperty("--sim-bar-h", `${h}px`);
     };
 
-    const isDemoMode = urlParams.get("demo") === "1" || urlParams.get("sim") === "1";
+    const isDemoSimBar = urlParams.get("demo") === "1" || urlParams.get("sim") === "1";
 
-    // La barra del simulador SOLO se muestra si explícitamente se agrega ?demo=1 en la URL
-    if (isDemoMode && this.simulatorBar) {
+    // La barra del simulador de roles se muestra si se agrega ?demo=1 en la URL
+    if (isDemoSimBar && this.simulatorBar) {
       this.simulatorBar.classList.remove("hidden");
       document.body.classList.add("has-sim-bar");
     } else if (this.simulatorBar) {
       this.simulatorBar.classList.add("hidden");
       document.body.classList.remove("has-sim-bar");
     }
-    updateSimBarHeight();
-    window.addEventListener("resize", updateSimBarHeight);
+    updateTopOffset();
+    window.addEventListener("resize", updateTopOffset);
 
     if (this.btnLockPin) {
       this.btnLockPin.addEventListener("click", () => {
@@ -4486,6 +4537,32 @@ class App {
     });
   }
 
+  renderConfigErrorGate(errors) {
+    if (!this.container) return;
+    const listHtml = errors
+      .map((err) => `<li class="text-xs text-rose-800 dark:text-rose-200 font-medium">${String(err).replace(/[<>]/g, "")}</li>`)
+      .join("");
+    this.container.innerHTML = `
+      <div class="max-w-md mx-auto p-4 pt-12">
+        <div id="nexo-config-error-card" role="alert" class="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-rose-300 dark:border-rose-800 shadow-xl space-y-4">
+          <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+            Producción no disponible
+          </span>
+          <h1 class="text-xl font-black text-slate-900 dark:text-white">Configuración pública incompleta o inválida</h1>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Nexo Pedidos está configurado en modo <strong>production</strong>, pero faltan parámetros obligatorios en <code class="font-mono">js/public-config.js</code>. Por seguridad no se realiza fallback a modo local ni a ningún proyecto heredado.
+          </p>
+          <ul id="nexo-config-error-list" class="list-disc pl-5 space-y-1 bg-rose-50 dark:bg-rose-950/50 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900">
+            ${listHtml}
+          </ul>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">
+            Revisá <code class="font-mono">docs/DEMO.md</code> para completar la configuración pública (nunca incluyas <code class="font-mono">service_role</code> ni secretos de servidor) o cambiá <code class="font-mono">mode: "demo"</code>.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
   renderPinGate(targetView) {
     const isOperario = targetView === "operator" || targetView === "operario";
     const roleLabel = isOperario ? "Puesto de Balanza (Operario)" : "Panel de Precios (Dueño)";
@@ -4496,7 +4573,7 @@ class App {
             <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               Acceso Personal del Local
             </span>
-            <button 
+            <button
               type="button"
               class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center gap-1.5"
               title="${store.getTheme() === 'dark' ? 'Cambiar a tema claro (atajo: T)' : 'Cambiar a tema oscuro (atajo: T)'}"
@@ -4510,26 +4587,26 @@ class App {
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de 4 dígitos del comercio (Por defecto: <strong>1234</strong>)</p>
 
           <form id="pin-gate-form" class="space-y-4">
-            <input 
-              type="password" 
-              id="pin-input" 
-              inputmode="numeric" 
-              maxlength="8" 
-              placeholder="••••" 
+            <input
+              type="password"
+              id="pin-input"
+              inputmode="numeric"
+              maxlength="8"
+              placeholder="••••"
               required
               class="w-40 mx-auto block text-center tracking-[0.5em] py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-2xl font-black text-2xl text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition"
             />
             <p id="pin-error" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400">PIN incorrecto. Intentá nuevamente.</p>
             <div class="flex gap-2 pt-1">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 id="btn-pin-back"
                 class="flex-1 min-h-[48px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition touch-target"
               >
                 Volver al Catálogo
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 class="flex-1 min-h-[48px] py-3 bg-slate-950 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md touch-target"
               >
                 Ingresar
@@ -4579,6 +4656,11 @@ class App {
   }
 
   navigate(viewName) {
+    if (store.getConfigErrors().length > 0) {
+      this.renderConfigErrorGate(store.getConfigErrors());
+      return;
+    }
+
     viewName = this.normalizeView(viewName);
     if (this.currentViewCleanup) {
       this.currentViewCleanup();

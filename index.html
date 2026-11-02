@@ -7,19 +7,18 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Mi Huerta - Verdulería Digital</title>
-  
-  <!-- Script inicial anti-flicker de tema claro/oscuro -->
+  <title>Nexo Pedidos</title>
+
+  <!-- Script inicial anti-flicker de tema claro/oscuro (sólo namespace Nexo) -->
   <script>
     (function () {
       try {
-        var rawTheme = localStorage.getItem('theme');
-        var rawV3 = localStorage.getItem('mihuerta_theme_v3');
+        var rawTheme = localStorage.getItem('nexo_theme_v1');
         var parse = function (v) {
           if (!v) return null;
           try { return JSON.parse(v); } catch (_) { return v; }
         };
-        var theme = parse(rawTheme) || parse(rawV3);
+        var theme = parse(rawTheme);
         var isDark = theme === 'dark' || (!theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (isDark) {
           document.documentElement.classList.add('dark');
@@ -60,8 +59,7 @@
     }
   </script>
 
-  <!-- Cliente Oficial de Supabase (Opcional para sincronización Cloud + Realtime) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase NO se carga de forma predeterminada: sólo se inyecta en modo producción con configuración pública válida. -->
 
   <!-- Preconnect y Carga Optimizada para Google Fonts (Plus Jakarta Sans) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,62 +71,71 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col selection:bg-emerald-100 selection:text-emerald-900 dark:selection:bg-emerald-950 dark:selection:text-emerald-200">
 
-  <!-- Barra Superior del Simulador (Oculta por defecto, sólo visible si se pasa ?demo=1 en la URL) -->
-  <aside id="simulator-bar" class="hidden bg-slate-950 text-white px-3 py-2 border-b border-slate-800 sticky top-0 z-50">
-    <div class="max-w-xl mx-auto flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-      <div class="flex items-center gap-1.5">
-        <span class="text-xs font-black tracking-widest uppercase text-emerald-400 mr-1 select-none">
-          Mi Huerta
-        </span>
-        <button 
-          id="btn-lock-pin"
-          title="Probar bloqueo con PIN de 4 dígitos para Operario/Dueño"
-          class="min-h-[44px] min-w-[44px] px-3 py-2 text-[10px] uppercase font-bold tracking-widest rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center"
-        >
-          Probar PIN
-        </button>
-        <button 
-          type="button"
-          class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 text-[10px] uppercase font-bold tracking-widest rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center gap-1.5"
-          title="Cambiar tema claro / oscuro (atajo: T)"
-          aria-label="Cambiar tema de color"
-        >
-          <span class="text-slate-400">Tema:</span> <span class="theme-label font-black text-white">Claro</span>
-        </button>
-      </div>
-
-      <!-- Selector de Vistas / Roles -->
-      <nav class="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-semibold gap-1">
-        <button 
-          data-view="client" 
-          class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"
-          title="Vista del cliente"
-        >
-          Cliente
-        </button>
-
-        <button 
-          data-view="operator" 
-          class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"
-          title="Vista del operario y pesaje"
-        >
-          Operario
-        </button>
-
-        <button 
-          data-view="admin" 
-          class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"
-          title="Panel de precios y catálogo"
-        >
-          Precios
-        </button>
-      </nav>
+  <!-- Pila superior fija: aviso persistente de demo/error + barra del simulador -->
+  <div id="nexo-top-stack" class="sticky top-0 z-50">
+    <div id="nexo-demo-banner" class="nexo-demo-banner hidden" role="status" aria-live="polite">
+      <strong>MODO DEMO</strong> · Datos sintéticos · WhatsApp simulado · Sin conexión a servicios reales
     </div>
-  </aside>
+
+    <!-- Barra Superior del Simulador (Oculta por defecto, sólo visible si se pasa ?demo=1 en la URL) -->
+    <aside id="simulator-bar" class="hidden bg-slate-950 text-white px-3 py-2 border-b border-slate-800">
+      <div class="max-w-xl mx-auto flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs font-black tracking-widest uppercase text-emerald-400 mr-1 select-none">
+            Nexo Pedidos
+          </span>
+          <button
+            id="btn-lock-pin"
+            title="Probar bloqueo con PIN de 4 dígitos para Operario/Dueño"
+            class="min-h-[44px] min-w-[44px] px-3 py-2 text-[10px] uppercase font-bold tracking-widest rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center"
+          >
+            Probar PIN
+          </button>
+          <button
+            type="button"
+            class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 text-[10px] uppercase font-bold tracking-widest rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center gap-1.5"
+            title="Cambiar tema claro / oscuro (atajo: T)"
+            aria-label="Cambiar tema de color"
+          >
+            <span class="text-slate-400">Tema:</span> <span class="theme-label font-black text-white">Claro</span>
+          </button>
+        </div>
+
+        <!-- Selector de Vistas / Roles -->
+        <nav class="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-semibold gap-1">
+          <button
+            data-view="client"
+            class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"
+            title="Vista del cliente"
+          >
+            Cliente
+          </button>
+
+          <button
+            data-view="operator"
+            class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"
+            title="Vista del operario y pesaje"
+          >
+            Operario
+          </button>
+
+          <button
+            data-view="admin"
+            class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"
+            title="Panel de precios y catálogo"
+          >
+            Precios
+          </button>
+        </nav>
+      </div>
+    </aside>
+  </div>
 
   <!-- Contenedor Principal donde se renderizan las vistas -->
   <div id="app-content" class="flex-1 w-full"></div>
 
+  <!-- Configuración pública de la instalación (sin secretos). Debe cargarse ANTES del bundle. -->
+  <script src="js/public-config.js" charset="UTF-8"></script>
   <!-- Script Autónomo (Compatible con file:/// y doble clic sin servidor) -->
   <script src="js/bundle.js" charset="UTF-8"></script>
 </body>

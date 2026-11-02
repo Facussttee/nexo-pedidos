@@ -51,7 +51,7 @@ $demoData = $demoData -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
 $store = Get-Content (Join-Path $jsDir "store.js") -Raw -Encoding UTF8
 $store = $store -replace '(?m)^\s*import\s+.*?;?\s*$', ''
 $store = $store -replace 'export\s+const\s+store\s*=\s*new\s+Store\(\);', 'const store = new Store();'
-$store = $store -replace 'export\s*\{\s*STORAGE_KEYS,\s*safeGet,\s*safeSet,\s*safeRemove\s*\};?', ''
+$store = $store -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
 
 # 3.3 client.js
 $client = Get-Content (Join-Path $viewsDir "client.js") -Raw -Encoding UTF8
@@ -114,7 +114,7 @@ $parts = @(
   "})();`n"
 )
 
-$bundleContent = $parts -join "`n`n"
+$bundleContent = (($parts -join "`r`n`r`n") -replace "[ \t]+(\r?\n)", '$1') -replace "\r?\n", "`r`n"
 
 # 5. Validación de integridad: asegurar que no queden declaraciones import/export residuales
 $residualImports = [regex]::Matches($bundleContent, '(?m)^\s*import\s+.*?$')

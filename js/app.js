@@ -6,6 +6,8 @@ import { renderAdminView } from "./views/admin.js";
 class App {
   constructor() {
     this.container = document.getElementById("app-content");
+    this.topStack = document.getElementById("nexo-top-stack");
+    this.demoBanner = document.getElementById("nexo-demo-banner");
     this.simulatorBar = document.getElementById("simulator-bar");
     this.navButtons = document.querySelectorAll(".nav-switch");
     this.btnLockPin = document.getElementById("btn-lock-pin");
@@ -17,31 +19,59 @@ class App {
   }
 
   init() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasClientPhoneLink = urlParams.has("tel");
-    const isRealMode = urlParams.get("modo") === "real" || hasClientPhoneLink;
+    const configErrors = store.getConfigErrors();
 
-    const updateSimBarHeight = () => {
-      if (this.simulatorBar && !this.simulatorBar.classList.contains("hidden")) {
-        const h = this.simulatorBar.offsetHeight || 46;
-        document.documentElement.style.setProperty("--sim-bar-h", `${h}px`);
-      } else {
-        document.documentElement.style.setProperty("--sim-bar-h", "0px");
+    // Si la configuración pública de producción es incompleta o inválida,
+    // fallar claramente y NO iniciar vistas ni simular éxito local.
+    if (configErrors.length > 0) {
+      if (this.demoBanner) {
+        this.demoBanner.classList.remove("hidden");
+        this.demoBanner.classList.add("is-error");
+        this.demoBanner.textContent = "ERROR DE CONFIGURACIÓN PRODUCTIVA · La aplicación se detuvo antes de conectar.";
       }
+      if (this.simulatorBar) {
+        this.simulatorBar.classList.add("hidden");
+      }
+      this.renderConfigErrorGate(configErrors);
+      return;
+    }
+
+    // Mostrar aviso persistente cuando corre en modo demo
+    if (store.isDemo() && this.demoBanner) {
+      this.demoBanner.classList.remove("hidden", "is-error");
+    } else if (this.demoBanner) {
+      this.demoBanner.classList.add("hidden");
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const updateTopOffset = () => {
+      let h = 0;
+      if (this.topStack) {
+        h = this.topStack.offsetHeight || 0;
+      } else {
+        if (this.demoBanner && !this.demoBanner.classList.contains("hidden")) {
+          h += this.demoBanner.offsetHeight || 28;
+        }
+        if (this.simulatorBar && !this.simulatorBar.classList.contains("hidden")) {
+          h += this.simulatorBar.offsetHeight || 46;
+        }
+      }
+      document.documentElement.style.setProperty("--sim-bar-h", `${h}px`);
     };
 
-    const isDemoMode = urlParams.get("demo") === "1" || urlParams.get("sim") === "1";
+    const isDemoSimBar = urlParams.get("demo") === "1" || urlParams.get("sim") === "1";
 
-    // La barra del simulador SOLO se muestra si explícitamente se agrega ?demo=1 en la URL
-    if (isDemoMode && this.simulatorBar) {
+    // La barra del simulador de roles se muestra si se agrega ?demo=1 en la URL
+    if (isDemoSimBar && this.simulatorBar) {
       this.simulatorBar.classList.remove("hidden");
       document.body.classList.add("has-sim-bar");
     } else if (this.simulatorBar) {
       this.simulatorBar.classList.add("hidden");
       document.body.classList.remove("has-sim-bar");
     }
-    updateSimBarHeight();
-    window.addEventListener("resize", updateSimBarHeight);
+    updateTopOffset();
+    window.addEventListener("resize", updateTopOffset);
 
     if (this.btnLockPin) {
       this.btnLockPin.addEventListener("click", () => {
@@ -100,6 +130,32 @@ class App {
     });
   }
 
+  renderConfigErrorGate(errors) {
+    if (!this.container) return;
+    const listHtml = errors
+      .map((err) => `<li class="text-xs text-rose-800 dark:text-rose-200 font-medium">${String(err).replace(/[<>]/g, "")}</li>`)
+      .join("");
+    this.container.innerHTML = `
+      <div class="max-w-md mx-auto p-4 pt-12">
+        <div id="nexo-config-error-card" role="alert" class="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-rose-300 dark:border-rose-800 shadow-xl space-y-4">
+          <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+            Producción no disponible
+          </span>
+          <h1 class="text-xl font-black text-slate-900 dark:text-white">Configuración pública incompleta o inválida</h1>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Nexo Pedidos está configurado en modo <strong>production</strong>, pero faltan parámetros obligatorios en <code class="font-mono">js/public-config.js</code>. Por seguridad no se realiza fallback a modo local ni a ningún proyecto heredado.
+          </p>
+          <ul id="nexo-config-error-list" class="list-disc pl-5 space-y-1 bg-rose-50 dark:bg-rose-950/50 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900">
+            ${listHtml}
+          </ul>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">
+            Revisá <code class="font-mono">docs/DEMO.md</code> para completar la configuración pública (nunca incluyas <code class="font-mono">service_role</code> ni secretos de servidor) o cambiá <code class="font-mono">mode: "demo"</code>.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
   renderPinGate(targetView) {
     const isOperario = targetView === "operator" || targetView === "operario";
     const roleLabel = isOperario ? "Puesto de Balanza (Operario)" : "Panel de Precios (Dueño)";
@@ -110,7 +166,7 @@ class App {
             <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               Acceso Personal del Local
             </span>
-            <button 
+            <button
               type="button"
               class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center gap-1.5"
               title="${store.getTheme() === 'dark' ? 'Cambiar a tema claro (atajo: T)' : 'Cambiar a tema oscuro (atajo: T)'}"
@@ -124,26 +180,26 @@ class App {
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de 4 dígitos del comercio (Por defecto: <strong>1234</strong>)</p>
 
           <form id="pin-gate-form" class="space-y-4">
-            <input 
-              type="password" 
-              id="pin-input" 
-              inputmode="numeric" 
-              maxlength="8" 
-              placeholder="••••" 
+            <input
+              type="password"
+              id="pin-input"
+              inputmode="numeric"
+              maxlength="8"
+              placeholder="••••"
               required
               class="w-40 mx-auto block text-center tracking-[0.5em] py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-2xl font-black text-2xl text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition"
             />
             <p id="pin-error" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400">PIN incorrecto. Intentá nuevamente.</p>
             <div class="flex gap-2 pt-1">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 id="btn-pin-back"
                 class="flex-1 min-h-[48px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition touch-target"
               >
                 Volver al Catálogo
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 class="flex-1 min-h-[48px] py-3 bg-slate-950 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md touch-target"
               >
                 Ingresar
@@ -193,6 +249,11 @@ class App {
   }
 
   navigate(viewName) {
+    if (store.getConfigErrors().length > 0) {
+      this.renderConfigErrorGate(store.getConfigErrors());
+      return;
+    }
+
     viewName = this.normalizeView(viewName);
     if (this.currentViewCleanup) {
       this.currentViewCleanup();

@@ -1,5 +1,6 @@
 import { store } from "../store.js";
 import { CATEGORIAS } from "../products-data.js";
+import { DEMO_QUICK_CUSTOMER } from "../demo-data.js";
 
 export function renderClientView(container) {
   let selectedCategory = "Todos";
@@ -44,18 +45,18 @@ export function renderClientView(container) {
     container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-8 pb-16 min-h-[85vh] flex flex-col justify-center">
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/40 border border-slate-200/80 dark:border-slate-800 text-left">
-          
+
           <div class="mb-6 flex items-start justify-between gap-2">
             <div>
               <span class="inline-block text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 mb-2">
                 Verdulería Digital
               </span>
-              <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Mi Huerta</h1>
+              <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">${store.getBusinessProfile().name || "Nexo Pedidos"}</h1>
               <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                 Catálogo fresco del día, pedidos directos desde tu celular y pesaje transparente en balanza.
               </p>
             </div>
-            <button 
+            <button
               type="button"
               class="theme-toggle-btn shrink-0 min-h-[44px] text-[11px] font-bold tracking-wider px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback flex items-center gap-1.5 touch-target"
               title="Cambiar tema claro / oscuro"
@@ -74,15 +75,15 @@ export function renderClientView(container) {
                 <span class="absolute left-4 text-slate-400 dark:text-slate-500 font-semibold text-base select-none pointer-events-none">
                   +54 9
                 </span>
-                <input 
-                  type="tel" 
-                  id="phone-input" 
-                  required 
-                  inputmode="numeric" 
+                <input
+                  type="tel"
+                  id="phone-input"
+                  required
+                  inputmode="numeric"
                   pattern="[0-9]{8,15}"
                   maxlength="15"
                   autocomplete="tel"
-                  placeholder="11 2345 6789" 
+                  placeholder="11 0000 0001"
                   value="${(store.prefilledPhone || "").replace(/\D/g, "")}"
                   class="w-full pl-20 pr-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white font-bold text-base outline-none transition"
                 />
@@ -103,14 +104,14 @@ export function renderClientView(container) {
                   </label>
                   <span class="text-[10px] font-bold text-rose-500 dark:text-rose-400">Requerido</span>
                 </div>
-                <input 
-                  type="text" 
-                  id="name-input" 
+                <input
+                  type="text"
+                  id="name-input"
                   required
                   minlength="2"
                   maxlength="60"
                   autocomplete="name"
-                  placeholder="Ej: Facundo Gómez" 
+                  placeholder="Ej: Ana Demo (sintética)"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
                 <p id="name-error" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
@@ -122,17 +123,17 @@ export function renderClientView(container) {
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Dirección de entrega (opcional)
                 </label>
-                <input 
-                  type="text" 
-                  id="address-input" 
-                  placeholder="Ej: Av. Rivadavia 4520, Piso 3 B" 
+                <input
+                  type="text"
+                  id="address-input"
+                  placeholder="Ej: Calle Ficticia 101 (demo)"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
               </div>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               class="w-full mt-2 min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-slate-950/15 dark:shadow-emerald-950/30 transition tap-feedback text-sm flex items-center justify-center gap-2"
             >
               <span>Ingresar al Catálogo</span>
@@ -141,12 +142,12 @@ export function renderClientView(container) {
 
           <!-- Acceso rápido demo -->
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button 
+            <button
               id="btn-quick-demo-user"
               type="button"
               class="w-full min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold py-2.5 px-3 rounded-xl transition tap-feedback text-center border border-transparent dark:border-slate-700"
             >
-              Probar como Facundo Gómez (Cliente demo)
+              Probar como ${DEMO_QUICK_CUSTOMER.nombre}
             </button>
           </div>
 
@@ -257,11 +258,7 @@ export function renderClientView(container) {
     }
 
     btnQuickDemo?.addEventListener("click", () => {
-      const demoUser = store.saveCustomer({
-        telefono: "1123456789",
-        nombre: "Facundo Gómez",
-        direccion: "Av. Rivadavia 4520, Piso 3 B"
-      });
+      const demoUser = store.saveCustomer({ ...DEMO_QUICK_CUSTOMER });
       store.setCurrentUser(demoUser);
       deliveryAddress = demoUser.direccion || "";
       update();
@@ -341,13 +338,13 @@ export function renderClientView(container) {
 
     container.innerHTML = `
       <div class="max-w-md mx-auto pb-32 sm:pb-36 w-full overflow-x-hidden safe-pb">
-        
+
         <!-- Banner de Pedido Activo en Curso (si existe) -->
         ${
           activeOrder && activeOrder.estado !== "ENTREGADO"
             ? `
           <div class="px-4 pt-3">
-            <button 
+            <button
               id="btn-banner-active-order"
               class="w-full min-h-[48px] bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 p-3 rounded-2xl text-left flex items-center justify-between transition tap-feedback shadow-xs touch-target"
             >
@@ -385,10 +382,10 @@ export function renderClientView(container) {
                 Abierto
               </span>
             </div>
-            
+
             <div class="flex items-center shrink-0">
-              <button 
-                id="btn-header-cart" 
+              <button
+                id="btn-header-cart"
                 class="relative min-h-[44px] px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-200 dark:border-slate-700 tap-feedback touch-target"
                 title="Ver pedido"
                 aria-label="Ver pedido"
@@ -408,7 +405,7 @@ export function renderClientView(container) {
               <button id="btn-change-user" class="min-h-[44px] min-w-[44px] inline-flex items-center px-1 text-slate-400 dark:text-slate-500 underline hover:text-slate-600 dark:hover:text-slate-300 text-[11px] touch-target shrink-0">Cambiar</button>
             </div>
             <div class="flex items-center shrink-0">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] px-2.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-slate-200 dark:border-slate-700 tap-feedback touch-target"
                 title="Cambiar tema claro / oscuro"
@@ -422,10 +419,10 @@ export function renderClientView(container) {
 
           <!-- Buscador con tamaño de fuente accesible para evitar zoom iOS -->
           <div class="mt-2.5 relative">
-            <input 
-              type="text" 
-              id="search-input" 
-              placeholder="Buscar productos..." 
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Buscar productos..."
               value="${searchQuery}"
               autocomplete="off"
               autocorrect="off"
@@ -444,7 +441,7 @@ export function renderClientView(container) {
           <div class="mt-2.5 flex gap-2 overflow-x-auto no-scrollbar overscroll-x-contain py-1 -mx-4 px-4">
             ${CATEGORIAS.map(
               (cat) => `
-              <button 
+              <button
                 data-category="${cat}"
                 class="category-pill shrink-0 whitespace-nowrap min-h-[44px] px-4 py-2.5 rounded-full text-xs font-bold transition tap-feedback touch-target flex items-center gap-1.5 ${
                   selectedCategory === cat
@@ -472,7 +469,7 @@ export function renderClientView(container) {
 
         <!-- Footer discreto para acceso a personal del local -->
         <footer class="mt-8 mb-16 text-center text-xs text-slate-400 dark:text-slate-500">
-          <p>Verdulería Mi Huerta <span class="opacity-40 font-light">|</span> Catálogo y Pesaje en Balanza</p>
+          <p>${store.getBusinessProfile().name || "Nexo Pedidos"} <span class="opacity-40 font-light">|</span> Catálogo y Pesaje en Balanza</p>
           <a href="?view=operario" class="min-h-[44px] inline-flex items-center justify-center py-2 px-3 mt-2 text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline touch-target">
             Acceso Personal del Local
           </a>
@@ -483,7 +480,7 @@ export function renderClientView(container) {
           totalItems > 0
             ? `
           <div class="fixed left-4 right-4 z-30 max-w-md mx-auto pointer-events-auto safe-floating-bottom">
-            <button 
+            <button
               id="btn-open-cart"
               class="w-full min-h-[52px] bg-slate-950 dark:bg-slate-900 hover:bg-slate-900 dark:hover:bg-slate-800 active:bg-black text-white p-3.5 px-4 rounded-2xl shadow-xl shadow-slate-950/30 flex items-center justify-between transition tap-feedback border border-slate-800 dark:border-slate-700"
             >
@@ -554,12 +551,12 @@ export function renderClientView(container) {
           <div class="relative bg-white dark:bg-slate-900 rounded-2xl p-4 border transition ${
             inCart ? "border-emerald-500/60 bg-emerald-50/15 dark:bg-emerald-950/20 shadow-xs" : "border-slate-200/80 dark:border-slate-800 shadow-xs"
           } ${!product.disponible ? "opacity-40 grayscale pointer-events-none" : ""}">
-            
+
             <!-- Botón de Descarte Rápido '×' (Visible sólo si Qty > 0, 44x44px táctil) -->
             ${
               inCart && product.disponible
                 ? `
-              <button 
+              <button
                 type="button"
                 data-quick-discard-id="${product.id}"
                 class="btn-quick-discard absolute top-2.5 right-2.5 min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center rounded-xl text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 active:bg-rose-100 dark:active:bg-rose-900/60 transition tap-feedback touch-target z-10"
@@ -623,7 +620,7 @@ export function renderClientView(container) {
                   product.disponible
                     ? !inCart
                       ? `
-                      <button 
+                      <button
                         data-add-id="${product.id}"
                         data-step="${step}"
                         class="btn-add-initial min-h-[44px] min-w-[96px] bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border dark:border-slate-700 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition tap-feedback touch-target flex items-center justify-center gap-1.5 shadow-xs"
@@ -634,7 +631,7 @@ export function renderClientView(container) {
                     `
                       : `
                       <div class="flex items-center bg-emerald-600 text-white rounded-xl p-0.5 shadow-xs min-h-[44px]">
-                        <button 
+                        <button
                           type="button"
                           data-dec-id="${product.id}"
                           data-step="${step}"
@@ -647,7 +644,7 @@ export function renderClientView(container) {
                         <span class="px-2 text-xs font-black min-w-[40px] text-center tracking-tight select-none">
                           ${currentQty} ${unitLabel}
                         </span>
-                        <button 
+                        <button
                           type="button"
                           data-inc-id="${product.id}"
                           data-step="${step}"
@@ -671,27 +668,27 @@ export function renderClientView(container) {
               <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Ajuste rápido:</span>
                 <div class="flex items-center gap-1.5">
-                  <button 
-                    data-quick-weight-id="${product.id}" 
-                    data-weight="0.5" 
+                  <button
+                    data-quick-weight-id="${product.id}"
+                    data-weight="0.5"
                     class="btn-quick-weight min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition tap-feedback touch-target ${
                       currentQty === 0.5 ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/60"
                     }"
                   >
                     500g
                   </button>
-                  <button 
-                    data-quick-weight-id="${product.id}" 
-                    data-weight="1" 
+                  <button
+                    data-quick-weight-id="${product.id}"
+                    data-weight="1"
                     class="btn-quick-weight min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition tap-feedback touch-target ${
                       currentQty === 1 ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/60"
                     }"
                   >
                     1 kg
                   </button>
-                  <button 
-                    data-quick-weight-id="${product.id}" 
-                    data-weight="2" 
+                  <button
+                    data-quick-weight-id="${product.id}"
+                    data-weight="2"
                     class="btn-quick-weight min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold transition tap-feedback touch-target ${
                       currentQty === 2 ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/60"
                     }"
@@ -830,7 +827,7 @@ export function renderClientView(container) {
         <div id="cart-drawer-sheet" class="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-3xl max-h-[85vh] max-h-[85dvh] flex flex-col shadow-2xl ${
           isDrawerFirstOpen ? "animate-slide-up" : ""
         } border-t border-slate-200 dark:border-slate-800">
-          
+
           <!-- Handle bar táctil -->
           <div class="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mt-3"></div>
 
@@ -841,7 +838,7 @@ export function renderClientView(container) {
               <p class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Revisá las cantidades antes de confirmar</p>
             </div>
             <div class="flex items-center gap-1.5">
-              <button 
+              <button
                 type="button"
                 class="theme-toggle-btn min-h-[44px] px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback flex items-center gap-1 text-xs font-bold touch-target"
                 title="Cambiar tema claro / oscuro"
@@ -850,8 +847,8 @@ export function renderClientView(container) {
                 <span>Tema:</span>
                 <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
               </button>
-              <button 
-                id="btn-close-cart" 
+              <button
+                id="btn-close-cart"
                 class="min-h-[44px] px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 flex items-center justify-center font-bold text-xs tap-feedback touch-target border border-transparent dark:border-slate-700"
                 title="Cerrar pedido"
               >
@@ -869,8 +866,8 @@ export function renderClientView(container) {
                   <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 mb-2">Pedido Vacío</span>
                   <h4 class="font-extrabold text-slate-800 dark:text-slate-200 text-sm">Tu pedido no tiene productos</h4>
                   <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs mx-auto">Seleccioná frutas y verduras del catálogo para coordinar el pesaje en balanza.</p>
-                  <button 
-                    id="btn-drawer-empty-back" 
+                  <button
+                    id="btn-drawer-empty-back"
                     type="button"
                     class="mt-4 min-h-[44px] px-5 py-2.5 bg-slate-900 dark:bg-emerald-600 text-white text-xs font-bold rounded-xl transition tap-feedback shadow-sm"
                   >
@@ -896,9 +893,9 @@ export function renderClientView(container) {
                   <!-- Stepper en Carrito y Botón con la cruz '×' accesible (44x44px touch-target) -->
                   <div class="flex items-center gap-2 shrink-0">
                     <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 shadow-xs min-h-[44px]">
-                      <button 
+                      <button
                         type="button"
-                        data-drawer-dec="${item.producto_id}" 
+                        data-drawer-dec="${item.producto_id}"
                         class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 rounded-lg font-black text-base tap-feedback touch-target"
                         title="Restar cantidad"
                         aria-label="Restar cantidad"
@@ -908,9 +905,9 @@ export function renderClientView(container) {
                       <span class="px-1 text-xs font-black min-w-[32px] text-center text-slate-900 dark:text-white select-none">
                         ${item.cantidad}
                       </span>
-                      <button 
+                      <button
                         type="button"
-                        data-drawer-inc="${item.producto_id}" 
+                        data-drawer-inc="${item.producto_id}"
                         class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 rounded-lg font-black text-base tap-feedback touch-target"
                         title="Sumar cantidad"
                         aria-label="Sumar cantidad"
@@ -920,7 +917,7 @@ export function renderClientView(container) {
                     </div>
 
                     <!-- Botón tipográfico con cruz '×' para eliminar el ítem completo de 1 toque (44x44px touch-target) -->
-                    <button 
+                    <button
                       type="button"
                       data-drawer-remove="${item.producto_id}"
                       class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:active:bg-rose-900/80 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-900/60 transition tap-feedback shadow-xs shrink-0 touch-target"
@@ -976,10 +973,10 @@ export function renderClientView(container) {
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Dirección exacta de entrega
               </label>
-              <input 
-                type="text" 
-                id="delivery-address-input" 
-                value="${deliveryAddress}" 
+              <input
+                type="text"
+                id="delivery-address-input"
+                value="${deliveryAddress}"
                 placeholder="Calle, número, piso y departamento"
                 class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-base font-medium outline-none focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900 dark:focus:ring-emerald-500 transition"
               />
@@ -1013,7 +1010,7 @@ export function renderClientView(container) {
             ${
               isEmpty
                 ? `
-              <button 
+              <button
                 id="btn-confirm-order"
                 disabled
                 class="w-full min-h-[50px] bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-black py-4 rounded-2xl text-sm cursor-not-allowed opacity-60 text-center"
@@ -1022,7 +1019,7 @@ export function renderClientView(container) {
               </button>
             `
                 : `
-              <button 
+              <button
                 id="btn-confirm-order"
                 class="w-full min-h-[50px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-950/20 text-sm transition tap-feedback flex items-center justify-center gap-2"
               >
@@ -1186,24 +1183,21 @@ export function renderClientView(container) {
       stepDesc = "Pedido finalizado exitosamente. ¡Muchas gracias por tu compra!";
     }
 
-    const waHelpText = encodeURIComponent(
-      `Hola! Consulto por mi pedido #${currentOrder.id} a nombre de ${currentOrder.cliente.nombre}.`
-    );
-    const waHelpLink = `https://wa.me/5491123456789?text=${waHelpText}`;
+    const waHelpRawText = `Hola! Consulto por mi pedido #${currentOrder.id} a nombre de ${currentOrder.cliente.nombre}.`;
 
     container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-4 pb-28 safe-pb">
-        
+
         <!-- Botón para volver a ver catálogo sin perder el pedido y toggle de tema -->
         <div class="flex items-center justify-between mb-3">
-          <button 
-            id="btn-back-to-catalog" 
+          <button
+            id="btn-back-to-catalog"
             class="min-h-[44px] px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition tap-feedback flex items-center gap-1.5 touch-target"
           >
             <span>Volver al Catálogo</span>
           </button>
 
-          <button 
+          <button
             type="button"
             class="theme-toggle-btn min-h-[44px] px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition tap-feedback flex items-center gap-1.5 touch-target"
             title="Cambiar tema claro / oscuro"
@@ -1215,7 +1209,7 @@ export function renderClientView(container) {
         </div>
 
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl shadow-slate-200/50 dark:shadow-black/40 border border-slate-200/80 dark:border-slate-800 text-left">
-          
+
           <!-- Encabezado de la Orden -->
           <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
@@ -1328,21 +1322,22 @@ export function renderClientView(container) {
             </div>
           </div>
 
-          <!-- Botón de consulta al local por WhatsApp -->
-          <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <a 
-              href="${waHelpLink}" 
-              target="_blank"
+          <!-- Botón de consulta al local por WhatsApp (simulado en Modo Demo) -->
+          <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <button
+              type="button"
+              id="btn-wa-help"
               class="w-full min-h-[44px] bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 active:bg-emerald-200 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold py-2.5 px-3 rounded-xl text-xs transition tap-feedback flex items-center justify-center gap-1.5"
             >
-              <span>Consultar al local por WhatsApp</span>
-            </a>
+              <span>${store.isDemo() ? "Simular consulta por WhatsApp (Demo)" : "Consultar al local por WhatsApp"}</span>
+            </button>
+            <p id="wa-help-feedback" class="hidden text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2.5 text-center"></p>
           </div>
 
           <!-- Acciones de Seguimiento -->
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-            <button 
-              id="btn-new-order" 
+            <button
+              id="btn-new-order"
               class="w-full min-h-[46px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 text-slate-800 dark:text-slate-200 border border-transparent dark:border-slate-700 font-bold rounded-xl text-xs transition tap-feedback"
             >
               Realizar Otro Pedido
@@ -1355,6 +1350,20 @@ export function renderClientView(container) {
     container.querySelector("#btn-back-to-catalog")?.addEventListener("click", () => {
       viewingActiveOrder = false;
       update();
+    });
+
+    container.querySelector("#btn-wa-help")?.addEventListener("click", () => {
+      const business = store.getBusinessProfile();
+      const res = store.sendWhatsAppMessage({
+        to: business.whatsapp,
+        text: waHelpRawText,
+        kind: "client_help"
+      });
+      const fb = container.querySelector("#wa-help-feedback");
+      if (fb && res.simulated) {
+        fb.textContent = `Consulta simulada en Modo Demo (destinatario sintético ${business.whatsappDisplay || business.whatsapp}). No se envió ningún mensaje real.`;
+        fb.classList.remove("hidden");
+      }
     });
 
     container.querySelector("#btn-new-order")?.addEventListener("click", () => {

@@ -42,6 +42,7 @@ function safeRemove(key) {
 class Store {
   constructor(config = NEXO_CONFIG) {
     this.config = config;
+    this.storageKeys = config.storageKeys || STORAGE_KEYS;
     this.listeners = new Set();
     this.blockedNetwork = [];
     this.supabase = null;
@@ -58,10 +59,10 @@ class Store {
     // Sincronización en tiempo real entre pestañas
     if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
       window.addEventListener("storage", (e) => {
-        if (e.key === STORAGE_KEYS.THEME) {
+        if (e.key === this.storageKeys.THEME) {
           this.applyTheme(this.getTheme());
           this.notify("theme_changed");
-        } else if (Object.values(STORAGE_KEYS).includes(e.key)) {
+        } else if (Object.values(this.storageKeys).includes(e.key)) {
           this.notify("storage_sync");
         }
       });
@@ -71,7 +72,7 @@ class Store {
         try {
           const mq = window.matchMedia("(prefers-color-scheme: dark)");
           const handler = (e) => {
-            const saved = safeGet(STORAGE_KEYS.THEME, null);
+            const saved = safeGet(this.storageKeys.THEME, null);
             if (!saved) {
               this.applyTheme(e.matches ? "dark" : "light");
               this.notify("theme_changed");
@@ -115,16 +116,16 @@ class Store {
 
     if (this.isDemo()) {
       // 1. Catálogo sintético
-      if (!safeGet(STORAGE_KEYS.PRODUCTS, null)) {
-        safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+      if (!safeGet(this.storageKeys.PRODUCTS, null)) {
+        safeSet(this.storageKeys.PRODUCTS, INITIAL_PRODUCTS);
       }
       // 2. Clientes sintéticos
-      if (!safeGet(STORAGE_KEYS.CUSTOMERS, null)) {
-        safeSet(STORAGE_KEYS.CUSTOMERS, cloneDemoCustomers());
+      if (!safeGet(this.storageKeys.CUSTOMERS, null)) {
+        safeSet(this.storageKeys.CUSTOMERS, cloneDemoCustomers());
       }
       // 3. Pedidos sintéticos
-      if (!safeGet(STORAGE_KEYS.ORDERS, null)) {
-        safeSet(STORAGE_KEYS.ORDERS, buildDemoOrders());
+      if (!safeGet(this.storageKeys.ORDERS, null)) {
+        safeSet(this.storageKeys.ORDERS, buildDemoOrders());
       }
     }
 
@@ -151,7 +152,7 @@ class Store {
 
   // --- Ajustes locales (PIN de UI) ---
   getLocalSettings() {
-    const stored = safeGet(STORAGE_KEYS.LOCAL_SETTINGS, null);
+    const stored = safeGet(this.storageKeys.LOCAL_SETTINGS, null);
     const pin = stored && typeof stored.staffPin === "string" ? stored.staffPin.trim() : "";
     return { staffPin: pin || "1234" };
   }
@@ -160,7 +161,7 @@ class Store {
     const current = this.getLocalSettings();
     const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
     const updated = { staffPin: pin.length >= 4 ? pin : current.staffPin };
-    safeSet(STORAGE_KEYS.LOCAL_SETTINGS, updated);
+    safeSet(this.storageKeys.LOCAL_SETTINGS, updated);
     this.notify("local_settings_changed", { staffPin: "****" });
     return updated;
   }
@@ -181,17 +182,17 @@ class Store {
     const { staffPin } = this.getLocalSettings();
     const ok = String(inputPin).trim() === String(staffPin).trim();
     if (ok) {
-      safeSet(STORAGE_KEYS.PIN_UNLOCKED, true);
+      safeSet(this.storageKeys.PIN_UNLOCKED, true);
     }
     return ok;
   }
 
   isStaffUnlocked() {
-    return Boolean(safeGet(STORAGE_KEYS.PIN_UNLOCKED, false));
+    return Boolean(safeGet(this.storageKeys.PIN_UNLOCKED, false));
   }
 
   lockStaff() {
-    safeRemove(STORAGE_KEYS.PIN_UNLOCKED);
+    safeRemove(this.storageKeys.PIN_UNLOCKED);
     this.notify("staff_locked");
   }
 
@@ -259,11 +260,11 @@ class Store {
           precio: Number(p.precio),
           paso: Number(p.paso || 0.5)
         }));
-        safeSet(STORAGE_KEYS.PRODUCTS, mappedProducts);
+        safeSet(this.storageKeys.PRODUCTS, mappedProducts);
       }
 
       if (cliRes && cliRes.data && cliRes.data.length > 0) {
-        const customerMap = safeGet(STORAGE_KEYS.CUSTOMERS, {}) || {};
+        const customerMap = safeGet(this.storageKeys.CUSTOMERS, {}) || {};
         cliRes.data.forEach((c) => {
           customerMap[c.telefono] = {
             telefono: c.telefono,
@@ -271,7 +272,7 @@ class Store {
             direccion: c.direccion || ""
           };
         });
-        safeSet(STORAGE_KEYS.CUSTOMERS, customerMap);
+        safeSet(this.storageKeys.CUSTOMERS, customerMap);
       }
 
       if (ordRes.data) {
@@ -290,7 +291,7 @@ class Store {
           total_real: o.total_real !== null ? Number(o.total_real) : null,
           items: Array.isArray(o.items) ? o.items : []
         }));
-        safeSet(STORAGE_KEYS.ORDERS, mappedOrders);
+        safeSet(this.storageKeys.ORDERS, mappedOrders);
       }
 
       this.notify("storage_sync");
@@ -364,10 +365,10 @@ class Store {
         at: new Date().toISOString(),
         simulated: true
       };
-      const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+      const log = safeGet(this.storageKeys.SIMULATED_MESSAGES, []);
       const list = Array.isArray(log) ? log : [];
       list.unshift(entry);
-      safeSet(STORAGE_KEYS.SIMULATED_MESSAGES, list.slice(0, 50));
+      safeSet(this.storageKeys.SIMULATED_MESSAGES, list.slice(0, 50));
       this.notify("whatsapp_simulated", entry);
       return { simulated: true, sent: false, entry };
     }
@@ -384,7 +385,7 @@ class Store {
   }
 
   getSimulatedMessages() {
-    const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+    const log = safeGet(this.storageKeys.SIMULATED_MESSAGES, []);
     return Array.isArray(log) ? log : [];
   }
 
@@ -400,8 +401,9 @@ class Store {
 
   // --- Productos ---
   getProducts() {
+    if (!this.config.ok) return [];
     // Producción no muestra catálogo de ejemplo: sólo datos sincronizados.
-    return safeGet(STORAGE_KEYS.PRODUCTS, this.isDemo() ? INITIAL_PRODUCTS : []);
+    return safeGet(this.storageKeys.PRODUCTS, this.isDemo() ? INITIAL_PRODUCTS : []);
   }
 
   updateProductPrice(productId, newPrice) {
@@ -412,7 +414,7 @@ class Store {
       }
       return p;
     });
-    safeSet(STORAGE_KEYS.PRODUCTS, products);
+    safeSet(this.storageKeys.PRODUCTS, products);
     if (this.supabase) {
       this.supabase.from("productos").update({ precio: cleanPrice, updated_at: new Date().toISOString() }).eq("id", productId).then(() => {});
     }
@@ -428,7 +430,7 @@ class Store {
       }
       return p;
     });
-    safeSet(STORAGE_KEYS.PRODUCTS, products);
+    safeSet(this.storageKeys.PRODUCTS, products);
     if (this.supabase) {
       this.supabase.from("productos").update({ disponible: newStatus, updated_at: new Date().toISOString() }).eq("id", productId).then(() => {});
     }
@@ -437,7 +439,7 @@ class Store {
 
   // --- Clientes ---
   getCustomers() {
-    return safeGet(STORAGE_KEYS.CUSTOMERS, {});
+    return safeGet(this.storageKeys.CUSTOMERS, {});
   }
 
   getCustomer(phone) {
@@ -454,7 +456,7 @@ class Store {
     if (!cleanPhone) return null;
     const customers = this.getCustomers();
     customers[cleanPhone] = { ...customer, telefono: cleanPhone };
-    safeSet(STORAGE_KEYS.CUSTOMERS, customers);
+    safeSet(this.storageKeys.CUSTOMERS, customers);
     if (this.supabase) {
       this.supabase.from("clientes").upsert({
         telefono: cleanPhone,
@@ -469,23 +471,23 @@ class Store {
   }
 
   getCurrentUser() {
-    return safeGet(STORAGE_KEYS.CURRENT_USER, null);
+    return safeGet(this.storageKeys.CURRENT_USER, null);
   }
 
   setCurrentUser(user) {
-    safeSet(STORAGE_KEYS.CURRENT_USER, user);
+    safeSet(this.storageKeys.CURRENT_USER, user);
     this.notify("user_changed", user);
   }
 
   logoutUser() {
-    safeRemove(STORAGE_KEYS.CURRENT_USER);
+    safeRemove(this.storageKeys.CURRENT_USER);
     this.clearCart();
     this.notify("user_changed", null);
   }
 
   // --- Carrito ---
   getCart() {
-    return safeGet(STORAGE_KEYS.CART, {});
+    return safeGet(this.storageKeys.CART, {});
   }
 
   addToCart(productId, quantityDelta) {
@@ -511,14 +513,14 @@ class Store {
       };
     }
 
-    safeSet(STORAGE_KEYS.CART, cart);
+    safeSet(this.storageKeys.CART, cart);
     this.notify("cart_changed");
   }
 
   removeFromCart(productId) {
     const cart = this.getCart();
     delete cart[productId];
-    safeSet(STORAGE_KEYS.CART, cart);
+    safeSet(this.storageKeys.CART, cart);
     this.notify("cart_changed");
   }
 
@@ -542,12 +544,12 @@ class Store {
       subtotal_estimado: Math.round(cleanQty * product.precio)
     };
 
-    safeSet(STORAGE_KEYS.CART, cart);
+    safeSet(this.storageKeys.CART, cart);
     this.notify("cart_changed");
   }
 
   clearCart() {
-    safeRemove(STORAGE_KEYS.CART);
+    safeRemove(this.storageKeys.CART);
     this.notify("cart_changed");
   }
 
@@ -561,18 +563,18 @@ class Store {
 
   // --- Pedidos ---
   getOrders() {
-    return safeGet(STORAGE_KEYS.ORDERS, []);
+    return safeGet(this.storageKeys.ORDERS, []);
   }
 
   getActiveOrderId() {
-    return safeGet(STORAGE_KEYS.ACTIVE_ORDER, null);
+    return safeGet(this.storageKeys.ACTIVE_ORDER, null);
   }
 
   setActiveOrderId(orderId) {
     if (orderId) {
-      safeSet(STORAGE_KEYS.ACTIVE_ORDER, Number(orderId));
+      safeSet(this.storageKeys.ACTIVE_ORDER, Number(orderId));
     } else {
-      safeRemove(STORAGE_KEYS.ACTIVE_ORDER);
+      safeRemove(this.storageKeys.ACTIVE_ORDER);
     }
     this.notify("active_order_changed", orderId);
   }
@@ -656,7 +658,7 @@ class Store {
     };
 
     orders.unshift(newOrder);
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     this.syncOrderToSupabase(newOrder);
     this.setActiveOrderId(newOrder.id);
     this.clearCart();
@@ -674,7 +676,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -685,7 +687,7 @@ class Store {
       if (order.id === orderId) {
         const items = [...order.items];
         const item = { ...items[itemIndex] };
-        
+
         const peso = Math.max(0, Number(pesoReal));
         item.peso_real = peso;
         item.subtotal = Math.round(peso * item.precio_unitario);
@@ -704,7 +706,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     if (notify) {
       this.notify("orders_changed");
@@ -735,7 +737,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -775,7 +777,7 @@ class Store {
       return order;
     });
 
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
     this.notify("order_ready", orderId);
@@ -784,7 +786,7 @@ class Store {
   // Eliminar o cancelar completamente un pedido
   deleteOrder(orderId) {
     const orders = this.getOrders().filter((o) => o.id !== orderId);
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (this.supabase) {
       this.supabase.from("pedidos").delete().eq("id", orderId).then(() => {});
     }
@@ -808,7 +810,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);
@@ -835,7 +837,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -881,7 +883,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -905,7 +907,7 @@ class Store {
       }
       return order;
     });
-    safeSet(STORAGE_KEYS.ORDERS, orders);
+    safeSet(this.storageKeys.ORDERS, orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
   }
@@ -914,7 +916,7 @@ class Store {
   // GESTION DE MODO OSCURO / CLARO
   // ========================================================
   getTheme() {
-    const saved = safeGet(STORAGE_KEYS.THEME, null);
+    const saved = safeGet(this.storageKeys.THEME, null);
     if (saved === "dark" || saved === "light") {
       return saved;
     }
@@ -931,7 +933,7 @@ class Store {
   setTheme(theme) {
     const validTheme = theme === "dark" ? "dark" : "light";
     // Sólo namespace Nexo (no se escribe la clave genérica "theme")
-    safeSet(STORAGE_KEYS.THEME, validTheme);
+    safeSet(this.storageKeys.THEME, validTheme);
     this.applyTheme(validTheme);
     this.notify("theme_changed");
     return validTheme;
@@ -988,4 +990,4 @@ class Store {
 }
 
 export const store = new Store();
-export { STORAGE_KEYS, safeGet, safeSet, safeRemove };
+export { Store, STORAGE_KEYS, safeGet, safeSet, safeRemove };

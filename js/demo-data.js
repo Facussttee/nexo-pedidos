@@ -1,7 +1,8 @@
 // ==============================================================================
 // Nexo Pedidos - Datos sintéticos de demostración
-// Todas las personas, teléfonos, direcciones y alias son ficticios y están
-// marcados como "Demo". Rango telefónico reservado 11000000xx (no asignado).
+// Todas las personas, teléfonos, direcciones y alias son valores sintéticos
+// usados exclusivamente con mensajería bloqueada/simulada (no se verificó la
+// asignación real de esos números telefónicos).
 // ==============================================================================
 
 const DEMO_CUSTOMERS = Object.freeze({

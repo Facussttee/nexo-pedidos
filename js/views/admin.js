@@ -10,8 +10,9 @@ export function renderAdminView(container) {
   function update() {
     container.innerHTML = "";
     const products = store.getProducts();
-    const cloudConfig = store.getCloudConfig();
+    const localSettings = store.getLocalSettings();
     const isConnected = store.isCloudConnected();
+    const isDemo = store.isDemo();
 
     const filtered = products.filter((p) => {
       const matchCat = selectedCategory === "Todos" || p.categoria === selectedCategory;
@@ -27,6 +28,12 @@ export function renderAdminView(container) {
           : products.filter((p) => p.categoria === cat).length;
     });
 
+    const statusBadgeLabel = isDemo
+      ? "Modo Demo (sin red)"
+      : isConnected
+        ? "Cloud Online"
+        : "Sin Conexión Cloud";
+
     container.innerHTML = `
       <div class="max-w-xl mx-auto p-4 pb-32 overflow-x-hidden safe-pb">
         <!-- Header del Panel -->
@@ -41,12 +48,14 @@ export function renderAdminView(container) {
             </div>
             <div class="flex flex-col items-end gap-1.5">
               <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                isConnected ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                isConnected
+                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300"
+                  : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
               }">
-                ${isConnected ? "Cloud Online" : "Modo Local"}
+                ${statusBadgeLabel}
               </span>
               <div class="flex items-center gap-1.5">
-                <button 
+                <button
                   type="button"
                   class="theme-toggle-btn min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition tap-feedback touch-target flex items-center gap-1"
                   title="Cambiar tema claro / oscuro"
@@ -55,7 +64,7 @@ export function renderAdminView(container) {
                   <span>Tema:</span>
                   <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
                 </button>
-                <button 
+                <button
                   id="btn-toggle-cloud"
                   class="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold border transition tap-feedback touch-target flex items-center justify-center ${
                     isConnected
@@ -63,11 +72,11 @@ export function renderAdminView(container) {
                       : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }"
                 >
-                  ${showCloudSettings ? "Cerrar Config" : "Config Cloud"}
+                  ${showCloudSettings ? "Cerrar PIN" : "Config PIN"}
                 </button>
-                <button 
-                  id="btn-admin-logout" 
-                  title="Salir y bloquear panel" 
+                <button
+                  id="btn-admin-logout"
+                  title="Salir y bloquear panel"
                   class="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition tap-feedback touch-target flex items-center justify-center"
                 >
                   Salir
@@ -78,10 +87,10 @@ export function renderAdminView(container) {
 
           <!-- Buscador rápido para celular -->
           <div class="mt-3.5 relative">
-            <input 
-              type="text" 
-              id="admin-search-input" 
-              placeholder="Buscar producto por nombre..." 
+            <input
+              type="text"
+              id="admin-search-input"
+              placeholder="Buscar producto por nombre..."
               value="${searchQuery}"
               class="w-full pl-3.5 pr-14 py-2.5 min-h-[44px] bg-slate-100 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 border border-transparent focus:border-slate-300 dark:focus:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-base font-medium outline-none transition"
             />
@@ -97,7 +106,7 @@ export function renderAdminView(container) {
               ? `
             <div class="mt-3 p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 animate-fade-in text-xs space-y-3">
               <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-                <span class="font-black text-slate-200 uppercase tracking-wider text-[11px]">Sincronización Cloud & PIN</span>
+                <span class="font-black text-slate-200 uppercase tracking-wider text-[11px]">Seguridad Local & Estado de Instalación</span>
                 ${
                   configSavedToast
                     ? `<span class="text-[10px] font-bold text-emerald-400 uppercase bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">Guardado</span>`
@@ -105,46 +114,32 @@ export function renderAdminView(container) {
                 }
               </div>
 
+              <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300 leading-relaxed">
+                ${
+                  isDemo
+                    ? "Modo Demo activo: las conexiones a endpoints externos están bloqueadas desde este panel. Para configurar una instalación productiva editá exclusivamente <code class='font-mono text-amber-300'>js/public-config.js</code>."
+                    : "Modo Producción: la conexión pública se define exclusivamente en <code class='font-mono text-emerald-300'>js/public-config.js</code> (sin secretos)."
+                }
+              </div>
+
               <form id="cloud-config-form" class="space-y-2.5">
                 <div>
-                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">PIN del Negocio (Staff)</label>
-                  <input 
-                    type="password" 
-                    id="cfg-pin" 
+                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">PIN del Negocio (Staff UI local)</label>
+                  <input
+                    type="password"
+                    id="cfg-pin"
                     maxlength="6"
-                    value="${cloudConfig.staffPin || "1234"}" 
+                    value="${localSettings.staffPin || "1234"}"
                     class="w-full min-h-[44px] p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-base font-bold outline-none focus:border-emerald-500"
                   />
                 </div>
 
-                <div>
-                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Supabase URL</label>
-                  <input 
-                    type="url" 
-                    id="cfg-url" 
-                    value="${cloudConfig.supabaseUrl || ""}" 
-                    placeholder="https://xyz.supabase.co"
-                    class="w-full min-h-[44px] p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-base outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Supabase Anon Key</label>
-                  <input 
-                    type="password" 
-                    id="cfg-key" 
-                    value="${cloudConfig.supabaseAnonKey || ""}" 
-                    placeholder="eyJhbG..."
-                    class="w-full min-h-[44px] p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-base outline-none focus:border-emerald-500"
-                  />
-                </div>
-
                 <div class="pt-1 flex gap-2">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     class="w-full min-h-[44px] py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition tap-feedback touch-target flex items-center justify-center"
                   >
-                    Guardar y Conectar
+                    Guardar PIN Local
                   </button>
                 </div>
               </form>
@@ -157,7 +152,7 @@ export function renderAdminView(container) {
           <div class="mt-3.5 flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-4 px-4">
             ${CATEGORIAS.map(
               (cat) => `
-              <button 
+              <button
                 data-admin-cat="${cat}"
                 class="admin-cat-pill shrink-0 whitespace-nowrap min-h-[44px] px-4 py-2 rounded-full text-xs font-bold transition tap-feedback touch-target flex items-center gap-1.5 ${
                   selectedCategory === cat
@@ -221,7 +216,7 @@ export function renderAdminView(container) {
               </div>
 
               <!-- Stock availability button (min 44x44px) -->
-              <button 
+              <button
                 type="button"
                 data-toggle-stock="${p.id}"
                 class="btn-stock-toggle min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition tap-feedback touch-target shrink-0 flex items-center justify-center ${
@@ -238,7 +233,7 @@ export function renderAdminView(container) {
             <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span class="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Precio:</span>
 
-              <button 
+              <button
                 type="button"
                 data-step-price="${p.id}"
                 data-delta="-100"
@@ -251,10 +246,10 @@ export function renderAdminView(container) {
 
               <div class="relative flex-1">
                 <span class="absolute left-3 top-3 text-sm font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none">$</span>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   data-product-id="${p.id}"
-                  value="${p.precio}" 
+                  value="${p.precio}"
                   step="50"
                   min="0"
                   inputmode="numeric"
@@ -263,7 +258,7 @@ export function renderAdminView(container) {
                 <span class="absolute right-3 top-3 text-xs font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none">${unit}</span>
               </div>
 
-              <button 
+              <button
                 type="button"
                 data-step-price="${p.id}"
                 data-delta="100"
@@ -323,13 +318,7 @@ export function renderAdminView(container) {
       cloudForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const pin = container.querySelector("#cfg-pin")?.value || "";
-        const url = container.querySelector("#cfg-url")?.value || "";
-        const key = container.querySelector("#cfg-key")?.value || "";
-        store.saveCloudConfig({
-          staffPin: pin,
-          supabaseUrl: url,
-          supabaseAnonKey: key
-        });
+        store.saveLocalSettings({ staffPin: pin });
         configSavedToast = true;
         update();
       });

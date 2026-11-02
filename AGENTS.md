@@ -11,3 +11,10 @@ Producto derivado de Facussttee/MiHuerta. Leer docs/PRODUCT.md y coordination/ta
 - Config pública sin secretos; demo predeterminada sin Supabase; producción explícita sin fallback. Servir sólo raíz pública generada, nunca raíz Git.
 - No cambiar permisos, revisiones de comandos o modelo durante tarea activa. Ante alcance insuficiente, informar bloqueo; no ampliar silenciosamente.
 - AGENT.md es referencia histórica heredada, no autoridad para ejecutar rutas o servicios originales. Este archivo reemplaza sus reglas incompatibles en esta copia.
+
+## Verificaciones vigentes del primer checkpoint
+- Demo/config: node tests/test-demo-isolation.test.mjs. HTTP/build: node tests/test-static-server.test.mjs. Son aisladas; no requieren DB ni dependencias del worker.
+- Publicar sólo dist/public, creado por node scripts/build-public.mjs. El builder sólo admite sourceRoot/dist/public y rechaza padres symlink/junction antes de mutar.
+- Probar con node bot/serve-demo.js --host 127.0.0.1 --port 3000; no iniciar bot/index.js para probar archivos web. El CLI valida la raíz también con --no-build.
+- La configuración demo bloquea APIs de datos/Supabase y simula WhatsApp; CDN visual y fuentes siguen como dependencia externa. No prometer cero red total ni offline autónomo.
+- No despachar NP-004 ni otra fase hasta mostrar el checkpoint y recibir las indicaciones de alcance de Facu.

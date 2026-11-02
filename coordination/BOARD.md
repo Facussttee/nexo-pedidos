@@ -1,15 +1,14 @@
-# Tablero — 2026-11-02, America/Buenos_Aires
+# Tablero — checkpoint local del 2 de noviembre de 2026
 
-Sólo Codex acepta DONE. Un escritor por worktree; sin lock distribuido. Historial de intentos y evidencia en reviews/results/DECISIONS.
+Un escritor por worktree; sólo Codex acepta DONE. No hay lock distribuido.
 
-| ID | Estado | Propietario | Worktree / rama | Base / modelo / evidencia |
+| Paquete | Estado | Implementación | Worktree / rama | Evidencia |
 |---|---|---|---|---|
-| NP-001 | DONE | Codex | D:\Escritorio\nexo-pedidos / codex/np-coordination | bb05bf7; copia remota, contratos, baseline71+18 |
-| E0 | DONE | Antigravity; revisión Codex | D:\Escritorio\nexo-pedidos-worktrees\E0 / codex/experiment-E0 | 169247d; Sonnet5.5 Low; 6943b95+ee61771 aceptados; una corrección |
-| NP-002 | DONE | Antigravity; revisión Codex | D:\Escritorio\nexo-pedidos-worktrees\NP-002 / codex/np-002-demo | base2f9bfc0; Opus cuota→Gemini4 Argon Medium en turno nuevo; 872077b final,17+71+18 y navegador independiente PASS |
-| NP-003 | READY | Antigravity | D:\Escritorio\nexo-pedidos-worktrees\NP-003 / codex/np-003-static | producto fa3b56139df5b9921c9f62334e82a67c1d841c99; Gemini4 Argon Medium; intento1 por enviar |
+| NP-001 | DONE local | Codex | D:\Escritorio\nexo-pedidos / codex/np-coordination | copia fresca bb05bf7, contratos, baseline 71 + 18 |
+| E0 | DONE | Antigravity, Sonnet 5.5 Low | D:\Escritorio\nexo-pedidos-worktrees\E0 / codex/experiment-E0 | 6943b95 + ee61771, revisión independiente de tres referencias, una devolución de precisión |
+| NP-002 | DONE | Antigravity, Opus 5.5 Medium parcial y Gemini 4 Argon Medium recuperación | D:\Escritorio\nexo-pedidos-worktrees\NP-002 / codex/np-002-demo | final 872077b integrado como fa3b561; 17 + 71 + 18 checks y navegador |
+| NP-003 | DONE | Antigravity, Gemini 4 Argon Medium | D:\Escritorio\nexo-pedidos-worktrees\NP-003 / codex/np-003-static | b50097b + 76a08cb, integrado final e2bf8f32ce0ca9a686b8d306e24b0fc442ec8877; 24 + 8 + 56 checks y HTTP/navegador |
+| NP-004 | PROPOSED — NO DESPACHADO | sin ejecutor | sin worktree | propuesta Auth/RLS, pendiente indicaciones después del checkpoint |
 
-Revisión separada: D:\Escritorio\nexo-pedidos-worktrees\review detached872077b, dueño Codex. No ejecutar pruebas mutantes en worktree activo del ejecutor.
-No origin ni push: upstream original con push bloqueado. Remoto independiente pendiente por capacidad de creación ausente.
-- NP-003 DISPATCHED por UI, envío único 15:29 aprox.; proyecto NP-003 y rama codex/np-003-static verificados, modelo Gemini 4 Argon Medium visible. Base a857a7e. Único escritor Antigravity.
-- NP-003 CHANGES_REQUESTED: b50097b pasó21+56 HTTP; builder falló prueba independiente de destino ancestro (sólo fixture temporal). Intento2 enviado por UI al mismo Gemini4 Argon Medium; no otro escritor.
+Todos los turnos de Antigravity finalizaron; no hay escritor del ejecutor activo. Revisión Codex en D:\Escritorio\nexo-pedidos-worktrees\review, detached 76a08cb. No hubo cambio de modelo durante turno activo. El paso de Opus a Gemini ocurrió tras error final de cuota y checkpoint WIP.
+Remoto privado no creado. Upstream original con push bloqueado; ningún push/deploy. Historial de pruebas, correcciones y cuotas en results/reviews/DECISIONS.

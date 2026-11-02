@@ -11,3 +11,4 @@ Sólo Codex acepta DONE. Un escritor por worktree; sin lock distribuido. Histori
 
 Revisión separada: D:\Escritorio\nexo-pedidos-worktrees\review detached872077b, dueño Codex. No ejecutar pruebas mutantes en worktree activo del ejecutor.
 No origin ni push: upstream original con push bloqueado. Remoto independiente pendiente por capacidad de creación ausente.
+- NP-003 DISPATCHED por UI, envío único 15:29 aprox.; proyecto NP-003 y rama codex/np-003-static verificados, modelo Gemini 4 Argon Medium visible. Base a857a7e. Único escritor Antigravity.

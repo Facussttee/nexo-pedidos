@@ -192,22 +192,380 @@ const CATEGORIAS = ["Todos", "Frutas", "Verduras", "Hojas Verdes", "Almacén"];
 
   // ==========================================
 
+  // 1b. CONFIGURACION PUBLICA Y DATOS DEMO SINTETICOS
+
+  // ==========================================
+
+// ==============================================================================
+// Nexo Pedidos - Resolución de configuración pública y aislamiento de demo
+// ------------------------------------------------------------------------------
+// - La configuración pública se declara en js/public-config.js como
+//   window.NEXO_PUBLIC_CONFIG (archivo separado, NO incluido en el bundle).
+// - Sin configuración => modo demo explícito con datos sintéticos.
+// - Producción exige configuración completa y válida; si falta algo, falla
+//   claramente (sin fallback productivo ni éxito local simulado).
+// - Nunca se leen claves heredadas (mihuerta_*) ni secretos de servidor.
+// ==============================================================================
+
+const NEXO_STORAGE_VERSION = "v1";
+const NEXO_THEME_KEY = "nexo_theme_v1";
+const NEXO_SUPABASE_LIBRARY_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+
+const DEMO_BUSINESS = Object.freeze({
+  name: "Comercio Demo Nexo",
+  alias: "alias.demo.nexo",
+  whatsapp: "5491100000000",
+  whatsappDisplay: "+54 11 0000-0000 (demo)"
+});
+
+// Nombres de campos que jamás deben aparecer en la configuración pública.
+const FORBIDDEN_CONFIG_FIELDS = [
+  "servicerole",
+  "servicerolekey",
+  "service_role",
+  "service_role_key",
+  "supabaseservicerolekey",
+  "secret",
+  "secretkey",
+  "jwtsecret",
+  "password",
+  "dbpassword",
+  "databaseurl"
+];
+
+function cleanText(value, maxLen = 80) {
+  if (typeof value !== "string") return "";
+  return value.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, maxLen);
+}
+
+function findForbiddenFields(obj, path = "", depth = 0, found = []) {
+  if (!obj || typeof obj !== "object" || depth > 4) return found;
+  Object.keys(obj).forEach((key) => {
+    const normalized = key.toLowerCase().replace(/[-\s]/g, "");
+    const fullPath = path ? `${path}.${key}` : key;
+    if (FORBIDDEN_CONFIG_FIELDS.includes(normalized)) {
+      found.push(fullPath);
+    }
+    findForbiddenFields(obj[key], fullPath, depth + 1, found);
+  });
+  return found;
+}
+
+function decodeJwtRole(token) {
+  try {
+    const parts = String(token).split(".");
+    if (parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "===".slice((b64.length + 3) % 4);
+    let json;
+    if (typeof atob === "function") {
+      json = atob(padded);
+    } else if (typeof Buffer !== "undefined") {
+      json = Buffer.from(padded, "base64").toString("utf8");
+    } else {
+      return null;
+    }
+    const payload = JSON.parse(json);
+    return typeof payload.role === "string" ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveBusiness(rawBusiness, fallback) {
+  const b = rawBusiness && typeof rawBusiness === "object" ? rawBusiness : {};
+  const whatsapp = cleanText(b.whatsapp, 20).replace(/\D/g, "");
+  return {
+    name: cleanText(b.name) || (fallback ? fallback.name : ""),
+    alias: cleanText(b.alias, 60) || (fallback ? fallback.alias : ""),
+    whatsapp: whatsapp || (fallback ? fallback.whatsapp : ""),
+    whatsappDisplay: cleanText(b.whatsappDisplay, 40) || (fallback ? fallback.whatsappDisplay : whatsapp)
+  };
+}
+
+function buildStorageKeys(mode) {
+  const prefix = `nexo_${mode === "production" ? "prod" : "demo"}_${NEXO_STORAGE_VERSION}_`;
+  return {
+    PREFIX: prefix,
+    PRODUCTS: `${prefix}products`,
+    ORDERS: `${prefix}orders`,
+    CUSTOMERS: `${prefix}customers`,
+    CURRENT_USER: `${prefix}current_user`,
+    CART: `${prefix}cart`,
+    ACTIVE_ORDER: `${prefix}active_order`,
+    LOCAL_SETTINGS: `${prefix}local_settings`,
+    PIN_UNLOCKED: `${prefix}pin_unlocked`,
+    SIMULATED_MESSAGES: `${prefix}simulated_messages`,
+    THEME: NEXO_THEME_KEY
+  };
+}
+
+/**
+ * Resuelve la configuración pública. Función pura: no toca red ni almacenamiento.
+ * @param {unknown} raw - normalmente window.NEXO_PUBLIC_CONFIG
+ */
+function resolveNexoConfig(raw) {
+  // Sin configuración: demo explícita.
+  if (raw === undefined || raw === null) {
+    return {
+      mode: "demo",
+      ok: true,
+      errors: [],
+      warnings: [],
+      business: { ...DEMO_BUSINESS },
+      supabaseUrl: "",
+      supabaseAnonKey: "",
+      storageKeys: buildStorageKeys("demo")
+    };
+  }
+
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return {
+      mode: "invalid",
+      ok: false,
+      errors: ["NEXO_PUBLIC_CONFIG debe ser un objeto."],
+      warnings: [],
+      business: resolveBusiness(null, null),
+      supabaseUrl: "",
+      supabaseAnonKey: "",
+      storageKeys: buildStorageKeys("production")
+    };
+  }
+
+  const mode = raw.mode === undefined ? "demo" : String(raw.mode);
+  const forbidden = findForbiddenFields(raw);
+
+  if (mode === "demo") {
+    const warnings = [];
+    if (raw.supabase) {
+      warnings.push("Modo demo: la sección supabase se ignora; la demo nunca se conecta.");
+    }
+    if (forbidden.length > 0) {
+      warnings.push(`Campos prohibidos ignorados: ${forbidden.join(", ")}`);
+    }
+    return {
+      mode: "demo",
+      ok: true,
+      errors: [],
+      warnings,
+      business: resolveBusiness(raw.business, DEMO_BUSINESS),
+      supabaseUrl: "",
+      supabaseAnonKey: "",
+      storageKeys: buildStorageKeys("demo")
+    };
+  }
+
+  if (mode !== "production") {
+    return {
+      mode: "invalid",
+      ok: false,
+      errors: [`Modo desconocido "${cleanText(mode, 30)}". Valores válidos: "demo" o "production".`],
+      warnings: [],
+      business: resolveBusiness(raw.business, null),
+      supabaseUrl: "",
+      supabaseAnonKey: "",
+      storageKeys: buildStorageKeys("production")
+    };
+  }
+
+  // --- Producción: validación estricta, sin valores por defecto productivos ---
+  const errors = [];
+  const business = resolveBusiness(raw.business, null);
+  const supa = raw.supabase && typeof raw.supabase === "object" ? raw.supabase : {};
+  const supabaseUrl = typeof supa.url === "string" ? supa.url.trim() : "";
+  const supabaseAnonKey = typeof supa.anonKey === "string" ? supa.anonKey.trim() : "";
+
+  if (forbidden.length > 0) {
+    errors.push(`La configuración pública contiene campos secretos prohibidos: ${forbidden.join(", ")}.`);
+  }
+  if (!business.name) {
+    errors.push("Falta business.name (nombre del comercio).");
+  }
+  if (!supabaseUrl) {
+    errors.push("Falta supabase.url.");
+  } else {
+    try {
+      const parsed = new URL(supabaseUrl);
+      if (parsed.protocol !== "https:" || !parsed.hostname) {
+        errors.push("supabase.url debe ser una URL https válida.");
+      }
+    } catch {
+      errors.push("supabase.url no es una URL válida.");
+    }
+  }
+  if (!supabaseAnonKey) {
+    errors.push("Falta supabase.anonKey (clave pública anon/publishable).");
+  } else if (/^sb_secret_/i.test(supabaseAnonKey)) {
+    errors.push("supabase.anonKey es una clave secreta; sólo se admite la clave pública.");
+  } else {
+    const role = decodeJwtRole(supabaseAnonKey);
+    if (role && role !== "anon") {
+      errors.push(`supabase.anonKey tiene rol "${cleanText(role, 30)}"; sólo se admite rol anon.`);
+    }
+  }
+
+  return {
+    mode: "production",
+    ok: errors.length === 0,
+    errors,
+    warnings: [],
+    business,
+    supabaseUrl: errors.length === 0 ? supabaseUrl : "",
+    supabaseAnonKey: errors.length === 0 ? supabaseAnonKey : "",
+    storageKeys: buildStorageKeys("production")
+  };
+}
+
+function readPublicConfigSource() {
+  try {
+    if (typeof globalThis !== "undefined" && "NEXO_PUBLIC_CONFIG" in globalThis) {
+      return globalThis.NEXO_PUBLIC_CONFIG;
+    }
+  } catch {}
+  return undefined;
+}
+
+/**
+ * Bloquea toda salida de red y apertura de enlaces externos en modo demo.
+ * Devuelve un registro de intentos bloqueados (útil para auditoría y pruebas).
+ */
+function installDemoNetworkGuard(win, onBlocked) {
+  const blocked = [];
+  if (!win || win.__NEXO_DEMO_GUARD__) return blocked;
+  const record = (kind, target) => {
+    const entry = { kind, target: String(target || ""), at: new Date().toISOString() };
+    blocked.push(entry);
+    try { if (typeof onBlocked === "function") onBlocked(entry); } catch {}
+    return entry;
+  };
+  const define = (name, value) => {
+    try {
+      Object.defineProperty(win, name, { value, configurable: true, writable: true });
+    } catch {
+      try { win[name] = value; } catch {}
+    }
+  };
+
+  define("fetch", function blockedFetch(input) {
+    const target = input && typeof input === "object" && "url" in input ? input.url : input;
+    record("fetch", target);
+    return Promise.reject(new Error("Nexo demo: red deshabilitada (fetch bloqueado)."));
+  });
+  define("WebSocket", function BlockedWebSocket(url) {
+    record("websocket", url);
+    throw new Error("Nexo demo: red deshabilitada (WebSocket bloqueado).");
+  });
+  define("EventSource", function BlockedEventSource(url) {
+    record("eventsource", url);
+    throw new Error("Nexo demo: red deshabilitada (EventSource bloqueado).");
+  });
+  define("XMLHttpRequest", function BlockedXHR() {
+    record("xhr", "");
+    throw new Error("Nexo demo: red deshabilitada (XMLHttpRequest bloqueado).");
+  });
+  define("open", function blockedOpen(url) {
+    record("window.open", url);
+    return null;
+  });
+  try {
+    if (win.navigator && typeof win.navigator.sendBeacon === "function") {
+      Object.defineProperty(win.navigator, "sendBeacon", {
+        value: (url) => { record("beacon", url); return false; },
+        configurable: true
+      });
+    }
+  } catch {}
+  define("__NEXO_DEMO_GUARD__", { blocked });
+  return blocked;
+}
+
+// ==============================================================================
+// Nexo Pedidos - Datos sintéticos de demostración
+// Todas las personas, teléfonos, direcciones y alias son ficticios y están
+// marcados como "Demo". Rango telefónico reservado 11000000xx (no asignado).
+// ==============================================================================
+
+const DEMO_CUSTOMERS = Object.freeze({
+  "1100000001": Object.freeze({
+    telefono: "1100000001",
+    nombre: "Ana Demo (sintética)",
+    direccion: "Calle Ficticia 101 (demo)"
+  }),
+  "1100000002": Object.freeze({
+    telefono: "1100000002",
+    nombre: "Bruno Demo (sintético)",
+    direccion: "Retiro en Local"
+  })
+});
+
+const DEMO_QUICK_CUSTOMER = DEMO_CUSTOMERS["1100000001"];
+
+function buildDemoOrders(now = Date.now()) {
+  return [
+    {
+      id: 101,
+      demo: true,
+      cliente: {
+        nombre: "Ana Demo (sintética)",
+        telefono: "1100000001",
+        direccion: "Calle Ficticia 101 (demo)"
+      },
+      tipo_entrega: "DELIVERY",
+      direccion_entrega: "Calle Ficticia 101 (demo)",
+      estado: "PENDIENTE",
+      fecha: new Date(now - 15 * 60 * 1000).toISOString(),
+      total_estimado: 6400,
+      total_real: null,
+      items: [
+        { producto_id: "prod-9", nombre: "Tomate Redondo Premium", unidad_medida: "KG", precio_unitario: 2600, cantidad_solicitada: 1.0, peso_real: null, subtotal: 2600, sin_stock: false },
+        { producto_id: "prod-1", nombre: "Banana Cavendish", unidad_medida: "KG", precio_unitario: 1800, cantidad_solicitada: 1.0, peso_real: null, subtotal: 1800, sin_stock: false },
+        { producto_id: "prod-2", nombre: "Manzana Roja Elegida", unidad_medida: "KG", precio_unitario: 2200, cantidad_solicitada: 0.5, peso_real: null, subtotal: 1100, sin_stock: false },
+        { producto_id: "prod-13", nombre: "Acelga de Huerta", unidad_medida: "UNIDAD", precio_unitario: 900, cantidad_solicitada: 1, peso_real: 1, subtotal: 900, sin_stock: false }
+      ]
+    },
+    {
+      id: 102,
+      demo: true,
+      cliente: {
+        nombre: "Bruno Demo (sintético)",
+        telefono: "1100000002",
+        direccion: "Retiro en Local"
+      },
+      tipo_entrega: "RETIRO",
+      direccion_entrega: "Retiro por Mostrador",
+      estado: "EN_PREPARACION",
+      fecha: new Date(now - 35 * 60 * 1000).toISOString(),
+      total_estimado: 4700,
+      total_real: null,
+      items: [
+        { producto_id: "prod-7", nombre: "Papa Negra Cepillada", unidad_medida: "KG", precio_unitario: 950, cantidad_solicitada: 2.0, peso_real: 2.15, subtotal: 2043, sin_stock: false },
+        { producto_id: "prod-10", nombre: "Zanahoria Fresca", unidad_medida: "KG", precio_unitario: 1300, cantidad_solicitada: 1.0, peso_real: null, subtotal: 1300, sin_stock: false },
+        { producto_id: "prod-3", nombre: "Naranja de Jugo", unidad_medida: "KG", precio_unitario: 1400, cantidad_solicitada: 1.0, peso_real: null, subtotal: 1400, sin_stock: false }
+      ]
+    }
+  ];
+}
+
+function cloneDemoCustomers() {
+  const out = {};
+  Object.keys(DEMO_CUSTOMERS).forEach((k) => {
+    out[k] = { ...DEMO_CUSTOMERS[k] };
+  });
+  return out;
+}
+
+  // ==========================================
+
   // 2. STORE Y PERSISTENCIA LOCAL + SUPABASE
 
   // ==========================================
 
-// Claves de almacenamiento local (versión 3 sin emojis)
-const STORAGE_KEYS = {
-  PRODUCTS: "mihuerta_products_v3",
-  ORDERS: "mihuerta_orders_v3",
-  CUSTOMERS: "mihuerta_customers_v3",
-  CURRENT_USER: "mihuerta_current_user_v3",
-  CART: "mihuerta_cart_v3",
-  ACTIVE_ORDER: "mihuerta_active_order_v3",
-  CLOUD_CONFIG: "mihuerta_cloud_config_v3",
-  PIN_UNLOCKED: "mihuerta_pin_unlocked_v3",
-  THEME: "mihuerta_theme_v3"
-};
+// Configuración pública resuelta una sola vez al cargar (demo por defecto).
+// Las claves heredadas mihuerta_* NUNCA se leen ni se migran.
+const NEXO_CONFIG = resolveNexoConfig(readPublicConfigSource());
+
+// Claves de almacenamiento local en namespace Nexo separado por modo
+const STORAGE_KEYS = NEXO_CONFIG.storageKeys;
 
 // Fallback en memoria en caso de bloqueo de localStorage en file:///
 const memoryFallback = {};
@@ -240,14 +598,25 @@ function safeRemove(key) {
 }
 
 class Store {
-  constructor() {
+  constructor(config = NEXO_CONFIG) {
+    this.config = config;
     this.listeners = new Set();
+    this.blockedNetwork = [];
+    this.supabase = null;
+    this.realtimeChannel = null;
+    this.cloudError = null;
+
+    // En demo se bloquea toda salida de red antes de cualquier otra cosa.
+    if (this.isDemo() && typeof window !== "undefined") {
+      this.blockedNetwork = installDemoNetworkGuard(window, (entry) => this.notify("network_blocked", entry));
+    }
+
     this.init();
 
     // Sincronización en tiempo real entre pestañas
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
       window.addEventListener("storage", (e) => {
-        if (e.key === "theme" || e.key === STORAGE_KEYS.THEME) {
+        if (e.key === STORAGE_KEYS.THEME) {
           this.applyTheme(this.getTheme());
           this.notify("theme_changed");
         } else if (Object.values(STORAGE_KEYS).includes(e.key)) {
@@ -260,7 +629,7 @@ class Store {
         try {
           const mq = window.matchMedia("(prefers-color-scheme: dark)");
           const handler = (e) => {
-            const saved = safeGet("theme", null) || safeGet(STORAGE_KEYS.THEME, null);
+            const saved = safeGet(STORAGE_KEYS.THEME, null);
             if (!saved) {
               this.applyTheme(e.matches ? "dark" : "light");
               this.notify("theme_changed");
@@ -276,151 +645,48 @@ class Store {
     }
   }
 
+  // --- Modo y configuración pública ---
+  isDemo() {
+    return this.config.mode === "demo";
+  }
+
+  getMode() {
+    return this.config.mode;
+  }
+
+  getConfigErrors() {
+    return this.config.ok ? [] : [...this.config.errors];
+  }
+
+  getBusinessProfile() {
+    return { ...this.config.business };
+  }
+
   init() {
     // 0. Aplicar tema visual (Claro / Oscuro)
     this.applyTheme(this.getTheme());
 
-    // 1. Cargar o inicializar productos
-    if (!safeGet(STORAGE_KEYS.PRODUCTS, null)) {
-      safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    // Producción inválida: no se siembran datos ni se conecta nada.
+    if (!this.config.ok) {
+      return;
     }
 
-    // 2. Clientes registrados iniciales
-    if (!safeGet(STORAGE_KEYS.CUSTOMERS, null)) {
-      const defaultCustomers = {
-        "1123456789": {
-          telefono: "1123456789",
-          nombre: "Facundo Gómez",
-          direccion: "Av. Rivadavia 4520, Piso 3 B"
-        },
-        "1198765432": {
-          telefono: "1198765432",
-          nombre: "María Elena",
-          direccion: "San Martín 1230"
-        }
-      };
-      safeSet(STORAGE_KEYS.CUSTOMERS, defaultCustomers);
+    if (this.isDemo()) {
+      // 1. Catálogo sintético
+      if (!safeGet(STORAGE_KEYS.PRODUCTS, null)) {
+        safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+      }
+      // 2. Clientes sintéticos
+      if (!safeGet(STORAGE_KEYS.CUSTOMERS, null)) {
+        safeSet(STORAGE_KEYS.CUSTOMERS, cloneDemoCustomers());
+      }
+      // 3. Pedidos sintéticos
+      if (!safeGet(STORAGE_KEYS.ORDERS, null)) {
+        safeSet(STORAGE_KEYS.ORDERS, buildDemoOrders());
+      }
     }
 
-    // 3. Pedidos iniciales de demostración
-    if (!safeGet(STORAGE_KEYS.ORDERS, null)) {
-      const sampleOrders = [
-        {
-          id: 101,
-          cliente: {
-            nombre: "Facundo Gómez",
-            telefono: "1123456789",
-            direccion: "Av. Rivadavia 4520, Piso 3 B"
-          },
-          tipo_entrega: "DELIVERY",
-          direccion_entrega: "Av. Rivadavia 4520, Piso 3 B",
-          estado: "PENDIENTE",
-          fecha: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-          total_estimado: 6400,
-          total_real: null,
-          items: [
-            {
-              producto_id: "prod-9",
-              nombre: "Tomate Redondo Premium",
-              unidad_medida: "KG",
-              precio_unitario: 2600,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 2600,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-1",
-              nombre: "Banana Cavendish",
-              unidad_medida: "KG",
-              precio_unitario: 1800,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 1800,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-2",
-              nombre: "Manzana Roja Elegida",
-              unidad_medida: "KG",
-              precio_unitario: 2200,
-              cantidad_solicitada: 0.5,
-              peso_real: null,
-              subtotal: 1100,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-13",
-              nombre: "Acelga de Huerta",
-              unidad_medida: "UNIDAD",
-              precio_unitario: 900,
-              cantidad_solicitada: 1,
-              peso_real: 1,
-              subtotal: 900,
-              sin_stock: false
-            }
-          ]
-        },
-        {
-          id: 102,
-          cliente: {
-            nombre: "María Elena",
-            telefono: "1198765432",
-            direccion: "Retiro en Local"
-          },
-          tipo_entrega: "RETIRO",
-          direccion_entrega: "Retiro por Mostrador",
-          estado: "EN_PREPARACION",
-          fecha: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-          total_estimado: 4700,
-          total_real: null,
-          items: [
-            {
-              producto_id: "prod-7",
-              nombre: "Papa Negra Cepillada",
-              unidad_medida: "KG",
-              precio_unitario: 950,
-              cantidad_solicitada: 2.0,
-              peso_real: 2.15,
-              subtotal: 2043,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-10",
-              nombre: "Zanahoria Fresca",
-              unidad_medida: "KG",
-              precio_unitario: 1300,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 1300,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-3",
-              nombre: "Naranja de Jugo",
-              unidad_medida: "KG",
-              precio_unitario: 1400,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 1400,
-              sin_stock: false
-            }
-          ]
-        }
-      ];
-      safeSet(STORAGE_KEYS.ORDERS, sampleOrders);
-    }
-
-    // 4. Configuración inicial de PIN y Cloud (conectado por defecto al proyecto Supabase del local)
-    if (!safeGet(STORAGE_KEYS.CLOUD_CONFIG, null)) {
-      safeSet(STORAGE_KEYS.CLOUD_CONFIG, {
-        supabaseUrl: "https://afrvwqghnvblgjbdndnt.supabase.co",
-        supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmcnZ3cWdobnZibGdqYmRuZG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMjQ0OTYsImV4cCI6MjEwODgwMDQ5Nn0.mhw70b-K3G-bhUEBTdXS-GMoylYnvBtWkJzeEmOrRzM",
-        staffPin: "1234"
-      });
-    }
-
-    // 5. Detectar parámetro ?tel= en el link enviado por el Bot de WhatsApp
+    // 4. Detectar parámetro ?tel= en el link de acceso del cliente
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const urlPhone = urlParams.get("tel");
@@ -435,37 +701,25 @@ class Store {
       }
     } catch {}
 
-    // 6. Inicializar conexión con Supabase Cloud si está configurada
-    this.supabase = null;
-    this.realtimeChannel = null;
-    this.initSupabaseConnection();
+    // 5. Conexión cloud SOLO en producción con configuración explícita válida
+    if (this.config.mode === "production") {
+      this.initSupabaseConnection();
+    }
   }
 
-  // --- Configuración Cloud (Supabase) y PIN de Seguridad ---
-  getCloudConfig() {
-    const DEFAULT_CONFIG = {
-      supabaseUrl: "https://afrvwqghnvblgjbdndnt.supabase.co",
-      supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmcnZ3cWdobnZibGdqYmRuZG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMjQ0OTYsImV4cCI6MjEwODgwMDQ5Nn0.mhw70b-K3G-bhUEBTdXS-GMoylYnvBtWkJzeEmOrRzM",
-      staffPin: "1234"
-    };
-    const stored = safeGet(STORAGE_KEYS.CLOUD_CONFIG, DEFAULT_CONFIG);
-    return {
-      supabaseUrl: stored.supabaseUrl || DEFAULT_CONFIG.supabaseUrl,
-      supabaseAnonKey: stored.supabaseAnonKey || DEFAULT_CONFIG.supabaseAnonKey,
-      staffPin: stored.staffPin || "1234"
-    };
+  // --- Ajustes locales (PIN de UI) ---
+  getLocalSettings() {
+    const stored = safeGet(STORAGE_KEYS.LOCAL_SETTINGS, null);
+    const pin = stored && typeof stored.staffPin === "string" ? stored.staffPin.trim() : "";
+    return { staffPin: pin || "1234" };
   }
 
-  saveCloudConfig(newConfig) {
-    const current = this.getCloudConfig();
-    const updated = {
-      supabaseUrl: (newConfig.supabaseUrl ?? current.supabaseUrl).trim(),
-      supabaseAnonKey: (newConfig.supabaseAnonKey ?? current.supabaseAnonKey).trim(),
-      staffPin: (newConfig.staffPin ?? current.staffPin).trim() || "1234"
-    };
-    safeSet(STORAGE_KEYS.CLOUD_CONFIG, updated);
-    this.initSupabaseConnection();
-    this.notify("cloud_config_changed", updated);
+  saveLocalSettings(newSettings = {}) {
+    const current = this.getLocalSettings();
+    const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
+    const updated = { staffPin: pin.length >= 4 ? pin : current.staffPin };
+    safeSet(STORAGE_KEYS.LOCAL_SETTINGS, updated);
+    this.notify("local_settings_changed", { staffPin: "****" });
     return updated;
   }
 
@@ -473,9 +727,17 @@ class Store {
     return Boolean(this.supabase);
   }
 
+  getCloudStatus() {
+    if (this.isDemo()) return "demo";
+    if (!this.config.ok) return "config_error";
+    if (this.supabase) return "connected";
+    if (this.cloudError) return "error";
+    return "connecting";
+  }
+
   verifyStaffPin(inputPin) {
-    const { staffPin } = this.getCloudConfig();
-    const ok = String(inputPin).trim() === String(staffPin || "1234").trim();
+    const { staffPin } = this.getLocalSettings();
+    const ok = String(inputPin).trim() === String(staffPin).trim();
     if (ok) {
       safeSet(STORAGE_KEYS.PIN_UNLOCKED, true);
     }
@@ -491,21 +753,47 @@ class Store {
     this.notify("staff_locked");
   }
 
+  // Carga la librería oficial sólo en producción válida (nunca en demo).
+  loadSupabaseLibrary() {
+    if (typeof window === "undefined") return Promise.resolve(null);
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+      return Promise.resolve(window.supabase);
+    }
+    if (typeof document === "undefined" || typeof document.createElement !== "function") {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = NEXO_SUPABASE_LIBRARY_URL;
+      script.async = true;
+      script.onload = () => resolve(window.supabase || null);
+      script.onerror = () => reject(new Error("No se pudo cargar la librería de Supabase."));
+      (document.head || document.body).appendChild(script);
+    });
+  }
+
   async initSupabaseConnection() {
-    const { supabaseUrl, supabaseAnonKey } = this.getCloudConfig();
-    if (typeof window === "undefined" || !supabaseUrl || !supabaseAnonKey || !window.supabase) {
+    // Defensa en profundidad: jamás conectar en demo o con config inválida.
+    if (this.isDemo() || this.config.mode !== "production" || !this.config.ok) {
       this.supabase = null;
       return;
     }
-
+    const { supabaseUrl, supabaseAnonKey } = this.config;
     try {
-      this.supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+      const lib = await this.loadSupabaseLibrary();
+      if (!lib || typeof lib.createClient !== "function") {
+        throw new Error("Librería de Supabase no disponible.");
+      }
+      this.supabase = lib.createClient(supabaseUrl, supabaseAnonKey);
+      this.cloudError = null;
       await this.pullFromSupabase();
       this.subscribeToSupabaseRealtime();
       this.notify("cloud_connected");
     } catch (err) {
       console.warn("No se pudo conectar a Supabase:", err);
       this.supabase = null;
+      this.cloudError = String((err && err.message) || err);
+      this.notify("cloud_error", this.cloudError);
     }
   }
 
@@ -576,7 +864,7 @@ class Store {
     }
 
     this.realtimeChannel = this.supabase
-      .channel("mihuerta-pwa-realtime")
+      .channel("nexo-pedidos-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
         if (payload.eventType === "INSERT") {
           this.playAudioAlert();
@@ -619,6 +907,45 @@ class Store {
     }
   }
 
+  // --- Mensajería WhatsApp ---
+  // Demo: siempre simulado (se registra localmente, nunca abre wa.me ni red).
+  // Producción: abre wa.me manualmente por acción del usuario (outbox real en paquete posterior).
+  sendWhatsAppMessage({ to, text, kind = "general" } = {}) {
+    const cleanTo = String(to || "").replace(/\D/g, "");
+    const body = String(text || "");
+    if (this.isDemo()) {
+      const entry = {
+        id: `sim-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        kind,
+        to: cleanTo,
+        text: body,
+        at: new Date().toISOString(),
+        simulated: true
+      };
+      const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+      const list = Array.isArray(log) ? log : [];
+      list.unshift(entry);
+      safeSet(STORAGE_KEYS.SIMULATED_MESSAGES, list.slice(0, 50));
+      this.notify("whatsapp_simulated", entry);
+      return { simulated: true, sent: false, entry };
+    }
+    if (!this.config.ok || !cleanTo) {
+      return { simulated: false, sent: false, error: "Configuración o destinatario inválido." };
+    }
+    const url = `https://wa.me/${cleanTo}?text=${encodeURIComponent(body)}`;
+    try {
+      if (typeof window !== "undefined" && typeof window.open === "function") {
+        window.open(url, "_blank", "noopener");
+      }
+    } catch {}
+    return { simulated: false, sent: false, opened: true, url };
+  }
+
+  getSimulatedMessages() {
+    const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+    return Array.isArray(log) ? log : [];
+  }
+
   // --- Reactividad ---
   subscribe(callback) {
     this.listeners.add(callback);
@@ -631,7 +958,8 @@ class Store {
 
   // --- Productos ---
   getProducts() {
-    return safeGet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    // Producción no muestra catálogo de ejemplo: sólo datos sincronizados.
+    return safeGet(STORAGE_KEYS.PRODUCTS, this.isDemo() ? INITIAL_PRODUCTS : []);
   }
 
   updateProductPrice(productId, newPrice) {
@@ -856,6 +1184,8 @@ class Store {
 
   createOrder({ cliente, tipo_entrega, direccion_entrega }) {
     const { items, totalEstimado } = this.getCartSummary();
+    // Producción inválida nunca simula un pedido exitoso.
+    if (!this.config.ok) return null;
     if (items.length === 0) return null;
 
     const orders = this.getOrders();
@@ -1142,7 +1472,7 @@ class Store {
   // GESTION DE MODO OSCURO / CLARO
   // ========================================================
   getTheme() {
-    const saved = safeGet("theme", null) || safeGet(STORAGE_KEYS.THEME, null);
+    const saved = safeGet(STORAGE_KEYS.THEME, null);
     if (saved === "dark" || saved === "light") {
       return saved;
     }
@@ -1158,7 +1488,7 @@ class Store {
 
   setTheme(theme) {
     const validTheme = theme === "dark" ? "dark" : "light";
-    safeSet("theme", validTheme);
+    // Sólo namespace Nexo (no se escribe la clave genérica "theme")
     safeSet(STORAGE_KEYS.THEME, validTheme);
     this.applyTheme(validTheme);
     this.notify("theme_changed");

@@ -1,17 +1,13 @@
 import { INITIAL_PRODUCTS } from "./products-data.js";
+import { resolveNexoConfig, readPublicConfigSource, installDemoNetworkGuard, NEXO_SUPABASE_LIBRARY_URL } from "./config.js";
+import { cloneDemoCustomers, buildDemoOrders } from "./demo-data.js";
 
-// Claves de almacenamiento local (versión 3 sin emojis)
-const STORAGE_KEYS = {
-  PRODUCTS: "mihuerta_products_v3",
-  ORDERS: "mihuerta_orders_v3",
-  CUSTOMERS: "mihuerta_customers_v3",
-  CURRENT_USER: "mihuerta_current_user_v3",
-  CART: "mihuerta_cart_v3",
-  ACTIVE_ORDER: "mihuerta_active_order_v3",
-  CLOUD_CONFIG: "mihuerta_cloud_config_v3",
-  PIN_UNLOCKED: "mihuerta_pin_unlocked_v3",
-  THEME: "mihuerta_theme_v3"
-};
+// Configuración pública resuelta una sola vez al cargar (demo por defecto).
+// Las claves heredadas mihuerta_* NUNCA se leen ni se migran.
+const NEXO_CONFIG = resolveNexoConfig(readPublicConfigSource());
+
+// Claves de almacenamiento local en namespace Nexo separado por modo
+const STORAGE_KEYS = NEXO_CONFIG.storageKeys;
 
 // Fallback en memoria en caso de bloqueo de localStorage en file:///
 const memoryFallback = {};
@@ -44,14 +40,25 @@ function safeRemove(key) {
 }
 
 class Store {
-  constructor() {
+  constructor(config = NEXO_CONFIG) {
+    this.config = config;
     this.listeners = new Set();
+    this.blockedNetwork = [];
+    this.supabase = null;
+    this.realtimeChannel = null;
+    this.cloudError = null;
+
+    // En demo se bloquea toda salida de red antes de cualquier otra cosa.
+    if (this.isDemo() && typeof window !== "undefined") {
+      this.blockedNetwork = installDemoNetworkGuard(window, (entry) => this.notify("network_blocked", entry));
+    }
+
     this.init();
 
     // Sincronización en tiempo real entre pestañas
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
       window.addEventListener("storage", (e) => {
-        if (e.key === "theme" || e.key === STORAGE_KEYS.THEME) {
+        if (e.key === STORAGE_KEYS.THEME) {
           this.applyTheme(this.getTheme());
           this.notify("theme_changed");
         } else if (Object.values(STORAGE_KEYS).includes(e.key)) {
@@ -64,7 +71,7 @@ class Store {
         try {
           const mq = window.matchMedia("(prefers-color-scheme: dark)");
           const handler = (e) => {
-            const saved = safeGet("theme", null) || safeGet(STORAGE_KEYS.THEME, null);
+            const saved = safeGet(STORAGE_KEYS.THEME, null);
             if (!saved) {
               this.applyTheme(e.matches ? "dark" : "light");
               this.notify("theme_changed");
@@ -80,151 +87,48 @@ class Store {
     }
   }
 
+  // --- Modo y configuración pública ---
+  isDemo() {
+    return this.config.mode === "demo";
+  }
+
+  getMode() {
+    return this.config.mode;
+  }
+
+  getConfigErrors() {
+    return this.config.ok ? [] : [...this.config.errors];
+  }
+
+  getBusinessProfile() {
+    return { ...this.config.business };
+  }
+
   init() {
     // 0. Aplicar tema visual (Claro / Oscuro)
     this.applyTheme(this.getTheme());
 
-    // 1. Cargar o inicializar productos
-    if (!safeGet(STORAGE_KEYS.PRODUCTS, null)) {
-      safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    // Producción inválida: no se siembran datos ni se conecta nada.
+    if (!this.config.ok) {
+      return;
     }
 
-    // 2. Clientes registrados iniciales
-    if (!safeGet(STORAGE_KEYS.CUSTOMERS, null)) {
-      const defaultCustomers = {
-        "1123456789": {
-          telefono: "1123456789",
-          nombre: "Facundo Gómez",
-          direccion: "Av. Rivadavia 4520, Piso 3 B"
-        },
-        "1198765432": {
-          telefono: "1198765432",
-          nombre: "María Elena",
-          direccion: "San Martín 1230"
-        }
-      };
-      safeSet(STORAGE_KEYS.CUSTOMERS, defaultCustomers);
+    if (this.isDemo()) {
+      // 1. Catálogo sintético
+      if (!safeGet(STORAGE_KEYS.PRODUCTS, null)) {
+        safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+      }
+      // 2. Clientes sintéticos
+      if (!safeGet(STORAGE_KEYS.CUSTOMERS, null)) {
+        safeSet(STORAGE_KEYS.CUSTOMERS, cloneDemoCustomers());
+      }
+      // 3. Pedidos sintéticos
+      if (!safeGet(STORAGE_KEYS.ORDERS, null)) {
+        safeSet(STORAGE_KEYS.ORDERS, buildDemoOrders());
+      }
     }
 
-    // 3. Pedidos iniciales de demostración
-    if (!safeGet(STORAGE_KEYS.ORDERS, null)) {
-      const sampleOrders = [
-        {
-          id: 101,
-          cliente: {
-            nombre: "Facundo Gómez",
-            telefono: "1123456789",
-            direccion: "Av. Rivadavia 4520, Piso 3 B"
-          },
-          tipo_entrega: "DELIVERY",
-          direccion_entrega: "Av. Rivadavia 4520, Piso 3 B",
-          estado: "PENDIENTE",
-          fecha: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-          total_estimado: 6400,
-          total_real: null,
-          items: [
-            {
-              producto_id: "prod-9",
-              nombre: "Tomate Redondo Premium",
-              unidad_medida: "KG",
-              precio_unitario: 2600,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 2600,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-1",
-              nombre: "Banana Cavendish",
-              unidad_medida: "KG",
-              precio_unitario: 1800,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 1800,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-2",
-              nombre: "Manzana Roja Elegida",
-              unidad_medida: "KG",
-              precio_unitario: 2200,
-              cantidad_solicitada: 0.5,
-              peso_real: null,
-              subtotal: 1100,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-13",
-              nombre: "Acelga de Huerta",
-              unidad_medida: "UNIDAD",
-              precio_unitario: 900,
-              cantidad_solicitada: 1,
-              peso_real: 1,
-              subtotal: 900,
-              sin_stock: false
-            }
-          ]
-        },
-        {
-          id: 102,
-          cliente: {
-            nombre: "María Elena",
-            telefono: "1198765432",
-            direccion: "Retiro en Local"
-          },
-          tipo_entrega: "RETIRO",
-          direccion_entrega: "Retiro por Mostrador",
-          estado: "EN_PREPARACION",
-          fecha: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-          total_estimado: 4700,
-          total_real: null,
-          items: [
-            {
-              producto_id: "prod-7",
-              nombre: "Papa Negra Cepillada",
-              unidad_medida: "KG",
-              precio_unitario: 950,
-              cantidad_solicitada: 2.0,
-              peso_real: 2.15,
-              subtotal: 2043,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-10",
-              nombre: "Zanahoria Fresca",
-              unidad_medida: "KG",
-              precio_unitario: 1300,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 1300,
-              sin_stock: false
-            },
-            {
-              producto_id: "prod-3",
-              nombre: "Naranja de Jugo",
-              unidad_medida: "KG",
-              precio_unitario: 1400,
-              cantidad_solicitada: 1.0,
-              peso_real: null,
-              subtotal: 1400,
-              sin_stock: false
-            }
-          ]
-        }
-      ];
-      safeSet(STORAGE_KEYS.ORDERS, sampleOrders);
-    }
-
-    // 4. Configuración inicial de PIN y Cloud (conectado por defecto al proyecto Supabase del local)
-    if (!safeGet(STORAGE_KEYS.CLOUD_CONFIG, null)) {
-      safeSet(STORAGE_KEYS.CLOUD_CONFIG, {
-        supabaseUrl: "https://afrvwqghnvblgjbdndnt.supabase.co",
-        supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmcnZ3cWdobnZibGdqYmRuZG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMjQ0OTYsImV4cCI6MjEwODgwMDQ5Nn0.mhw70b-K3G-bhUEBTdXS-GMoylYnvBtWkJzeEmOrRzM",
-        staffPin: "1234"
-      });
-    }
-
-    // 5. Detectar parámetro ?tel= en el link enviado por el Bot de WhatsApp
+    // 4. Detectar parámetro ?tel= en el link de acceso del cliente
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const urlPhone = urlParams.get("tel");
@@ -239,37 +143,25 @@ class Store {
       }
     } catch {}
 
-    // 6. Inicializar conexión con Supabase Cloud si está configurada
-    this.supabase = null;
-    this.realtimeChannel = null;
-    this.initSupabaseConnection();
+    // 5. Conexión cloud SOLO en producción con configuración explícita válida
+    if (this.config.mode === "production") {
+      this.initSupabaseConnection();
+    }
   }
 
-  // --- Configuración Cloud (Supabase) y PIN de Seguridad ---
-  getCloudConfig() {
-    const DEFAULT_CONFIG = {
-      supabaseUrl: "https://afrvwqghnvblgjbdndnt.supabase.co",
-      supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmcnZ3cWdobnZibGdqYmRuZG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMjQ0OTYsImV4cCI6MjEwODgwMDQ5Nn0.mhw70b-K3G-bhUEBTdXS-GMoylYnvBtWkJzeEmOrRzM",
-      staffPin: "1234"
-    };
-    const stored = safeGet(STORAGE_KEYS.CLOUD_CONFIG, DEFAULT_CONFIG);
-    return {
-      supabaseUrl: stored.supabaseUrl || DEFAULT_CONFIG.supabaseUrl,
-      supabaseAnonKey: stored.supabaseAnonKey || DEFAULT_CONFIG.supabaseAnonKey,
-      staffPin: stored.staffPin || "1234"
-    };
+  // --- Ajustes locales (PIN de UI) ---
+  getLocalSettings() {
+    const stored = safeGet(STORAGE_KEYS.LOCAL_SETTINGS, null);
+    const pin = stored && typeof stored.staffPin === "string" ? stored.staffPin.trim() : "";
+    return { staffPin: pin || "1234" };
   }
 
-  saveCloudConfig(newConfig) {
-    const current = this.getCloudConfig();
-    const updated = {
-      supabaseUrl: (newConfig.supabaseUrl ?? current.supabaseUrl).trim(),
-      supabaseAnonKey: (newConfig.supabaseAnonKey ?? current.supabaseAnonKey).trim(),
-      staffPin: (newConfig.staffPin ?? current.staffPin).trim() || "1234"
-    };
-    safeSet(STORAGE_KEYS.CLOUD_CONFIG, updated);
-    this.initSupabaseConnection();
-    this.notify("cloud_config_changed", updated);
+  saveLocalSettings(newSettings = {}) {
+    const current = this.getLocalSettings();
+    const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
+    const updated = { staffPin: pin.length >= 4 ? pin : current.staffPin };
+    safeSet(STORAGE_KEYS.LOCAL_SETTINGS, updated);
+    this.notify("local_settings_changed", { staffPin: "****" });
     return updated;
   }
 
@@ -277,9 +169,17 @@ class Store {
     return Boolean(this.supabase);
   }
 
+  getCloudStatus() {
+    if (this.isDemo()) return "demo";
+    if (!this.config.ok) return "config_error";
+    if (this.supabase) return "connected";
+    if (this.cloudError) return "error";
+    return "connecting";
+  }
+
   verifyStaffPin(inputPin) {
-    const { staffPin } = this.getCloudConfig();
-    const ok = String(inputPin).trim() === String(staffPin || "1234").trim();
+    const { staffPin } = this.getLocalSettings();
+    const ok = String(inputPin).trim() === String(staffPin).trim();
     if (ok) {
       safeSet(STORAGE_KEYS.PIN_UNLOCKED, true);
     }
@@ -295,21 +195,47 @@ class Store {
     this.notify("staff_locked");
   }
 
+  // Carga la librería oficial sólo en producción válida (nunca en demo).
+  loadSupabaseLibrary() {
+    if (typeof window === "undefined") return Promise.resolve(null);
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+      return Promise.resolve(window.supabase);
+    }
+    if (typeof document === "undefined" || typeof document.createElement !== "function") {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = NEXO_SUPABASE_LIBRARY_URL;
+      script.async = true;
+      script.onload = () => resolve(window.supabase || null);
+      script.onerror = () => reject(new Error("No se pudo cargar la librería de Supabase."));
+      (document.head || document.body).appendChild(script);
+    });
+  }
+
   async initSupabaseConnection() {
-    const { supabaseUrl, supabaseAnonKey } = this.getCloudConfig();
-    if (typeof window === "undefined" || !supabaseUrl || !supabaseAnonKey || !window.supabase) {
+    // Defensa en profundidad: jamás conectar en demo o con config inválida.
+    if (this.isDemo() || this.config.mode !== "production" || !this.config.ok) {
       this.supabase = null;
       return;
     }
-
+    const { supabaseUrl, supabaseAnonKey } = this.config;
     try {
-      this.supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+      const lib = await this.loadSupabaseLibrary();
+      if (!lib || typeof lib.createClient !== "function") {
+        throw new Error("Librería de Supabase no disponible.");
+      }
+      this.supabase = lib.createClient(supabaseUrl, supabaseAnonKey);
+      this.cloudError = null;
       await this.pullFromSupabase();
       this.subscribeToSupabaseRealtime();
       this.notify("cloud_connected");
     } catch (err) {
       console.warn("No se pudo conectar a Supabase:", err);
       this.supabase = null;
+      this.cloudError = String((err && err.message) || err);
+      this.notify("cloud_error", this.cloudError);
     }
   }
 
@@ -380,7 +306,7 @@ class Store {
     }
 
     this.realtimeChannel = this.supabase
-      .channel("mihuerta-pwa-realtime")
+      .channel("nexo-pedidos-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
         if (payload.eventType === "INSERT") {
           this.playAudioAlert();
@@ -423,6 +349,45 @@ class Store {
     }
   }
 
+  // --- Mensajería WhatsApp ---
+  // Demo: siempre simulado (se registra localmente, nunca abre wa.me ni red).
+  // Producción: abre wa.me manualmente por acción del usuario (outbox real en paquete posterior).
+  sendWhatsAppMessage({ to, text, kind = "general" } = {}) {
+    const cleanTo = String(to || "").replace(/\D/g, "");
+    const body = String(text || "");
+    if (this.isDemo()) {
+      const entry = {
+        id: `sim-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        kind,
+        to: cleanTo,
+        text: body,
+        at: new Date().toISOString(),
+        simulated: true
+      };
+      const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+      const list = Array.isArray(log) ? log : [];
+      list.unshift(entry);
+      safeSet(STORAGE_KEYS.SIMULATED_MESSAGES, list.slice(0, 50));
+      this.notify("whatsapp_simulated", entry);
+      return { simulated: true, sent: false, entry };
+    }
+    if (!this.config.ok || !cleanTo) {
+      return { simulated: false, sent: false, error: "Configuración o destinatario inválido." };
+    }
+    const url = `https://wa.me/${cleanTo}?text=${encodeURIComponent(body)}`;
+    try {
+      if (typeof window !== "undefined" && typeof window.open === "function") {
+        window.open(url, "_blank", "noopener");
+      }
+    } catch {}
+    return { simulated: false, sent: false, opened: true, url };
+  }
+
+  getSimulatedMessages() {
+    const log = safeGet(STORAGE_KEYS.SIMULATED_MESSAGES, []);
+    return Array.isArray(log) ? log : [];
+  }
+
   // --- Reactividad ---
   subscribe(callback) {
     this.listeners.add(callback);
@@ -435,7 +400,8 @@ class Store {
 
   // --- Productos ---
   getProducts() {
-    return safeGet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    // Producción no muestra catálogo de ejemplo: sólo datos sincronizados.
+    return safeGet(STORAGE_KEYS.PRODUCTS, this.isDemo() ? INITIAL_PRODUCTS : []);
   }
 
   updateProductPrice(productId, newPrice) {
@@ -660,6 +626,8 @@ class Store {
 
   createOrder({ cliente, tipo_entrega, direccion_entrega }) {
     const { items, totalEstimado } = this.getCartSummary();
+    // Producción inválida nunca simula un pedido exitoso.
+    if (!this.config.ok) return null;
     if (items.length === 0) return null;
 
     const orders = this.getOrders();
@@ -946,7 +914,7 @@ class Store {
   // GESTION DE MODO OSCURO / CLARO
   // ========================================================
   getTheme() {
-    const saved = safeGet("theme", null) || safeGet(STORAGE_KEYS.THEME, null);
+    const saved = safeGet(STORAGE_KEYS.THEME, null);
     if (saved === "dark" || saved === "light") {
       return saved;
     }
@@ -962,7 +930,7 @@ class Store {
 
   setTheme(theme) {
     const validTheme = theme === "dark" ? "dark" : "light";
-    safeSet("theme", validTheme);
+    // Sólo namespace Nexo (no se escribe la clave genérica "theme")
     safeSet(STORAGE_KEYS.THEME, validTheme);
     this.applyTheme(validTheme);
     this.notify("theme_changed");

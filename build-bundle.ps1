@@ -1,5 +1,5 @@
 # ==============================================================================
-# Mi Huerta - Script de Empaquetado Autónomo (build-bundle.ps1)
+# Nexo Pedidos - Script de Empaquetado Autónomo (build-bundle.ps1)
 # Genera js/bundle.js con codificación UTF-8 estricta SIN BOM y validación de sintaxis
 # ==============================================================================
 
@@ -16,6 +16,8 @@ Write-Host "Iniciando compilacion de bundle en: $bundlePath"
 # 2. Verificación de existencia de archivos fuente
 $sourceFiles = @(
   (Join-Path $jsDir "products-data.js"),
+  (Join-Path $jsDir "config.js"),
+  (Join-Path $jsDir "demo-data.js"),
   (Join-Path $jsDir "store.js"),
   (Join-Path $viewsDir "client.js"),
   (Join-Path $viewsDir "operator.js"),
@@ -34,6 +36,16 @@ foreach ($file in $sourceFiles) {
 # 3.1 products-data.js
 $prod = Get-Content (Join-Path $jsDir "products-data.js") -Raw -Encoding UTF8
 $prod = $prod -replace '(?m)^\s*export\s+const\s+', 'const '
+
+# 3.1b config.js (resolucion de config publica; la config en si vive en js/public-config.js, fuera del bundle)
+$config = Get-Content (Join-Path $jsDir "config.js") -Raw -Encoding UTF8
+$config = $config -replace '(?m)^\s*import\s+.*?;?\s*$', ''
+$config = $config -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
+
+# 3.1c demo-data.js (datos sinteticos de demostracion)
+$demoData = Get-Content (Join-Path $jsDir "demo-data.js") -Raw -Encoding UTF8
+$demoData = $demoData -replace '(?m)^\s*import\s+.*?;?\s*$', ''
+$demoData = $demoData -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
 
 # 3.2 store.js
 $store = Get-Content (Join-Path $jsDir "store.js") -Raw -Encoding UTF8
@@ -74,6 +86,11 @@ $parts = @(
   "  // 1. CATALOGO DE PRODUCTOS",
   "  // ==========================================",
   $prod.Trim(),
+  "  // ==========================================",
+  "  // 1b. CONFIGURACION PUBLICA Y DATOS DEMO SINTETICOS",
+  "  // ==========================================",
+  $config.Trim(),
+  $demoData.Trim(),
   "  // ==========================================",
   "  // 2. STORE Y PERSISTENCIA LOCAL + SUPABASE",
   "  // ==========================================",

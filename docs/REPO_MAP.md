@@ -1,4 +1,4 @@
-﻿# Mapa real del repositorio — Nexo Pedidos (E0)
+# Mapa real del repositorio — Nexo Pedidos (E0)
 
 Base: commit `169247d`, rama `codex/experiment-E0`. Mapa por lectura estática local; no se ejecutó código, ni red, ni Supabase, ni WhatsApp. Lo que sigue describe lo que el código *hace*, no que esté desplegado ni que sea seguro.
 
@@ -6,7 +6,7 @@ Base: commit `169247d`, rama `codex/experiment-E0`. Mapa por lectura estática l
 
 | Ruta | Rol |
 |---|---|
-| `index.html`, `css/style.css` | Shell de la PWA |
+| `index.html`, `css/style.css` | Shell web / SPA (no se comprobó manifest ni service worker) |
 | `js/app.js` | Router de vistas y compuerta de PIN (`renderPinGate` L103, `navigate` L195) |
 | `js/products-data.js` | Catálogo semilla `INITIAL_PRODUCTS` |
 | `js/store.js` | Estado híbrido localStorage + Supabase + Realtime (clase única, 1023 líneas) |
@@ -30,7 +30,7 @@ Base: commit `169247d`, rama `codex/experiment-E0`. Mapa por lectura estática l
 
 1. **Modelo de datos.** `docs/03_ARQUITECTURA_Y_DATOS.md` L160-170 define una tabla `pedido_items` con `sin_stock`, `peso_real`, etc. `supabase/schema.sql` no la tiene: los ítems son una columna `items JSONB` en `pedidos` (L41), y `store.js` escribe `items` directamente (L419).
 2. **Seguridad/RLS.** `docs/05_PLAN_DE_DESARROLLO_MVP.md` L47 habla de esquema "con políticas RLS" y L43 de PIN de admin. En código las políticas son abiertas a todos (`schema.sql` L89-104). El PIN por defecto está en el cliente (`store.js` L223, L253, L282-286: comparación en el navegador) y la configuración cloud por defecto está embebida en `store.js` L220-223 y L250-253. El PIN es sólo control de interfaz, no autorización de datos.
-3. **Rutas/estado de despliegue.** `README.md` L84-85 y `docs/05` L47, L52 enlazan a rutas absolutas del repo original (`miHuerta`), y `docs/05` L26 afirma "100% Operativo" para un proyecto cloud concreto. Este repo no puede verificarlo y el código lo contradice como garantía (sin Auth, sin transacciones, sin reintentos).
+3. **Rutas/estado de despliegue.** `README.md` L84-85 y `docs/05` L47, L52 enlazan a rutas absolutas del repo original (`miHuerta`), y `docs/05` L26 afirma "100% Operativo" para un proyecto cloud concreto. El despliegue y el estado operativo declarados no se pueden verificar estáticamente desde este repo.
 
 Observación adicional: los ids de pedido se calculan en el cliente (`store.js` L666) mientras `schema.sql` L33 define `SERIAL`; con varios dispositivos puede haber colisión o sobrescritura por `upsert`.
 

@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(process.argv[2] || '.');
+const testURL=process.argv[3] || 'http://127.0.0.1:9845/'; const live=Boolean(process.argv[3]);
 (async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe',headless:true,args:['--disable-background-networking','--disable-component-update','--no-first-run']});
  try {
@@ -14,6 +15,7 @@ const root = path.resolve(process.argv[2] || '.');
   if(url.hostname==='127.0.0.1'){
    const rel=decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname).slice(1);
    if(rel==='js/public-config.js'&&configOverride)return route.fulfill({body:'window.NEXO_PUBLIC_CONFIG='+JSON.stringify(configOverride)+';',contentType:'application/javascript'});
+   if(live)return route.continue();
    if(!/^(index\.html|(?:js|css)\/[\w./-]+)$/.test(rel)||rel.includes('..'))return route.abort();
    try { const body=await fs.readFile(path.join(root,rel)); const ext=path.extname(rel); return route.fulfill({body,contentType:({'.html':'text/html','.js':'application/javascript','.css':'text/css'})[ext]||'application/octet-stream'}); }catch{return route.fulfill({status:404,body:''});}
   }
@@ -30,7 +32,7 @@ const root = path.resolve(process.argv[2] || '.');
   window.supabase={createClient(){window.__supabaseCalls++;throw new Error('Unexpected Supabase creation');}};
  });
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
- await page.goto('http://127.0.0.1:9845/',{waitUntil:'load'});
+ await page.goto(testURL,{waitUntil:'load'});
  await page.addStyleTag({content:'.hidden{display:none!important}'});
  await page.waitForSelector('#app-content');
  assert.match(await page.locator('body').innerText(),/demo/i);
@@ -65,14 +67,14 @@ const root = path.resolve(process.argv[2] || '.');
  assert.equal(await page.locator('a[href*="wa.me"]').count(),0);
  configOverride={mode:'production'};
  const invalidPage=await context.newPage();invalidPage.on('pageerror',e=>errors.push(e.message));
- await invalidPage.goto('http://127.0.0.1:9845/',{waitUntil:'load'});
+ await invalidPage.goto(testURL,{waitUntil:'load'});
  await invalidPage.locator('#nexo-config-error-card').waitFor({state:'attached'});
  assert.equal(await invalidPage.locator('[data-add-id]').count(),0);
  assert.equal(await invalidPage.evaluate(()=>window.__supabaseCalls),0);
  await invalidPage.close();
  configOverride={mode:'production',business:{name:'Synthetic QA business'},supabase:{url:'https://example.invalid',anonKey:'public-test-key'}};
  const validPage=await context.newPage();validPage.on('pageerror',e=>errors.push(e.message));
- await validPage.goto('http://127.0.0.1:9845/',{waitUntil:'load'});
+ await validPage.goto(testURL,{waitUntil:'load'});
  await validPage.locator('#phone-form').waitFor({state:'attached'});
  assert.equal(await validPage.locator('#btn-quick-demo-user').count(),0,'no demo identity in valid production');
  assert.equal(await validPage.evaluate(()=>window.__supabaseCalls),1,'only fake injected client called');
@@ -82,6 +84,7 @@ const root = path.resolve(process.argv[2] || '.');
  await context.close();
  } finally {await browser.close();}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});
+
 
 
 

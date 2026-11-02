@@ -78,9 +78,10 @@ const root = path.resolve(process.argv[2] || '.');
  assert.equal(await validPage.evaluate(()=>window.__supabaseCalls),1,'only fake injected client called');
  assert.deepEqual(dataRequests,[]);assert.deepEqual(errors,[]);
  await validPage.close();
- console.log(JSON.stringify({result:'PASS',productionFailClosed:true,productionDemoCTA:false,simulatedMessages:2,,viewport:390,orderId:order.id,finalState:final.estado,total:final.total_real,supabaseCalls:0,dataRequests:0,blockedAssets:external.length,pageErrors:errors}));
+ console.log(JSON.stringify({result:'PASS',productionFailClosed:true,productionDemoCTA:false,simulatedMessages:2,viewport:390,orderId:order.id,finalState:final.estado,total:final.total_real,supabaseCalls:0,dataRequests:0,blockedAssets:external.length,pageErrors:errors}));
  await context.close();
  } finally {await browser.close();}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});
+
 
 

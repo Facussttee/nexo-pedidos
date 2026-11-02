@@ -43,6 +43,11 @@ const root = path.resolve(process.argv[2] || '.');
  const readOrders=()=>page.evaluate(()=>{const key=Object.keys(localStorage).find(k=>/^nexo/i.test(k)&&/orders/i.test(k));return key?JSON.parse(localStorage.getItem(key)):[];});
  const orders=await readOrders();const order=orders[0];assert.ok(order&&order.estado==='PENDIENTE');
  await page.evaluate(()=>{location.hash='operator';});
+ await page.waitForFunction(()=>document.querySelector('#pin-input')||document.querySelector('.btn-start-prep'));
+ if(await page.locator('#pin-input').count()){
+  await page.locator('#pin-input').fill('1234');
+  await page.locator('#pin-gate-form').evaluate(el=>el.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ }
  await page.locator(`[data-start-id="${order.id}"]`).waitFor({state:'attached'});
  await click(`[data-start-id="${order.id}"]`);
  for(const input of await page.locator(`.input-weight[data-order-id="${order.id}"]`).all()) await input.evaluate(el=>{el.value=el.dataset.unit==='KG'?'1150':'2';el.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -56,3 +61,4 @@ const root = path.resolve(process.argv[2] || '.');
  await context.close();
  } finally {await browser.close();}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});
+

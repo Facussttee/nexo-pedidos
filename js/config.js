@@ -228,7 +228,7 @@ function readPublicConfigSource() {
 }
 
 /**
- * Bloquea toda salida de red y apertura de enlaces externos en modo demo.
+ * Bloquea las APIs de datos JS (fetch, WebSocket, EventSource, XHR, sendBeacon) y apertura de enlaces externos (window.open / wa.me) en modo demo.
  * Devuelve un registro de intentos bloqueados (útil para auditoría y pruebas).
  */
 function installDemoNetworkGuard(win, onBlocked) {

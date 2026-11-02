@@ -49,7 +49,7 @@ class Store {
     this.realtimeChannel = null;
     this.cloudError = null;
 
-    // En demo se bloquea toda salida de red antes de cualquier otra cosa.
+    // En demo se bloquean las APIs de datos JS y apertura de enlaces externos (WhatsApp) antes de inicializar.
     if (this.isDemo() && typeof window !== "undefined") {
       this.blockedNetwork = installDemoNetworkGuard(window, (entry) => this.notify("network_blocked", entry));
     }

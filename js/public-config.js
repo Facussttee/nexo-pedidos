@@ -4,7 +4,7 @@
 // Este archivo se publica tal cual al navegador: NUNCA poner aquí secretos,
 // service_role, contraseñas ni credenciales de servidor.
 //
-// Modo demo (predeterminado): datos sintéticos, sin red, WhatsApp simulado.
+// Modo demo (predeterminado): datos sintéticos, APIs de datos y Supabase bloqueadas, WhatsApp simulado.
 // Modo producción: requiere TODOS los campos; si falta alguno la app muestra un
 // error claro y no arranca (no hay fallback a demo ni a endpoints heredados).
 //

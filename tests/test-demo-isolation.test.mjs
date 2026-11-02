@@ -329,6 +329,36 @@ console.log("\n--- SUITE 2: Explicit Public Config & Production Fail-Closed ---"
   assert.equal(brokenStore.getProducts().length, 0, "Producción inválida no debe exponer catálogo demo");
   assert.equal(brokenStore.createOrder({ cliente: { nombre: "X", telefono: "1100000099" }, tipo_entrega: "RETIRO", direccion_entrega: "" }), null, "Producción inválida no debe permitir crear pedidos locales");
   pass("2.5 Producción incompleta bloquea vistas/pedidos, muestra error claro y no simula éxito local");
+
+  // 2.6 Producción válida (mockeada en VM sin red real) NO renderiza ni habilita #btn-quick-demo-user ni clientes sintéticos
+  const demoVm = runBundleInSandbox();
+  assert.ok(demoVm.elements["app-content"].innerHTML.includes('id="btn-quick-demo-user"'), "En modo demo sí debe mostrarse #btn-quick-demo-user");
+
+  const fakeAnonJwt = [
+    Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(JSON.stringify({ role: "anon", iss: "supabase" })).toString("base64url"),
+    "sig"
+  ].join(".");
+  const prodValidVm = runBundleInSandbox({
+    publicConfigScript: `window.NEXO_PUBLIC_CONFIG = ${JSON.stringify({
+      mode: "production",
+      business: { name: "Comercio Productivo Mock", alias: "comercio.mock", whatsapp: "5491100009999" },
+      supabase: { url: "https://mock-prod-isolated.supabase.co", anonKey: fakeAnonJwt }
+    })};`
+  });
+  assert.ok(prodValidVm.elements["app-content"].innerHTML.includes("Comercio Productivo Mock"), "Producción válida debe renderizar el nombre configurado");
+  assert.ok(!prodValidVm.elements["app-content"].innerHTML.includes("btn-quick-demo-user"), "Producción válida NUNCA debe renderizar #btn-quick-demo-user");
+  assert.ok(!prodValidVm.elements["app-content"].innerHTML.includes(DEMO_QUICK_CUSTOMER.nombre), "Producción válida NUNCA debe ofrecer el botón de cliente sintético");
+
+  const prodValidCfg = resolveNexoConfig({
+    mode: "production",
+    business: { name: "Comercio Productivo Mock", alias: "comercio.mock", whatsapp: "5491100009999" },
+    supabase: { url: "https://mock-prod-isolated.supabase.co", anonKey: fakeAnonJwt }
+  });
+  const prodStore = new Store(prodValidCfg);
+  assert.equal(Object.keys(prodStore.getCustomers()).length, 0, "Producción válida no debe sembrar clientes sintéticos en nexo_prod_v1_*");
+  assert.equal(prodStore.getOrders().length, 0, "Producción válida no debe sembrar pedidos sintéticos en nexo_prod_v1_*");
+  pass("2.6 Producción válida (aislada con mock) oculta #btn-quick-demo-user y no siembra clientes/pedidos sintéticos");
 }
 
 // ===========================================================================

@@ -111,7 +111,7 @@ export function renderClientView(container) {
                   minlength="2"
                   maxlength="60"
                   autocomplete="name"
-                  placeholder="Ej: Ana Demo (sintética)"
+                  placeholder="${store.isDemo() ? "Ej: Ana Demo (sintética)" : "Ej: Tu nombre y apellido"}"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
                 <p id="name-error" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
@@ -126,7 +126,7 @@ export function renderClientView(container) {
                 <input
                   type="text"
                   id="address-input"
-                  placeholder="Ej: Calle Ficticia 101 (demo)"
+                  placeholder="${store.isDemo() ? "Ej: Calle Ficticia 101 (demo)" : "Ej: Calle y altura, piso/depto"}"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
               </div>
@@ -140,7 +140,10 @@ export function renderClientView(container) {
             </button>
           </form>
 
-          <!-- Acceso rápido demo -->
+          <!-- Acceso rápido demo (exclusivo en Modo Demo) -->
+          ${
+            store.isDemo()
+              ? `
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               id="btn-quick-demo-user"
@@ -150,6 +153,9 @@ export function renderClientView(container) {
               Probar como ${DEMO_QUICK_CUSTOMER.nombre}
             </button>
           </div>
+          `
+              : ""
+          }
 
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
             <span class="flex items-center gap-1.5">
@@ -258,6 +264,7 @@ export function renderClientView(container) {
     }
 
     btnQuickDemo?.addEventListener("click", () => {
+      if (!store.isDemo()) return;
       const demoUser = store.saveCustomer({ ...DEMO_QUICK_CUSTOMER });
       store.setCurrentUser(demoUser);
       deliveryAddress = demoUser.direccion || "";

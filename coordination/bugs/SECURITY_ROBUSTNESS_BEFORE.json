@@ -1,0 +1,46 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\review",
+  "probes": [
+    {
+      "id": "BUG-002",
+      "name": "HTML injection through customer name entered via UI",
+      "client": {
+        "marker": 1,
+        "images": 1
+      },
+      "operator": {
+        "marker": 1,
+        "images": 1
+      },
+      "reproduced": true,
+      "errors": []
+    },
+    {
+      "id": "BUG-003",
+      "name": "Corrupt local catalog",
+      "errors": [
+        "products.filter is not a function"
+      ],
+      "productButtons": 0,
+      "reproduced": true
+    },
+    {
+      "id": "BUG-004",
+      "name": "Edit delivery modal with reduced viewport (keyboard-like height)",
+      "viewport": {
+        "width": 390,
+        "height": 400
+      },
+      "submitBox": {
+        "x": 200,
+        "y": 376.5,
+        "width": 153,
+        "height": 44
+      },
+      "clickable": true,
+      "reproduced": false,
+      "limit": "Viewport reduction only, not a physical virtual keyboard."
+    }
+  ],
+  "limits": "Local synthetic demo only; no deployed DB permissions assessed."
+}

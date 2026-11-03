@@ -11,3 +11,5 @@ Siguiente delegación preparada, todavía NO enviada: leer D:\Escritorio\nexo-pe
 Prueba propia SCROLL_ACCEPTANCE_AFTER.json48/48 con6viewports; ejecutada sobrea4556cc cuyoCSS es idéntico a1a27cd1; últimos cambios sólo tests/informes. Scripts y logs propios terminados, servidores y navegadores cerrados. Una fixture equivocada de carrito se corrigió volviendo de seguimiento a catálogo; conservar reporte sin tratarlo como bug real. Primer proceso sin diagnóstico se detuvo sólo con su árbol propio.
 
 Sin DB/WhatsApp reales, deploy ni cambios en MiHuerta. Último push de evolución todavía pendiente, autorización de usuario para GitHub sigue vigente. No marcar objetivo global completo antes de B/C/E/F y dependencias.
+
+QA-B-PROPOSAL enviado una vez por UI y confirmado en conversación; verificar Cancel/Working antes de asumir inicio. Mismo Flash Medium, sin cambios app. Push del checkpoint confirmado: origin/main ea11eae1653f650e972a895baa92d2cd82837937. Codex reprodujo BUG-002 XSS cliente/operario y BUG-003 catálogo corrupto con pruebas locales; ver JSON y registros. No están corregidos todavía. Modal390x400 no reprodujo bloqueo.

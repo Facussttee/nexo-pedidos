@@ -12,9 +12,9 @@ const {chromium}=require('C:/Users/Facu/.cache/codex-runtimes/codex-primary-runt
  const page=await context.newPage();page.on('requestfailed',r=>failed.push({url:r.url(),failure:r.failure()?.errorText}));page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.url().includes('cdn.tailwindcss.com'))tailwindStatus=r.status();});
  await page.goto(running.url+'/?demo=1',{waitUntil:'load',timeout:30000});await page.locator('#btn-quick-demo-user').click();
  const metrics=()=>page.evaluate(()=>({y:scrollY,rootHeight:document.documentElement.scrollHeight,bodyHeight:document.body.scrollHeight,viewport:innerHeight,bodyOverflow:getComputedStyle(document.body).overflow,rootOverflow:getComputedStyle(document.documentElement).overflow,cardWidth:document.querySelector('#app-content>div')?.getBoundingClientRect().width,navDisplay:getComputedStyle(document.querySelector('#simulator-bar')).display}));
- const before=await metrics();await page.mouse.move(viewport.width/2,viewport.height/2);await page.mouse.wheel(0,800);await page.waitForTimeout(350);const after=await metrics();
+ if(process.argv.includes('--experiment-clip'))await page.addStyleTag({content:'html{overflow-x:clip;overflow-y:auto}body{overflow-x:clip;overflow-y:visible}'}); const before=await metrics();await page.mouse.move(viewport.width/2,viewport.height/2);await page.mouse.wheel(0,800);await page.waitForTimeout(350);const after=await metrics();
  rows.push({viewport,before,after,wheelMoved:after.y>before.y,tailwindStatus,failed,errors});await context.close();
  }
- console.log(JSON.stringify(rows,null,2));await fs.writeFile(path.join(root,'coordination/bugs/BASELINE_SCROLL.json'),JSON.stringify(rows,null,2));
+ console.log(JSON.stringify(rows,null,2));await fs.writeFile(path.join(root,process.argv.includes('--experiment-clip')?'coordination/bugs/SCROLL_EXPERIMENT.json':'coordination/bugs/BASELINE_SCROLL.json'),JSON.stringify(rows,null,2));
  }finally{if(browser)await browser.close();await new Promise(r=>running.server.close(r));}
 })().catch(e=>{console.error(e.stack);process.exitCode=1});

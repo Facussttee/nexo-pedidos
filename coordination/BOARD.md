@@ -12,3 +12,5 @@ Un escritor por worktree; sólo Codex acepta DONE. No hay lock distribuido.
 
 Todos los turnos de Antigravity finalizaron; no hay escritor del ejecutor activo. Revisión Codex en D:\Escritorio\nexo-pedidos-worktrees\review, detached 76a08cb. No hubo cambio de modelo durante turno activo. El paso de Opus a Gemini ocurrió tras error final de cuota y checkpoint WIP.
 Remoto privado publicado: https://github.com/Facussttee/nexo-pedidos, origin/main. Upstream original con push bloqueado; sin deploy. Historial de pruebas, correcciones y cuotas en results/reviews/DECISIONS.
+
+Evolución autorizada después del primer checkpoint: QA-A ACCEPTED (1a27cd1 -> a39c703), QA-B-PROPOSAL preparada. El estado actual prevalece sobre la nota histórica de ausencia de tareas: ver EVOLUTION.md y ACTIVE_EXECUTION.md. Worktrees E0/NP-002/NP-003 retirados; sus ramas/resultados permanecen.

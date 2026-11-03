@@ -1,0 +1,14 @@
+# QA-B-PROPOSAL — propuesta revisable, sin rediseño de app todavía
+
+Autorización: implementación del plan de calidad/evolución de Facu; respetar gate visual de B antes de extender rediseño. Modelo económico observado Gemini 3.8 Flash Medium; conservarlo durante todo el turno. Worktree exclusivo quality/codex/quality-navigation, base 1a27cd1; comprobar clean e instrucciones. Un escritor, sin otro subagente para esta tarea acotada.
+
+Leer el plan del coordinador D:\Escritorio\nexo-pedidos\docs\PLAN_DE_ACCION_CALIDAD_Y_EVOLUCION.md y coordination/reviews/QA-A-INDEPENDENT.md. QA-A fue integrado y Codex verificó scroll real independiente; no cambiar CSS/JS de app ni sus tests aquí.
+
+Entregar:
+1. Corregir docs/UX_COMPARISON.md: no afirmar scroll de MiHuerta fluido sin prueba; no atribuir a Nexo novedades heredadas (modo oscuro); inspeccionar ramas de KG/UNIDAD y reconocer que ya hay tratamiento unitario, distinguiendo vocabulario de balanza de una exigencia funcional inexistente. Comparación estática es evidencia limitada, no causa objetiva de la valoración estética. Referenciar archivos/líneas reales.
+2. Propuesta visual en docs/proposals/QA-B.html, autocontenida sin scripts externos, fuentes remotas, fetch, WhatsApp ni datos reales. Debe ser revisable a 390 y 1024 px. Una pantalla Preparación con selector de ejemplo unitario/pesable/mixto, lista de ítems, contador de preparados, totales y acciones claras. Un panel Administración con listado, Nuevo producto, formulario y archivo. Puede tener interacciones locales ficticias expresamente rotuladas Propuesta, sin persistencia ni simular capacidades productivas. Estética cuidada, controles44px e inputs16px; preservar posibilidades de faltante, editar entrega, sumar/quitar y cancelar como acciones de la propuesta.
+3. Contrato mínimo compatible con fuente actual: unidad_medida KG/UNIDAD y paso; no inventar FRACCIONABLE/litros/docenas ni UNITARIO con unidad kg y paso0.5. Unitario cantidad entera preparada; pesable kg real con presentación g/kg inequívoca. Precio final sólo se confirma al cerrar preparación, incluso unitario puede variar por faltante/cambio. Total cero válido.
+4. Delimitar CRUD demo con archivo lógico, SKU único opcional/categorías y snapshots históricos; no prometer inventario cuantitativo sin movimientos. Importación sólo diseño de mapeo/validación/preview con requisitos pendientes; ningún parser ni dependencia nueva.
+5. Resultado coordination/results/QA-B-PROPOSAL.md con modelo, decisiones, límites y cómo abrir propuesta. Commit local acotado; sin push/deploy, DB, bot ni MiHuerta. No declarar implementada la UI real por un prototipo.
+
+Archivos permitidos: docs/UX_COMPARISON.md, docs/proposals/QA-B.html, coordination/results/QA-B-PROPOSAL.md. No editar BOARD, store, vistas, CSS de app, bundle, permisos o suscripciones. Al terminar detenerse para revisión de Codex y Facu.

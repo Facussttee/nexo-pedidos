@@ -1126,6 +1126,10 @@
        LÓGICA JAVASCRIPT AUTOCONTENIDA (SIN PERSISTENCIA / MOCK)
        ======================================================== -->
   <script>
+    function escapeProposalText(value) {
+      const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return String(value ?? '').replace(/[&<>"']/g, char => entities[char]);
+    }
     // Presets de demostración
     const PRESETS = {
       mixto: {
@@ -1319,7 +1323,7 @@
         } else if (isUnit) {
           const qtyPrep = typeof item.cantidad_preparada === "number" ? item.cantidad_preparada : item.cantidad_solicitada;
           subtotalReal = Math.round(qtyPrep * item.precio_unitario);
-          isReady = item.isReady === true || qtyPrep > 0;
+          isReady = item.isReady === true;
         } else {
           if (item.peso_real !== null && item.peso_real > 0) {
             subtotalReal = Math.round(item.peso_real * item.precio_unitario);
@@ -1342,7 +1346,7 @@
               <span class="item-tag ${isUnit ? 'tag-unit' : 'tag-weight'}">
                 ${isUnit ? 'Artículo por Unidad' : 'Artículo al Peso'}
               </span>
-              <h4 class="item-name">${item.nombre}</h4>
+              <h4 class="item-name">${escapeProposalText(item.nombre)}</h4>
               <p class="item-demand">
                 Solicitó: <strong>${item.cantidad_solicitada} ${isUnit ? 'u.' : 'kg'}</strong>
                 <span style="color: var(--text-subtle);">($${item.precio_unitario.toLocaleString('es-AR')} / ${isUnit ? 'u' : 'kg'})</span>
@@ -1454,7 +1458,7 @@
       let cur = item.cantidad_preparada !== undefined ? item.cantidad_preparada : item.cantidad_solicitada;
       cur = Math.max(0, cur + delta);
       item.cantidad_preparada = cur;
-      item.isReady = cur > 0;
+      item.isReady = false; // La cantidad cambiada debe confirmarse otra vez.
       renderOrder();
     }
 
@@ -1503,12 +1507,12 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="product-name-col">
-            <strong>${p.nombre}</strong>
-            <span>SKU: ${p.sku || 'Sin código'}</span>
+            <strong>${escapeProposalText(p.nombre)}</strong>
+            <span>SKU: ${escapeProposalText(p.sku || 'Sin código')}</span>
           </td>
           <td>
             <span class="item-tag tag-unit" style="background-color: var(--bg-muted); color: var(--text-main);">
-              ${p.categoria}
+              ${escapeProposalText(p.categoria)}
             </span>
           </td>
           <td>

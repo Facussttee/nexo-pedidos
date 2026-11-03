@@ -197,9 +197,17 @@ body.has-sim-bar {
 }
 
 /* Guardia global contra desbordamiento horizontal en pantallas móviles (360px - 430px) */
-html, body {
+html {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: auto;
+  position: relative;
+}
+
+body {
+  max-width: 100vw;
+  overflow-x: clip;
+  overflow-y: visible;
   position: relative;
 }
 
@@ -208,7 +216,6 @@ body {
   -webkit-tap-highlight-color: transparent;
   background-color: var(--bg-canvas, #f8fafc);
   color: var(--text-primary, #0f172a);
-  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
   min-height: 100vh;

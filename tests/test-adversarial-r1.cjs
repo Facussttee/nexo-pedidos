@@ -305,7 +305,7 @@ console.log('   SUITE 4: VIEWPORT OVERFLOW AUDIT (360px, 375px, 390px, 412px, 43
 console.log('===============================================================\n');
 
 // 4.1 Root Viewport Overflow Guard in CSS
-const hasRootOverflowGuard = /html\s*,\s*body\s*\{[\s\S]*?max-width:\s*100vw;[\s\S]*?overflow-x:\s*hidden;/i.test(cssContent);
+const hasRootOverflowGuard = /(?:html|body)[\s\S]*?max-width:\s*100vw;[\s\S]*?overflow-x:\s*(?:clip|hidden);/i.test(cssContent);
 if (hasRootOverflowGuard) {
   recordPass('Viewport Overflow', 'Root CSS guard: html, body { max-width: 100vw; overflow-x: hidden; position: relative; } active.');
 } else {

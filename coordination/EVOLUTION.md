@@ -10,3 +10,5 @@ F PARTIAL: retirados worktrees E0/NP-002/NP-003 limpios, commits/ramas conservad
 Objetivo completo sigue activo, no equivale a sólo QA-A. Un escritor por worktree. Antigravity cambios principales; Codex contratos/revisión/pruebas/integración. Original MiHuerta intacto.
 
 B PROPOSED/WAITING_VISUAL_REVIEW: edf0d0b integrado70487f5, dos ajustes puntuales Codex (escape y confirmación unitaria),14/14 controles en dos viewports. Prototipo docs/proposals/QA-B.html y capturas. Pregunta visual pendiente; NO extender UI real hasta respuesta. E1 listo para delegación secuencial ahora que terminó B.
+
+E1 RUNNING: despacho único observado10:12PM en qualityedf0d0b, FlashMedium. Contrato QA-E1; no store/SQL/prototipo. E2 preparado no enviado. Preguntas visual y Delete Project pendientes. Publicación de propuesta/main d651f57 verificada. Ver ACTIVE_EXECUTION.md.

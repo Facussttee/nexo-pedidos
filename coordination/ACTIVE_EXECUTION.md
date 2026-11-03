@@ -1,25 +1,38 @@
-# Ejecución activa — continuidad después de propuesta visual
+# Estado de ejecución — Nexo Pedidos
 
-Objetivo global de implementar el plan sigue ACTIVO. No marcar completo por scroll ni prototipo.
+## Estado comprobado
+- Coordinador: D:\Escritorio\nexo-pedidos, rama codex/np-coordination.
+- Antigravity: único proyecto Nexo Pedidos; chat QA Plan Nexo Pedidos conservado. E0, NP-002 y NP-003 retirados de la interfaz con autorización, incluidos sus chats de prueba.
+- Nuevo chat de teamwork: Coordinación Nexo Pedidos Quality Teamwork. Encargo limitado a revisión y preparación, sin modificar archivos. Modelo principal observado Gemini 3.8 Flash Medium; no afirmar modelos ni resultados de investigadores sin verificarlos.
+- Skills deslop, webapp-testing y web-design-guidelines instaladas en ~/.gemini/config/skills y verificadas contra las copias locales. Descubrimiento efectivo por el ejecutor pendiente de su confirmación.
+- MiHuerta y sus servicios productivos quedan fuera del alcance.
 
-Repositorio coordinador D:\Escritorio\nexo-pedidos, codex/np-coordination. Original MiHuerta e994abf limpio verificado tras push, no se modifica. origin privado https://github.com/Facussttee/nexo-pedidos; main remoto d651f57 confirmado antes de esta actualización. El usuario autorizó subir a GitHub para Lenovo; no es deploy.
+## Completado
+- Demo aislada y servidor estático integrados.
+- Scroll aceptado previamente: 48 controles independientes en seis tamaños de pantalla; no prueba de Safari ni de tablet física.
+- Propuesta QA-B aprobada por Facu: usar la base visual y ajustar detalles. Falta implementar la UI real de preparación y administración.
 
-A ACCEPTED: Antigravity1a27cd1 -> a39c703. CSS idéntico al commit probado a4556cc.48/48 controles Codex en6viewports, rueda/teclado/touch emulado, carrito12ítems, operador16pedidos/admin; demo17 static24 store71 phone18. Sin Safari/tablet física. Servidores/navegadores propios cerrados.
-B PROPOSED/WAITING_VISUAL_REVIEW: Antigravityedf0d0b ->70487f5. Dos defectos del prototipo corregidos EXPLÍCITAMENTE por Codex en d651f57 (escape de nombre/SKU/categoría/ítem, confirmar/desmarcar Listo).14/14 controles en390/1024, sin peticiones externas. Propuesta docs/proposals/QA-B.html, capturas QA-B-*-390/1024.png en carpeta visualizaciones autorizada. Pregunta async enviada para aceptar base o cambiar diseño; SIN RESPUESTA al guardar. No ampliar rediseño/CRUD real sin esa revisión.
+## Seguridad QA-E1: NO ACEPTADA para integración
+- Antigravity terminó el commit a045bc9 en codex/quality-navigation; worktree limpio observado.
+- Revisión independiente de Codex y navegador sobre a045bc9: 7 de 8 controles pasan, pero el catálogo ejecuta el marcador XSS en nombre, detalle y categoría. Resultado XSS_ACCEPTANCE_AFTER_E1.json, pass=false, proceso exit 1.
+- No integrar a045bc9 hasta completar cobertura y repetir aceptación. También quedan sin escape item.categoria en carrito y item.nombre en preparación (revisión estática; faltan pruebas específicas).
+- El diff además quitó el signo $ en las opciones del selector de productos del operario. Restaurarlo en el seguimiento.
+- Pasada deslop: comentarios narrativos y alias escapeAttr sin uso en vistas; no se alteró código durante esta revisión. Deslop no sustituye revisión de seguridad.
+- Copia independiente de revisión: D:\Escritorio\nexo-pedidos-worktrees\review, detached a045bc9. La prueba cerró su servidor y navegador en finally.
 
-E1 RUNNING: Antigravity como único escritor en D:\Escritorio\nexo-pedidos-worktrees\quality / codex/quality-navigation. Baseedf0d0b limpio antes de despacho. Leer contrato D:\Escritorio\nexo-pedidos\coordination\tasks\QA-E1.md. Modelo observado Gemini3.8 Flash Medium; no cambiar en activo. Envío UI único confirmado10:12PM con Working/Cancel. Tarea de escape HTML contextual en vistas, helpernuevo, builder y bundle, tests reales. Sin store/config/SQL/worker/prototipo; fuente de reproducción BUG-002 y SECURITY_ROBUSTNESS_BEFORE.json en coordinador. No declarar corregido hasta diff y prueba independiente.
-E2 PREPARED/NOT_DISPATCHED: QA-E2.md para catálogo corrupto BUG-003. Ejecutar luego de revisar E1; no otro escritor. Auth/RLS real sin comprobar, sin docker/psql/supabase enPATHobservado. C y D importador definitivo siguen dependientes del contrato/relevamiento; docs/CONTRATO_CATALOGO_PREPARACION_DEMO.md y RELEVAMIENTO_IMPORTACION.md preparados, no backend implementado.
+## Próximo bloque de implementación
+1. Completar QA-E1 en Antigravity, un único escritor; revisión independiente antes de integrar.
+2. QA-E3: BUG-005, pérdida silenciosa de pedido ante fallo de almacenamiento. Paquete preparado; no despachado para implementación.
+3. BUG-006: total final cero mostrado como estimado. Reproducción guardada; sin corrección.
+4. QA-E2: BUG-003, catálogo corrupto. Paquete preparado; no despachado.
+5. Implementar preparación por unidades/peso y administración sobre QA-B aprobada.
+6. Importador definitivo después del relevamiento con el comercio y muestra anonimizada.
 
-Antigravity UI: ventana retornada788326, app process:C:\Users\Facu\AppData\Local\Programs\antigravity\Antigravity.exe. Conversación3023025a-3d96-41eb-9d96-db248c93baf3, QA Plan Nexo Pedidos, proyectoquality. Rehidratar con get_window/list_windows y observar antes de cada input. node_repl sky/ag/state persisten, snapshots índices no se reutilizan. No interpretar timeout como fin ni duplicar encargos.
+## Git y publicación
+- E0, NP-002 y NP-003 tienen todos sus cambios equivalentes presentes en origin/main; conservar sus puntas con tags archive/* antes de retirar las ramas locales.
+- Publicar coordinación y evidencia en origin/main privado, autorización vigente de Facu. No desplegar.
+- Alinear main local con origin/main de Nexo y corregir seguimiento heredado de upstream/MiHuerta.
+- Seguridad queda pendiente; no fusionar toda quality-navigation porque contiene historia ya integrada por cherry-pick.
 
-Revisión Git worktree review detachededf0d0b, sin tests corriendo. Codex corrige/prueba en coordinator/review, nunca quality mientras esté activo. Para revisar E1 al terminar checkout su commit enreview; bundlebuild allí; repetir navegador independiente sobre el resultado sin overrides. security-robustness-probes.cjs reproduce nombre por UI y operador; después deE1 esperar marker0/imágenes0 sin atribuir BUG003 como corregido. Probes salen0 al entregar reporte, NO son aceptación automática de que no haya bugs.
-
-F PARTIAL: worktrees E0/NP002/NP003 retirados limpios con git worktree remove; ramas y commits conservados. En UI aún visibles. Pregunta async de confirmación Delete Project enviada por exigencia skillComputerUse; SIN RESPUESTA al guardar. No pulsar eliminación final sin respuesta. Un proyecto visual no es worktree.
-
-Sin DB/WhatsApp/mensajes reales, bot, deploy ni cambios de permisos/suscripciones. Costo monetario no visible; Flash candidato económico registrado. Subagente research real observado enQA-A; modelo del auditor declarado por ejecutor, selector individual no inspeccionado porCodex. QA-B y E1 sin nuevos subagentes.
-
-Siguiente acción: observar el MISMO turno E1 para fin/diff; revisar directamente con criterio review-agent y probar. Si usuario responde sobre diseño o borrados incorporar sin abandonar E1. No tocar prototipo enquality para intentar emparejar la corrección deCodex: E1 no lo incluye, integrar por cherry-pick acotado.
-
-Nuevo hallazgo Codex BUG-005 P1: falla setItem de orders y createOrder vacía carrito sin guardar pedido ni aviso. PERSISTENCE_BEFORE.json y persistence-probe.cjs. QA-E3 preparado, NO enviado; priorizar E1 -> E3 -> E2, secuenciales (E3 no depende de catálogo corrupto). Nueva aceptación independiente XSS_ACCEPTANCE_BEFORE.json falla en7sinks texto/atributo y preserva snapshot; xss-acceptance.cjs --expect-fixed debe aprobar trasE1. No afirmar E1 terminado por estos archivos.
-
-BUG-006 P1 total_real0 reproducido mediante flujo de faltante -> cierre -> Listos -> mensajería simulada -> Cobrados. Store0, tarjetas/mensaje1200. ZERO_TOTAL_BEFORE.json y zero-total-probe.cjs. Codex puede hacer corrección mínima de3expresiones DESPUÉS de integrarE1, no editaroperatoractivo enquality. E1 sigue siendo el trabajo principal del ejecutor. No scopebackend/worker.
+## Límites operativos
+Sin DB real, mensajes reales, bot/index.js, seeds, despliegue ni cambios de permisos. PIN local no equivale a autenticación. Próxima etapa Supabase requiere entorno de pruebas y validación real de permisos y persistencia.

@@ -1,7 +1,7 @@
 # Nexo Pedidos — plan de acción de calidad y evolución
 
 Fecha: 2 de noviembre de 2026.
-Estado: plan preparado para revisión; no inicia implementación, agentes, limpieza ni servicios.
+Estado: ejecución autorizada por Facu. QA-A en curso con Antigravity; Codex revisa y prueba por separado. El resto se rige por las dependencias y revisiones de este plan.
 Repositorio de trabajo: D:\Escritorio\nexo-pedidos. MiHuerta se conserva como referencia de lectura, sin modificar sus archivos o servicios.
 
 ## 1. Objetivo
@@ -14,7 +14,7 @@ La búsqueda activa de bugs es parte de cada entrega. Una suite aprobada no demu
 
 | Observación | Estado | Acción |
 |---|---|---|
-| El usuario no puede hacer scroll en navegador/tablet | Reportado, pendiente de reproducción técnica | Prioridad inicial: identificar pantalla, dispositivo, entrada y condiciones exactas |
+| El usuario no puede hacer scroll en navegador/tablet | Reproducido por Codex en Chromium real: escritorio, tablet vertical/horizontal y móvil | QA-A en implementación; verificar la corrección sin overrides antes de cerrar |
 | Nexo se siente más pobre que MiHuerta | Evaluación del usuario; no hay todavía inventario comparativo de regresiones | Comparar recorridos, funciones, jerarquía visual y estados, preservando lo útil |
 | Administración insuficiente para agregar productos | Necesidad funcional confirmada | Diseñar y desarrollar catálogo administrable |
 | Operario excesivamente orientado a balanza | Problema de adecuación al dominio identificado | Preparación adaptable por tipo de ítem |
@@ -181,4 +181,5 @@ Servir la demo mediante bot/serve-demo.js en localhost; no iniciar bot/index.js,
 
 Verificar Git y que Antigravity esté inactivo; leer plan/teamwork reales y opciones económicas; asignar el paquete A con alcance pequeño y aceptación de scroll. En paralelo, revisión de seguridad/robustez de lectura en otro agente, si hay capacidad disponible. Mostrar después el primer resultado antes de ampliar el rediseño.
 
-Este archivo autoriza únicamente la planificación que solicitó Facu en este turno. No se ejecutó todavía ninguna de las nuevas fases, limpiezas o delegaciones.
+El archivo fue preparado inicialmente sin ejecutar cambios. Facu autorizó luego implementar el plan, con Antigravity como ejecutor principal. El estado comprobado de cada entrega se registra en coordination/EVOLUTION.md y sus informes; esta autorización no elimina las dependencias de relevamiento, revisión visual ni aislamiento productivo.
+

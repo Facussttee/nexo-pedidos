@@ -1,6 +1,6 @@
 # QA-E3 — fallo de persistencia en checkout (BUG-005)
 
-Preparado, NO enviado. Ejecutar secuencialmente tras E1/E2 y revisar worktree limpio. Antigravity único escritor, FlashMedium observado o modelo económico verificado antes del turno. No ampliar UI visual/CRUD ni tocar DB/WhatsApp reales.
+Preparado, NO enviado. Ejecutar secuencialmente tras revisar E1 y comprobar worktree limpio; priorizar antes de E2 por pérdida de carrito P1. Antigravity único escritor, FlashMedium observado o modelo económico verificado antes del turno. No ampliar UI visual/CRUD ni tocar DB/WhatsApp reales.
 
 Leer BUG-005.md y PERSISTENCE_BEFORE.json del coordinador. Codex reprodujo error con1 fallo de setItem de orders:2 pedidos antes/después y carrito borrado, sin aviso. No sustituir este fallo por una prueba de parseo ni por logs silenciosos.
 

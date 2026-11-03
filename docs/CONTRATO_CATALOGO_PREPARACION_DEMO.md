@@ -12,7 +12,7 @@ Precios finitos no negativos; moneda actual con redondeo coherente, sin introduc
 
 ID estable generado localmente en demo, no reutilizado al archivar. SKU opcional normalizado y único (considerar archivados), nombre/categoría obligatorios con límites. Categorías derivadas de datos y configurables; no un enum fijo por cliente. Escapar al renderizar, conservar texto original en datos.
 
-Pedidos y carrito mantienen sus snapshots. Editar precio/nombre/unidad del producto o archivarlo no reescribe pedidos históricos. Cambiar la modalidad de un producto referenciado debe estar prohibido o requerir crear uno nuevo; resolver explícitamente antes de implementar. Archivar saca del catálogo y del selector de agregar ítems, conserva referencia histórica. No usar delete físico. Una fila de catálogo no es una cantidad de inventario.
+Los pedidos conservan sus snapshots. Editar precio/nombre/unidad del producto o archivarlo no reescribe pedidos históricos. El carrito aún no confirmado debe revalidarse al confirmar y avisar cambios de precio/disponibilidad; no usarlo como fuente autoritativa para una compra real. Cambiar la modalidad de un producto referenciado debe estar prohibido o requerir crear uno nuevo; resolver explícitamente antes de implementar. Archivar saca del catálogo y del selector de agregar ítems, conserva referencia histórica. No usar delete físico. Una fila de catálogo no es una cantidad de inventario.
 
 ## Preparación
 

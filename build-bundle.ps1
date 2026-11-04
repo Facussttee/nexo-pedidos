@@ -18,6 +18,8 @@ $sourceFiles = @(
   (Join-Path $jsDir "products-data.js"),
   (Join-Path $jsDir "config.js"),
   (Join-Path $jsDir "demo-data.js"),
+  (Join-Path $jsDir "html.js"),
+  (Join-Path $jsDir "images.js"),
   (Join-Path $jsDir "store.js"),
   (Join-Path $viewsDir "client.js"),
   (Join-Path $viewsDir "operator.js"),
@@ -46,6 +48,20 @@ $config = $config -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
 $demoData = Get-Content (Join-Path $jsDir "demo-data.js") -Raw -Encoding UTF8
 $demoData = $demoData -replace '(?m)^\s*import\s+.*?;?\s*$', ''
 $demoData = $demoData -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
+
+# 3.1d html.js (funciones de escape HTML seguro)
+$html = Get-Content (Join-Path $jsDir "html.js") -Raw -Encoding UTF8
+$html = $html -replace '(?m)^\s*import\s+.*?;?\s*$', ''
+$html = $html -replace '(?m)^\s*export\s+function\s+', 'function '
+$html = $html -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
+
+# 3.1e images.js (modulo de imagenes IDB y procesamiento)
+$images = Get-Content (Join-Path $jsDir "images.js") -Raw -Encoding UTF8
+$images = $images -replace '(?m)^\s*import\s+.*?;?\s*$', ''
+$images = $images -replace '(?m)^\s*export\s+const\s+', 'const '
+$images = $images -replace '(?m)^\s*export\s+async\s+function\s+', 'async function '
+$images = $images -replace '(?m)^\s*export\s+function\s+', 'function '
+$images = $images -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
 
 # 3.2 store.js
 $store = Get-Content (Join-Path $jsDir "store.js") -Raw -Encoding UTF8
@@ -91,6 +107,14 @@ $parts = @(
   "  // ==========================================",
   $config.Trim(),
   $demoData.Trim(),
+  "  // ==========================================",
+  "  // 1c. UTILIDADES DE ESCAPADO HTML SEGURO",
+  "  // ==========================================",
+  $html.Trim(),
+  "  // ==========================================",
+  "  // 1d. MODULO DE IMAGENES INDEXEDDB",
+  "  // ==========================================",
+  $images.Trim(),
   "  // ==========================================",
   "  // 2. STORE Y PERSISTENCIA LOCAL + SUPABASE",
   "  // ==========================================",

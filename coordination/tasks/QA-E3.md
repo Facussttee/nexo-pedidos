@@ -14,3 +14,6 @@ Resultado requerido:
 Archivos permitidos: js/store.js (persistencia crítica/resultado y checkout), js/views/client.js sólo resultado/error/reintento checkout, js/app.js sólo aviso de memoria temporal si hace falta, js/bundle.js generado, tests nuevos de persistencia/checkout y coordinación QA-E3/BUG005. No prototipo, SQL/bot/BOARD ni red real. Explicar ampliación concreta antes de tocar otros archivos.
 
 Pruebas de navegador con fallos inyectados en almacenamiento local, estado antes/después y recarga; contrato de no pérdida/no duplicado comprobado, no sólo buscar strings. Probar éxito normal y fallo crítico/reintento/caso cleanup fallido. Regresiones aisladas demo17 static24 store71 phone18, XSS/navegación/catálogo pertinentes. Build de ESTEworktree y sintaxis bundle. Commit local e informe con modelo, evidencias y límites. Codex revisa y prueba por separado antes de integrar.
+
+
+Checkpoint 2026-11-04: E1 aceptado e integrado sin commit; se permite continuar sobre ese diff aceptado en quality, único escritor. Prueba independiente ya escrita y roja: coordination/reviews/checkout-storage-acceptance.mjs, baseline CHECKOUT_STORAGE_BASELINE.json (15 fallos). No rehacerla ni confundir con UI; Codex verificará aviso/reintento en navegador. En este turno no hacer commit. Preservar E1 y no tocar sus tests ni ampliar UI.

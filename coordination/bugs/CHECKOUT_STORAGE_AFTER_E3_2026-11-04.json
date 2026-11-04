@@ -1,0 +1,2944 @@
+{
+  "author": "Codex",
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "at": "2026-11-04T16:11:00.866Z",
+  "pass": true,
+  "passed": 106,
+  "failed": 0,
+  "limitations": [
+    "No DOM: visible error, button recovery and accessibility need browser acceptance.",
+    "No server, DB, bot, real messages, browser storage events or multi-tab concurrency.",
+    "Reload uses a separate child process and durable Map entries only; memoryFallback and ESM caches reset.",
+    "Returned/thrown checkout outcomes are recorded, not interpreted as a specific future API contract."
+  ],
+  "cases": [
+    {
+      "scenario": "normal",
+      "checks": [
+        {
+          "name": "one accepted order is durable",
+          "pass": true
+        },
+        {
+          "name": "previous orders snapshots preserved",
+          "pass": true
+        },
+        {
+          "name": "normal checkout clears cart",
+          "pass": true
+        },
+        {
+          "name": "after checkout: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808659895-0.5022861453994656"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:10:59.896Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808659895-0.5022861453994656\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9003
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:10:59.896Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808659895-0.5022861453994656\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:10:59.896Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808659895-0.5022861453994656\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9003"
+        ]
+      ]
+    },
+    {
+      "scenario": "orders-failure",
+      "checks": [
+        {
+          "name": "failure injection was reached",
+          "pass": true
+        },
+        {
+          "name": "critical failure preserves durable orders/cart/active",
+          "pass": true
+        },
+        {
+          "name": "critical failure has no acceptance effects",
+          "pass": true,
+          "detail": {
+            "sync": 2,
+            "audio": 2,
+            "events": [
+              "order_created",
+              "cart_changed",
+              "order_created"
+            ]
+          }
+        },
+        {
+          "name": "after critical failure: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after critical failure: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after critical failure: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "restored storage/retry creates one order",
+          "pass": true
+        },
+        {
+          "name": "previous orders remain unchanged",
+          "pass": true
+        },
+        {
+          "name": "successful retry clears cart",
+          "pass": true
+        },
+        {
+          "name": "successful retry sets accepted active order",
+          "pass": true
+        },
+        {
+          "name": "after restored storage: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after restored storage: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after restored storage: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "legitimate later purchase is not deduplicated away",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660012-0.6751059846000178"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.013Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660013-0.5291780868522669\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.013Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660012-0.6751059846000178\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9004
+      },
+      "outcomes": [
+        {
+          "thrown": {
+            "name": "Error",
+            "message": "No se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá."
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.013Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660012-0.6751059846000178\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.013Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660012-0.6751059846000178\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.013Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660013-0.5291780868522669\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 2,
+        "audio": 2,
+        "events": [
+          "order_created",
+          "cart_changed",
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": true
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9004,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.013Z\",\"total_estimado\":1200,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":1,\\\"subtotal_estimado\\\":1200,\\\"checkout_revision\\\":\\\"1793808660013-0.5291780868522669\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":1,\"peso_real\":1,\"subtotal\":1200,\"sin_stock\":false}]},{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.013Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660012-0.6751059846000178\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9004"
+        ]
+      ]
+    },
+    {
+      "scenario": "all-writes",
+      "checks": [
+        {
+          "name": "failure injection was reached",
+          "pass": true
+        },
+        {
+          "name": "critical failure preserves durable orders/cart/active",
+          "pass": true
+        },
+        {
+          "name": "critical failure has no acceptance effects",
+          "pass": true,
+          "detail": {
+            "sync": 2,
+            "audio": 2,
+            "events": [
+              "order_created",
+              "cart_changed",
+              "order_created"
+            ]
+          }
+        },
+        {
+          "name": "after critical failure: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after critical failure: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after critical failure: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "restored storage/retry creates one order",
+          "pass": true
+        },
+        {
+          "name": "previous orders remain unchanged",
+          "pass": true
+        },
+        {
+          "name": "successful retry clears cart",
+          "pass": true
+        },
+        {
+          "name": "successful retry sets accepted active order",
+          "pass": true
+        },
+        {
+          "name": "after restored storage: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after restored storage: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after restored storage: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "legitimate later purchase is not deduplicated away",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660126-0.48649285475268156"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.127Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660127-0.7774498346419865\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.127Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660126-0.48649285475268156\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9004
+      },
+      "outcomes": [
+        {
+          "thrown": {
+            "name": "Error",
+            "message": "No se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá."
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.127Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660126-0.48649285475268156\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.127Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660126-0.48649285475268156\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.127Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660127-0.7774498346419865\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 2,
+        "audio": 2,
+        "events": [
+          "order_created",
+          "cart_changed",
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": true
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9004,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.127Z\",\"total_estimado\":1200,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":1,\\\"subtotal_estimado\\\":1200,\\\"checkout_revision\\\":\\\"1793808660127-0.7774498346419865\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":1,\"peso_real\":1,\"subtotal\":1200,\"sin_stock\":false}]},{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.127Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660126-0.48649285475268156\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9004"
+        ]
+      ]
+    },
+    {
+      "scenario": "cleanup-active",
+      "checks": [
+        {
+          "name": "one accepted order is durable",
+          "pass": true
+        },
+        {
+          "name": "previous orders snapshots preserved",
+          "pass": true
+        },
+        {
+          "name": "cleanup failure injection reached",
+          "pass": true
+        },
+        {
+          "name": "after checkout: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660248-0.9251491153470109"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.249Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660248-0.9251491153470109\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9001
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.249Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660248-0.9251491153470109\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": true
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.249Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660248-0.9251491153470109\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9001"
+        ]
+      ]
+    },
+    {
+      "scenario": "cleanup-active-reload",
+      "checks": [
+        {
+          "name": "reload retained one accepted order",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "reload/repeated confirmation does not duplicate accepted order",
+          "pass": true
+        },
+        {
+          "name": "accepted order snapshots preserved after reload retry",
+          "pass": true
+        },
+        {
+          "name": "reload recovery targets the accepted order",
+          "pass": true
+        },
+        {
+          "name": "legitimate later purchase creates one new order",
+          "pass": true
+        },
+        {
+          "name": "later purchase consumes its cart",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.249Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660248-0.9251491153470109\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.363Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660362-0.14667731834189623\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.249Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660248-0.9251491153470109\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9004
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.249Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660248-0.9251491153470109\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.249Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660248-0.9251491153470109\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.363Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660362-0.14667731834189623\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "cart_changed",
+          "cart_changed",
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9004,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.363Z\",\"total_estimado\":1200,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":1,\\\"subtotal_estimado\\\":1200,\\\"checkout_revision\\\":\\\"1793808660362-0.14667731834189623\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":1,\"peso_real\":1,\"subtotal\":1200,\"sin_stock\":false}]},{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.249Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660248-0.9251491153470109\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9004"
+        ]
+      ]
+    },
+    {
+      "scenario": "cleanup-cart",
+      "checks": [
+        {
+          "name": "one accepted order is durable",
+          "pass": true
+        },
+        {
+          "name": "previous orders snapshots preserved",
+          "pass": true
+        },
+        {
+          "name": "cleanup failure injection reached",
+          "pass": true
+        },
+        {
+          "name": "after checkout: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660485-0.10683096952641813"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.485Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660485-0.10683096952641813"
+          }
+        },
+        "active": 9003
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.485Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": true
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.485Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660485-0.10683096952641813\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9003"
+        ],
+        [
+          "nexo_demo_v1_cart",
+          "{\"qa-checkout\":{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}}"
+        ]
+      ]
+    },
+    {
+      "scenario": "cleanup-cart-reload",
+      "checks": [
+        {
+          "name": "reload retained one accepted order",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "reload/repeated confirmation does not duplicate accepted order",
+          "pass": true
+        },
+        {
+          "name": "accepted order snapshots preserved after reload retry",
+          "pass": true
+        },
+        {
+          "name": "reload recovery targets the accepted order",
+          "pass": true
+        },
+        {
+          "name": "legitimate later purchase creates one new order",
+          "pass": true
+        },
+        {
+          "name": "later purchase consumes its cart",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.485Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660485-0.10683096952641813"
+          }
+        },
+        "active": 9003
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.605Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660605-0.7764167490330378\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.485Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9004
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.485Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.485Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660485-0.10683096952641813\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.605Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660605-0.7764167490330378\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "cart_changed",
+          "cart_changed",
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9004,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.605Z\",\"total_estimado\":1200,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":1,\\\"subtotal_estimado\\\":1200,\\\"checkout_revision\\\":\\\"1793808660605-0.7764167490330378\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":1,\"peso_real\":1,\"subtotal\":1200,\"sin_stock\":false}]},{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.485Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660485-0.10683096952641813\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9004"
+        ]
+      ]
+    },
+    {
+      "scenario": "cleanup-both",
+      "checks": [
+        {
+          "name": "one accepted order is durable",
+          "pass": true
+        },
+        {
+          "name": "previous orders snapshots preserved",
+          "pass": true
+        },
+        {
+          "name": "cleanup failure injection reached",
+          "pass": true
+        },
+        {
+          "name": "after checkout: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after checkout: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660729-0.38844639949127746"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.729Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660729-0.38844639949127746"
+          }
+        },
+        "active": 9001
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.729Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": true
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": true
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.729Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660729-0.38844639949127746\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9001"
+        ],
+        [
+          "nexo_demo_v1_cart",
+          "{\"qa-checkout\":{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}}"
+        ]
+      ]
+    },
+    {
+      "scenario": "cleanup-both-reload",
+      "checks": [
+        {
+          "name": "reload retained one accepted order",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "fresh process before retry: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "reload/repeated confirmation does not duplicate accepted order",
+          "pass": true
+        },
+        {
+          "name": "accepted order snapshots preserved after reload retry",
+          "pass": true
+        },
+        {
+          "name": "reload recovery targets the accepted order",
+          "pass": true
+        },
+        {
+          "name": "legitimate later purchase creates one new order",
+          "pass": true
+        },
+        {
+          "name": "later purchase consumes its cart",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: orders getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: cart getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "after later purchase: active getter equals durable",
+          "pass": true
+        },
+        {
+          "name": "protected customer/catalog/config data preserved",
+          "pass": true
+        },
+        {
+          "name": "no network calls",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "before": {
+        "orders": [
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.729Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {
+          "qa-checkout": {
+            "producto_id": "qa-checkout",
+            "nombre": "Producto QA",
+            "categoria": "Almacén",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 1200,
+            "cantidad": 2,
+            "subtotal_estimado": 2400,
+            "checkout_revision": "1793808660729-0.38844639949127746"
+          }
+        },
+        "active": 9001
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.849Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660849-0.6530091370698164\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.729Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9002,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          },
+          {
+            "id": 9001,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro",
+            "estado": "PENDIENTE",
+            "fecha": "2026-01-01T00:00:00.000Z",
+            "total_estimado": 5,
+            "total_real": null,
+            "items": []
+          }
+        ],
+        "cart": {},
+        "active": 9004
+      },
+      "outcomes": [
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.729Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9003,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.729Z",
+            "total_estimado": 2400,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":2,\"subtotal_estimado\":2400,\"checkout_revision\":\"1793808660729-0.38844639949127746\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 2,
+                "peso_real": 2,
+                "subtotal": 2400,
+                "sin_stock": false
+              }
+            ]
+          }
+        },
+        {
+          "returned": {
+            "id": 9004,
+            "cliente": {
+              "telefono": "1100000098",
+              "nombre": "QA sintético",
+              "direccion": ""
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:11:00.849Z",
+            "total_estimado": 1200,
+            "total_real": null,
+            "checkout_cart_key": "[[\"qa-checkout\",{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad\":1,\"subtotal_estimado\":1200,\"checkout_revision\":\"1793808660849-0.6530091370698164\"}]]",
+            "items": [
+              {
+                "producto_id": "qa-checkout",
+                "nombre": "Producto QA",
+                "categoria": "Almacén",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 1200,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 1200,
+                "sin_stock": false
+              }
+            ]
+          }
+        }
+      ],
+      "effects": {
+        "sync": 1,
+        "audio": 1,
+        "events": [
+          "cart_changed",
+          "cart_changed",
+          "order_created"
+        ]
+      },
+      "attempts": [
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_orders",
+          "blocked": false
+        },
+        {
+          "op": "set",
+          "key": "nexo_demo_v1_active_order",
+          "blocked": false
+        },
+        {
+          "op": "remove",
+          "key": "nexo_demo_v1_cart",
+          "blocked": false
+        }
+      ],
+      "durable": [
+        [
+          "nexo_demo_v1_products",
+          "[{\"id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio\":1200,\"paso\":1,\"disponible\":true}]"
+        ],
+        [
+          "nexo_demo_v1_customers",
+          "{\"1100000098\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}}"
+        ],
+        [
+          "nexo_demo_v1_orders",
+          "[{\"id\":9004,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.849Z\",\"total_estimado\":1200,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":1,\\\"subtotal_estimado\\\":1200,\\\"checkout_revision\\\":\\\"1793808660849-0.6530091370698164\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":1,\"peso_real\":1,\"subtotal\":1200,\"sin_stock\":false}]},{\"id\":9003,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro en Mostrador\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-11-04T16:11:00.729Z\",\"total_estimado\":2400,\"total_real\":null,\"checkout_cart_key\":\"[[\\\"qa-checkout\\\",{\\\"producto_id\\\":\\\"qa-checkout\\\",\\\"nombre\\\":\\\"Producto QA\\\",\\\"categoria\\\":\\\"Almacén\\\",\\\"unidad_medida\\\":\\\"UNIDAD\\\",\\\"precio_unitario\\\":1200,\\\"cantidad\\\":2,\\\"subtotal_estimado\\\":2400,\\\"checkout_revision\\\":\\\"1793808660729-0.38844639949127746\\\"}]]\",\"items\":[{\"producto_id\":\"qa-checkout\",\"nombre\":\"Producto QA\",\"categoria\":\"Almacén\",\"unidad_medida\":\"UNIDAD\",\"precio_unitario\":1200,\"cantidad_solicitada\":2,\"peso_real\":2,\"subtotal\":2400,\"sin_stock\":false}]},{\"id\":9002,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]},{\"id\":9001,\"cliente\":{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"},\"tipo_entrega\":\"RETIRO\",\"direccion_entrega\":\"Retiro\",\"estado\":\"PENDIENTE\",\"fecha\":\"2026-01-01T00:00:00.000Z\",\"total_estimado\":5,\"total_real\":null,\"items\":[]}]"
+        ],
+        [
+          "nexo_demo_v1_local_settings",
+          "{\"staffPin\":\"4321\"}"
+        ],
+        [
+          "nexo_demo_v1_current_user",
+          "{\"telefono\":\"1100000098\",\"nombre\":\"QA sintético\",\"direccion\":\"\"}"
+        ],
+        [
+          "nexo_demo_v1_active_order",
+          "9004"
+        ]
+      ]
+    }
+  ]
+}

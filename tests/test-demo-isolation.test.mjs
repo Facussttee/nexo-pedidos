@@ -418,6 +418,9 @@ console.log("\n--- SUITE 3: Synthetic Data & Full Order/Weighing Flow ---");
 
   // Pesar 1.65 kg reales de tomate ($2600 * 1.65 = $4290) + 2 u acelga ($1800) = $6090
   demoStore.updateItemWeight(created.id, kgItemIdx, 1.65);
+  assert.equal(created.items[unitItemIdx].confirmado_preparacion, false, "UNIDAD precargada no está confirmada");
+  assert.throws(() => demoStore.finalizeOrderWeighing(created.id), /preparar|confirmar/);
+  demoStore.updateItemWeight(created.id, unitItemIdx, 2, { confirmUnit: true });
   demoStore.finalizeOrderWeighing(created.id, { [kgItemIdx]: 1.65, [unitItemIdx]: 2 });
 
   const readyOrder = demoStore.getOrders().find((o) => o.id === created.id);

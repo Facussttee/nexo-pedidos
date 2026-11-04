@@ -10,7 +10,7 @@
  * 5. Edge cases & boundary evaluations (string IDs, empty cart transitions, out-of-bounds removals, NaN handling)
  */
 
-import { store, STORAGE_KEYS, safeSet, safeGet } from "../js/store.js";
+
 
 // Polyfill minimal localStorage if not present in Node environment
 if (typeof globalThis.localStorage === "undefined") {
@@ -22,6 +22,8 @@ if (typeof globalThis.localStorage === "undefined") {
     clear: () => mem.clear()
   };
 }
+
+const { store, STORAGE_KEYS, safeSet, safeGet } = await import("../js/store.js");
 
 let passed = 0;
 let failed = 0;
@@ -221,7 +223,7 @@ assert(currentOrder.items.find(i => i.producto_id === "prod-1") === undefined, "
 // Both have peso_real !== null, so total_real should be calculated!
 const expectedReal = 6500 + 2400; // 8900
 assert(currentOrder.total_real === expectedReal, `3.3 total_real recalculated on removeItemFromOrder: expected ${expectedReal}, got ${currentOrder.total_real}`);
-assert(currentOrder.total_estimado === 8900, `3.3 total_estimado recalculated to ${currentOrder.total_estimado}`);
+assert(currentOrder.total_estimado === 7600, `3.3 total_estimado preserves requested 2kg Tomate + 2u Palta ($7600), got ${currentOrder.total_estimado}`);
 
 // 3.4 addProductToOrder: Add a UNIDAD item during preparation
 // UNIDAD has peso_real set to quantity immediately (1 un @ 1200 = 1200)
@@ -241,7 +243,7 @@ assert(manzanaItem.peso_real === null, "3.5 Added KG item has peso_real === null
 
 // With an unweighed KG item added, total_real reflects only weighed items (10100)
 assert(currentOrder.total_real === 10100, `3.5 total_real preserves weighed items sum ($10100) while Manzana is pending`);
-assert(currentOrder.total_estimado === 10100 + 2200, `3.5 total_estimado reflects new item estimated price: ${currentOrder.total_estimado}`);
+assert(currentOrder.total_estimado === 11000, `3.5 total_estimado is requested Tomate 5200 + Palta 2400 + Palta 1200 + Manzana 2200: ${currentOrder.total_estimado}`);
 
 // 3.6 Weigh the new Manzana item (itemIndex = 3)
 store.updateItemWeight(order.id, 3, 1.2); // 1.2 kg @ 2200 = 2640
@@ -378,19 +380,12 @@ const orderQtyTest = store.createOrder({
   cliente: { nombre: "Roberto", telefono: "1166667777" },
   tipo_entrega: "RETIRO"
 });
-store.addProductToOrder(orderQtyTest.id, "prod-1", "invalid_number");
-const orderAfterBadQty = store.getOrders().find(o => o.id === orderQtyTest.id);
-const badItem = orderAfterBadQty.items.find(i => i.producto_id === "prod-1");
-if (isNaN(badItem?.cantidad_solicitada)) {
-  noteEdgeCase(
-    "NaN propagation in addProductToOrder",
-    "Passing non-numeric string to addProductToOrder results in NaN subtotal and total_estimado due to Math.max(0.1, Number('invalid')).",
-    "Use `const qty = Math.max(0.1, Number(cantidad) || 0.1);` in store.js:864"
-  );
-  assert(true, "5.4 NaN propagation edge case verified and documented");
-} else {
-  assert(true, "5.4 Non-numeric quantity safely handled");
-}
+const beforeBadQty = JSON.stringify(store.getOrders());
+let quantityError = null;
+try { store.addProductToOrder(orderQtyTest.id, "prod-1", "invalid_number"); }
+catch (error) { quantityError = error; }
+assert(quantityError instanceof Error, "5.4 Non-numeric quantity is explicitly rejected");
+assert(JSON.stringify(store.getOrders()) === beforeBadQty, "5.4 Invalid quantity preserves orders without NaN propagation");
 
 console.log("\n===============================================================");
 console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);

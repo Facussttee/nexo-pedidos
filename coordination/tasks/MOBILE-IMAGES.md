@@ -1,0 +1,30 @@
+# MOBILE-IMAGES — Approved implementation, 2026-11-04
+
+User approved implementation. Source canonical D:/Escritorio/nexo-pedidos contains complete verified uncommitted demo; this worktree is a verified 163-file copy over HEAD cea4d0e. Old quality/review are partial. Single writer: Antigravity ONLY in this worktree. Codex coordinates and independently verifies. Do not modify source, MiHuerta, quality or review. No commits/push/deploy, DB, WhatsApp, dependencies, model or permission changes. Read AGENTS.md, docs/PRODUCT.md and coordination/DELIVERY_STATUS.md. Current task supersedes old dispatch instructions for demo improvements only.
+
+## Package M1 — mobile UI + accessible cart
+- Two columns client/admin >=360px; one below. Vertical flexible cards, no fixed square card, optional square photo area. Desktop no regression. Inputs16px controls44x44; names readable14-16px, prices16px. Client compact cards remove description and quick-weight presets; retain accessible quantity editing in cart.
+- Fixed area only useful controls: client search/categories; admin New/search/status/categories. Titles/greeting/settings outside sticky. Compact demo banner persistent 'Demo · WhatsApp simulado' with expandable details; role nav single row. One global theme control, remove per-view/cart duplicates. Remove Probar PIN global; staff Salir and Config PIN retained. Allow browser zoom in viewport.
+- Admin cards price direct + Editar. Move +/-100, archive/restore and availability inside edit form. Preserve archive access/status filters and price errors.
+- Operator keep one column, compact header + sticky status tabs; preserve preparation controls and semantics.
+- Remove header cart duplicate; only floating Ver pedido when nonempty.
+- Cart above entire demo header; accessible modal preferably native dialog, visible close/header, scroll body, safe-area footer/dvh. Focus contained, Escape, inert background, restore focus and catalog scroll. Backdrop close. Drag from handle/free header only, pointer capture/cancel handling, close >=80px downward else restore. Never intercept inner list/input/button scroll. Do not lose cart, address, mode, errors across rerender; preserve current validation/failure recovery. Support reduced-motion.
+
+## Package M2 — customer multiple orders
+- Reuse getOrdersByCustomer. Catalog access Mis pedidos count ongoing; no last-order-only banner. Two groups En curso / Historial (delivered/cancelled), newest first. Rows id/status/date/delivery/explicit estimated/provisional/final.
+- selectedOrderId explicit and ownership-checked using existing customer helper. Reactivity retains selected order even delivered/cancelled. Detail/list/catalog navigation; absent/deleted order handles gracefully. Checkout opens exactly returned order. Existing durable receipt/dedup guarantees untouched. Orders remain local, no server auth claims.
+
+## Package M3 — product images (implement now)
+- One photo/file per product in admin form: preview, replace, remove, cancel safe, block save while processing. Async generation token avoids stale selection after cancel/reselect. File picker should allow phone photo/file; no getUserMedia required.
+- Input<=15MiB and decoded<=25MP; JPEG/PNG/WebP; HEIC/HEIF native decode attempted, clear JPEG/PNG guidance if fails. Reject SVG/HTML/arbitrary URL. Reduce max side512 no upscaling, browser-oriented decode, white background JPEG quality.8, reject output>512KiB. No converter dependency.
+- New focused image module native IndexedDB DB nexo_demo_images_v1 store images, immutable opaque string IDs. Product optional imagen_id (absent for legacy/null for remove); preserve when omitted in saveProduct draft. LocalStorage NEVER contains image blobs/base64. Keep synchronous product APIs.
+- Prepare normalized blob -> IDB put await transaction COMPLETE -> saveProduct({...draft,imagen_id},id). If product fails rollback only newly created blob best effort; old product/image remain. On success remove old blob best effort. Removal saves imagen_id:null first then removes old. Cleanup failure must not turn durable product success into failure. No global orphan GC/migrations.
+- Client/admin asynchronously hydrate image DOM from IDB blob URLs scoped to current view/render; lazy/async load; revoke URLs on teardown/rerender. Missing/decode/IDB failure no broken-image icon or catalog failure; show text product without photo. No big empty area for no-photo products. Images decorative alt empty beside product name. Do not add image to order snapshots.
+- Add module to explicit build-bundle.ps1 order stripping import/exports correctly. Public serving still four allowed assets; bundle contains module. No extra externally hosted images.
+
+## Execution/review
+Implement M1 then M2 then M3, each with focused regression tests before/after. Use Ponytail: minimum whole solution, no architecture rewrite. Deslop only new diff, no unrelated cleanup.
+Run powershell -ExecutionPolicy Bypass -File ./build-bundle.ps1, node --check js/bundle.js, node scripts/build-public.mjs. Run relevant existing isolated tests (README), new acceptance. Do not run bot/index.js, seed/test external integrations. Tested prior Chromium/Brave only; Safari physical not established.
+Write results coordination/results/MOBILE-IMAGES.md with files, commands, failures/limits. Do not edit BOARD. When complete stop writing and report; Codex independently reviews before integration. No commit requested.
+
+Acceptance viewport360/375/390x844/430/768/1024 both themes + enlarged text; sticky actual bounding boxes after scroll, no horizontal overflow or covered content. Modal all close paths, cancelled drag, scroll no close, keyboard/draft/focus. Two own concurrent orders and another customer, reload, delivered/cancelled history, correct selection. Photos CRUD/reload, IDB/localStorage failures, invalid/large/HEIC/rotated, missing blob, rapid selection/cancel, price changes preserve reference. Existing checkout/XSS/preparation/server tests remain meaningful; adapt obsolete UI selectors without weakening assertions. Physical iPhone remains explicit followup.

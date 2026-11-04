@@ -188,10 +188,6 @@ html.dark,
   --status-cancel-accent: #f43f5e;
 }
 
-body.has-sim-bar {
-  --sim-bar-h: 46px;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -390,4 +386,93 @@ html.dark .nexo-demo-banner.is-error {
   background-color: #450a0a;
   color: #fecaca;
   border-bottom-color: #7f1d1d;
+}
+
+
+/* Grillas de 2 columnas en mobile >=360px y 1 columna en <360px */
+.products-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 360px) {
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+@media (min-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.admin-products-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 360px) {
+  .admin-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+@media (min-width: 768px) {
+  .admin-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .admin-products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Modal de carrito accesible sobre la cabecera demo */
+.cart-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background-color: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.cart-modal-dialog {
+  width: 100%;
+  max-width: 28rem;
+  max-height: 85vh;
+  max-height: 85dvh;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface, #ffffff);
+  border-top: 1px solid var(--border-subtle, #e2e8f0);
+}
+html.dark .cart-modal-dialog {
+  background-color: var(--bg-surface, #0f172a);
+  border-top-color: var(--border-subtle, #1e293b);
+}
+
+/* Soporte de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

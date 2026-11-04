@@ -1,4 +1,5 @@
 import { store } from "./store.js";
+import { escapeHtml } from "./html.js";
 import { renderClientView } from "./views/client.js";
 import { renderOperatorView } from "./views/operator.js";
 import { renderAdminView } from "./views/admin.js";
@@ -72,6 +73,12 @@ class App {
     }
     updateTopOffset();
     window.addEventListener("resize", updateTopOffset);
+    if (this.topStack && typeof ResizeObserver === "function") {
+      this.topStackObserver = new ResizeObserver(updateTopOffset);
+      this.topStackObserver.observe(this.topStack);
+    } else if (document.fonts) {
+      document.fonts.ready.then(updateTopOffset);
+    }
 
     if (this.btnLockPin) {
       this.btnLockPin.addEventListener("click", () => {
@@ -133,7 +140,7 @@ class App {
   renderConfigErrorGate(errors) {
     if (!this.container) return;
     const listHtml = errors
-      .map((err) => `<li class="text-xs text-rose-800 dark:text-rose-200 font-medium">${String(err).replace(/[<>]/g, "")}</li>`)
+      .map((err) => `<li class="text-xs text-rose-800 dark:text-rose-200 font-medium">${escapeHtml(err)}</li>`)
       .join("");
     this.container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-12">
@@ -158,7 +165,7 @@ class App {
 
   renderPinGate(targetView) {
     const isOperario = targetView === "operator" || targetView === "operario";
-    const roleLabel = isOperario ? "Puesto de Balanza (Operario)" : "Panel de Precios (Dueño)";
+    const roleLabel = isOperario ? "Puesto de Preparación (Operario)" : "Catálogo y Precios (Dueño)";
     this.container.innerHTML = `
       <div class="max-w-sm mx-auto p-4 pt-16">
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl text-center">
@@ -166,16 +173,7 @@ class App {
             <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               Acceso Personal del Local
             </span>
-            <button
-              type="button"
-              class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center gap-1.5"
-              title="${store.getTheme() === 'dark' ? 'Cambiar a tema claro (atajo: T)' : 'Cambiar a tema oscuro (atajo: T)'}"
-              aria-label="${store.getTheme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}"
-            >
-              <span class="text-slate-400 dark:text-slate-500">Tema:</span>
-              <span class="theme-label font-black">${store.getTheme() === "dark" ? "Oscuro" : "Claro"}</span>
-            </button>
-          </div>
+            </div>
           <h2 class="text-xl font-black text-slate-900 dark:text-white">${roleLabel}</h2>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de 4 dígitos del comercio (Por defecto: <strong>1234</strong>)</p>
 
@@ -267,10 +265,10 @@ class App {
       const isActive = btn.dataset.view === viewName;
       if (isActive) {
         btn.classList.add("bg-white", "text-slate-900", "shadow-sm");
-        btn.classList.remove("text-slate-400");
+        btn.classList.remove("text-slate-400", "hover:text-white");
       } else {
         btn.classList.remove("bg-white", "text-slate-900", "shadow-sm");
-        btn.classList.add("text-slate-400");
+        btn.classList.add("text-slate-400", "hover:text-white");
       }
     });
 

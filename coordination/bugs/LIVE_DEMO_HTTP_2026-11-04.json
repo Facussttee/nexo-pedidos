@@ -1,0 +1,26 @@
+[
+  {
+    "Path": "/?demo=1",
+    "Status": 200
+  },
+  {
+    "Path": "/js/bundle.js",
+    "Status": 200
+  },
+  {
+    "Path": "/.git/config",
+    "Status": 403
+  },
+  {
+    "Path": "/.env",
+    "Status": 403
+  },
+  {
+    "Path": "/supabase/schema.sql",
+    "Status": 403
+  },
+  {
+    "Path": "/bot/index.js",
+    "Status": 403
+  }
+]

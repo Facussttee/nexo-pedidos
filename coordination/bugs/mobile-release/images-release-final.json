@@ -1,0 +1,124 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "Guardar foto produce referencia y sobrevive recarga sin base64",
+      "pass": true,
+      "normalized": {
+        "type": "image/jpeg",
+        "size": 1610,
+        "width": 512,
+        "height": 256
+      },
+      "imageId": "img_mw2jcd1t_hzabnba9"
+    },
+    {
+      "name": "Cancelar selección mantiene imagen anterior; precio directo conserva referencia",
+      "pass": true
+    },
+    {
+      "name": "Reemplazo y quitar actualizan referencia sin tocar producto",
+      "pass": true
+    },
+    {
+      "name": "Rechazo visible de SVG conserva catálogo",
+      "pass": true
+    },
+    {
+      "name": "Rechazo visible de mayor15MiB conserva catálogo",
+      "pass": true
+    },
+    {
+      "name": "Rechazo visible de mayor25MP conserva catálogo",
+      "pass": true
+    },
+    {
+      "name": "Rechazo visible de imagen corrupta conserva catálogo",
+      "pass": true
+    },
+    {
+      "name": "Fallo de catálogo tras foto nueva conserva foto anterior y reintento",
+      "pass": true
+    },
+    {
+      "name": "Fallo IndexedDB visible conserva catálogo",
+      "pass": true
+    },
+    {
+      "name": "Abort posterior a request.success no confirma producto",
+      "pass": true
+    },
+    {
+      "name": "Blob ausente mantiene catálogo legible sin icono roto",
+      "pass": true
+    },
+    {
+      "name": "JPEG EXIF6 conserva orientación y no amplía",
+      "pass": true,
+      "output": {
+        "type": "image/jpeg",
+        "size": 811,
+        "width": 40,
+        "height": 80
+      }
+    },
+    {
+      "name": "HEIC no decodificable muestra guía sin modificar datos",
+      "pass": true
+    },
+    {
+      "name": "Selección nueva gana aunque la anterior termine última",
+      "pass": true,
+      "output": {
+        "type": "image/jpeg",
+        "size": 811,
+        "width": 40,
+        "height": 80
+      }
+    },
+    {
+      "name": "Cancelar procesamiento invalida callback tardío y no persiste foto",
+      "pass": true
+    },
+    {
+      "name": "Doble submit mientras IDB está pendiente crea un solo producto",
+      "pass": true,
+      "productId": "b551a52e-f7b6-40fa-b765-4bccd2000299"
+    },
+    {
+      "name": "Cerrar/cancelar durante guardado IDB pendiente mantiene la sesión bloqueada",
+      "pass": true
+    },
+    {
+      "name": "Archivar/restaurar conserva campos pendientes y persiste tras recarga",
+      "pass": true
+    },
+    {
+      "name": "Quitar durante normalización permite guardar sin bloqueo",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "pass": true,
+  "snapshot": {
+    "index.html": {
+      "bytes": 6283,
+      "sha256": "07c0d86e71d8d40ea4cadb2dd40a1503f12e0716f0e1d87ec15a3f6190a5edc9"
+    },
+    "css/style.css": {
+      "bytes": 13502,
+      "sha256": "9b59132776c9f32fd0a486128a0344322a14ba3a1f848d041fae3d75dd35e698"
+    },
+    "js/public-config.js": {
+      "bytes": 1091,
+      "sha256": "969a62b1292eeda9935fce6e3b81e0b6c6926476c8159232c99df2ce522861cc"
+    },
+    "js/bundle.js": {
+      "bytes": 259965,
+      "sha256": "e5992b1a929ee933dd5e87459a920edd61dd80bbe47f11595ee43e69f024b65f"
+    }
+  },
+  "origin": "http://127.0.0.1:50269"
+}

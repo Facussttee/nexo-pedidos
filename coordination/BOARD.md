@@ -1,4 +1,28 @@
-# Tablero — checkpoint local del 2 de noviembre de 2026
+# Tablero actual — demo local verificada, 2026-11-04
+
+Fuente canónica: coordinador. Cambios sin commit; no publicados. Todos los escritores de implementación terminaron. Ver DELIVERY_STATUS.md para evidencia y atención requerida.
+
+| Paquete de demo | Estado | Validación |
+|---|---|---|
+| QA-E1 / BUG-002 | ACCEPTED LOCAL | helper8, XSS8 y aceptación independiente10 |
+| QA-E3 / BUG-005 | ACCEPTED LOCAL | dominio106 y navegador5 |
+| QA-E2 / BUG-003 | ACCEPTED LOCAL | catálogo69 y recuperación por UI en ambos tamaños |
+| BUG-006 / total cero | ACCEPTED LOCAL | tarjetas, mensaje simulado y dominio |
+| Preparación QA-B real | ACCEPTED LOCAL | unidad/peso/mixto, confirmación, estimado/provisional/final y acciones operativas |
+| Catálogo QA-B real | ACCEPTED LOCAL | CRUD/SKU/archivo, fallos de formulario y snapshots históricos |
+| Cabeceras y navegación | ACCEPTED LOCAL | geometría/reflow y scroll48 |
+| Aceptación vertical | PASS22/22 | móvil390 y tablet1024, sin pageerror/destinos inesperados |
+| Validación con el comercio | PENDING FACU/COMERCIO | revisar recorridos y ajustes de producto |
+| Extensión/Safari/dispositivo físico | PENDING | navegador de extensión deshabilitado en esta sesión |
+| Importador | PENDING REQUIREMENTS | muestra anonimizada y reglas |
+| NP-004 y backend productivo | OUTSIDE DEMO | no despachados; sin DB/WhatsApp reales |
+
+Los worktrees quality y review conservan cambios de sus contribuciones; no reemplazar el coordinador por una copia completa de ellos ni borrarlos con cambios sin guardar. Ningún commit/push/deploy se hizo en esta entrega.
+
+---
+
+## Registro histórico de coordinación
+### Tablero — checkpoint local del 2 de noviembre de 2026
 
 Un escritor por worktree; sólo Codex acepta DONE. No hay lock distribuido.
 
@@ -14,3 +38,9 @@ Todos los turnos de Antigravity finalizaron; no hay escritor del ejecutor activo
 Remoto privado publicado: https://github.com/Facussttee/nexo-pedidos, origin/main. Upstream original con push bloqueado; sin deploy. Historial de pruebas, correcciones y cuotas en results/reviews/DECISIONS.
 
 Evolución autorizada después del primer checkpoint: QA-A ACCEPTED (1a27cd1 -> a39c703), QA-B-PROPOSAL preparada. El estado actual prevalece sobre la nota histórica de ausencia de tareas: ver EVOLUTION.md y ACTIVE_EXECUTION.md. Worktrees E0/NP-002/NP-003 retirados; sus ramas/resultados permanecen.
+
+Estado más reciente: cierre de DEMO funcional autorizado el 2026-11-04. Consultar DELIVERY_STATUS.md y el checkpoint fechado en ACTIVE_EXECUTION.md; la tabla histórica anterior no representa aceptación de E1 ni aptitud productiva. E1 está en corrección; E3/BUG-006/E2 y UI real conservan las dependencias de aceptación.
+
+
+## Cierre móvil e imágenes — 2026-11-04
+M1/M2/M3 aceptados e integrados en el coordinador. Antigravity detenido; Codex cerró revisión, correcciones e integración, sin escritores activos. Fuente/public bundle coinciden con el freeze verificado e5992b1a929ee933dd5e87459a920edd61dd80bbe47f11595ee43e69f024b65f. Ver DELIVERY_MOBILE.md:54/54 por tema, imágenes19/19 y regresiones aprobadas. Pendiente validación física Safari/iPhone y HEIC real; no backend productivo ni sincronización entre dispositivos. Cambios locales sin commit/push/deploy.

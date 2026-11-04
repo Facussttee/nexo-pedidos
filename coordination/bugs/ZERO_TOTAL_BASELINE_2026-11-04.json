@@ -1,0 +1,46 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "errors": [],
+  "unexpected": [],
+  "readyText": "PUESTO DE BALANZA\nMostrador & Balanza\n\nRecepción en vivo activa\n\nTema:\nClaro\nTimbre\nSalir\nEntrantes\n0\nEn Balanza\n0\nListos\n1\nCobrados\n0\nPESAJE COMPLETO\n#9005 · Cliente Cero Demo\n\n1100000095 · Retiro\n\nTOTAL EXACTO\n$1.200\n\nHola Cliente Cero Demo. Tu pedido #9005 en Comercio Demo Nexo ya fue pesado y está listo:\n\n\n\nTotal exacto en balanza: $1.200\nYa podés pasar a retirarlo por el mostrador.\n\nAlias para transferir: alias.demo.nexo\n(O podés abonar en efectivo al recibir).\n\nSimular WhatsApp (Demo)\nMarcar Cobrado\nCancelar / Anular pedido",
+  "persisted": {
+    "id": 9005,
+    "estado": "LISTO",
+    "fecha": "2026-11-04T15:23:23.574Z",
+    "cliente": {
+      "nombre": "Cliente Cero Demo",
+      "telefono": "1100000095"
+    },
+    "tipo_entrega": "RETIRO",
+    "direccion_entrega": "Retiro Sintetico",
+    "total_estimado": 1200,
+    "total_real": 0,
+    "items": [
+      {
+        "producto_id": "prod-13",
+        "nombre": "Producto Unitario Demo",
+        "categoria": "Verduras",
+        "unidad_medida": "UNIDAD",
+        "precio_unitario": 1200,
+        "cantidad_solicitada": 1,
+        "peso_real": 1,
+        "subtotal": 0,
+        "sin_stock": true
+      }
+    ],
+    "updated_at": "2026-11-04T15:23:24.463Z",
+    "finalizado_at": "2026-11-04T15:23:24.666Z"
+  },
+  "messages": [
+    {
+      "id": "sim-1793805804736-878",
+      "kind": "order_ready",
+      "to": "5491100000095",
+      "text": "Hola Cliente Cero Demo. Tu pedido #9005 en Comercio Demo Nexo ya fue pesado y está listo:\n\n\n\nTotal exacto en balanza: $1.200\nYa podés pasar a retirarlo por el mostrador.\n\nAlias para transferir: alias.demo.nexo\n(O podés abonar en efectivo al recibir).",
+      "at": "2026-11-04T15:23:24.736Z",
+      "simulated": true
+    }
+  ],
+  "deliveredText": "PUESTO DE BALANZA\nMostrador & Balanza\n\nRecepción en vivo activa\n\nTema:\nClaro\nTimbre\nSalir\nEntrantes\n0\nEn Balanza\n0\nListos\n0\nCobrados\n1\n#9005\nCliente Cero Demo\n\nRetiro · Hace instantes\n\n$1.200\nCOBRADO",
+  "pass": false
+}

@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "theme": "light",
+  "checks": [
+    {
+      "name": "Cerrar identidad en otra pestaña libera marco y scroll",
+      "width": 390,
+      "pass": false,
+      "observed": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "topInert": true,
+        "drawer": false
+      },
+      "failure": "El marco sigue inerte tras logout desde otra pestaña"
+    },
+    {
+      "name": "Nueva identidad no hereda carrito modal ni entrega anterior",
+      "width": 390,
+      "pass": false,
+      "drawerReopened": 1,
+      "failure": "Cambio de identidad reabrió modal del cliente anterior"
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [],
+  "screenshotHashes": {},
+  "pass": false,
+  "snapshot": {
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-mobile-qa-drnVKb\\public",
+    "assets": {
+      "index.html": "07c0d86e71d8d40ea4cadb2dd40a1503f12e0716f0e1d87ec15a3f6190a5edc9",
+      "css/style.css": "9b59132776c9f32fd0a486128a0344322a14ba3a1f848d041fae3d75dd35e698",
+      "js/public-config.js": "969a62b1292eeda9935fce6e3b81e0b6c6926476c8159232c99df2ce522861cc",
+      "js/bundle.js": "25e0e76e366a52f8b772e9fe0be3d54a6d59e7aeb3a2b9ae9820f6576b8193ff"
+    }
+  },
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "origin": "http://127.0.0.1:60297"
+}

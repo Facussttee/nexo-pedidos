@@ -202,6 +202,12 @@ pass("4.3 Customer name validation enforces non-empty string with >= 2 character
 console.log("\n--- SUITE 5: Store State Machine Defensive Guard ---");
 
 // Test store methods from store.js
+const storageData = new Map();
+globalThis.localStorage = {
+  getItem: key => storageData.get(key) ?? null,
+  setItem: (key, value) => storageData.set(key, String(value)),
+  removeItem: key => storageData.delete(key)
+};
 const storeModule = await import("../js/store.js");
 const store = storeModule.store;
 

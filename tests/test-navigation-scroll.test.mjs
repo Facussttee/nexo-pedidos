@@ -161,7 +161,7 @@ try {
     }
 
     // Open cart drawer
-    await page.locator("#btn-header-cart").click();
+    await page.locator("#btn-open-cart").click();
     await page.waitForTimeout(300);
 
     const drawerVisible = await page.locator("#cart-drawer-sheet").isVisible();

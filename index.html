@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f8fafc">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -74,23 +74,22 @@
   <!-- Pila superior fija: aviso persistente de demo/error + barra del simulador -->
   <div id="nexo-top-stack" class="sticky top-0 z-50">
     <div id="nexo-demo-banner" class="nexo-demo-banner hidden" role="status" aria-live="polite">
-      <strong>MODO DEMO</strong> · Datos sintéticos · WhatsApp simulado · Sin conexión a servicios reales
+      <details class="cursor-pointer group">
+        <summary class="font-bold select-none list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5 text-xs">
+          <span>Demo · WhatsApp simulado</span>
+          <span class="text-[9px] opacity-70 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <p class="mt-1 text-[10px] font-medium opacity-90">Datos sintéticos · WhatsApp simulado · Sin conexión a servicios reales</p>
+      </details>
     </div>
 
     <!-- Barra Superior del Simulador (Oculta por defecto, sólo visible si se pasa ?demo=1 en la URL) -->
     <aside id="simulator-bar" class="hidden bg-slate-950 text-white px-3 py-2 border-b border-slate-800">
-      <div class="max-w-xl mx-auto flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs font-black tracking-widest uppercase text-emerald-400 mr-1 select-none">
-            Nexo Pedidos
+      <div class="max-w-xl mx-auto flex items-center justify-between gap-2 flex-nowrap">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span class="text-xs font-black tracking-widest uppercase text-emerald-400 mr-1 select-none hidden sm:inline">
+            Nexo
           </span>
-          <button
-            id="btn-lock-pin"
-            title="Probar bloqueo con PIN de 4 dígitos para Operario/Dueño"
-            class="min-h-[44px] min-w-[44px] px-3 py-2 text-[10px] uppercase font-bold tracking-widest rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center"
-          >
-            Probar PIN
-          </button>
           <button
             type="button"
             class="theme-toggle-btn min-h-[44px] min-w-[44px] px-3 py-2 text-[10px] uppercase font-bold tracking-widest rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition tap-feedback touch-target inline-flex items-center justify-center gap-1.5"
@@ -102,7 +101,7 @@
         </div>
 
         <!-- Selector de Vistas / Roles -->
-        <nav class="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-semibold gap-1">
+        <nav class="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-semibold gap-1 shrink-0">
           <button
             data-view="client"
             class="nav-switch min-h-[44px] px-3.5 py-2 rounded-xl transition text-slate-400 hover:text-white tap-feedback touch-target inline-flex items-center justify-center font-bold"

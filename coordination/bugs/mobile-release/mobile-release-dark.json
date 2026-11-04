@@ -1,0 +1,316 @@
+{
+  "synthetic": true,
+  "theme": "dark",
+  "checks": [
+    {
+      "name": "Cliente presenta dos productos por fila",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Sin overflow horizontal ni bloqueo de zoom",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Controles de compra mantienen44px y texto legible",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Acceso único al carrito y sin Probar PIN",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Búsqueda y categorías siguen visibles tras scroll",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Precios presenta dos productos por fila con precio directo",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Precios conserva búsqueda y filtros durante scroll",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "Cliente presenta dos productos por fila",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Sin overflow horizontal ni bloqueo de zoom",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Controles de compra mantienen44px y texto legible",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Acceso único al carrito y sin Probar PIN",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Búsqueda y categorías siguen visibles tras scroll",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Precios presenta dos productos por fila con precio directo",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Precios conserva búsqueda y filtros durante scroll",
+      "width": 375,
+      "pass": true
+    },
+    {
+      "name": "Cliente presenta dos productos por fila",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Sin overflow horizontal ni bloqueo de zoom",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Controles de compra mantienen44px y texto legible",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Acceso único al carrito y sin Probar PIN",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Búsqueda y categorías siguen visibles tras scroll",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Precios presenta dos productos por fila con precio directo",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Precios conserva búsqueda y filtros durante scroll",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Cliente presenta dos productos por fila",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Sin overflow horizontal ni bloqueo de zoom",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Controles de compra mantienen44px y texto legible",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Acceso único al carrito y sin Probar PIN",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Búsqueda y categorías siguen visibles tras scroll",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Precios presenta dos productos por fila con precio directo",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Precios conserva búsqueda y filtros durante scroll",
+      "width": 430,
+      "pass": true
+    },
+    {
+      "name": "Cliente presenta dos productos por fila",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Sin overflow horizontal ni bloqueo de zoom",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Controles de compra mantienen44px y texto legible",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Acceso único al carrito y sin Probar PIN",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Búsqueda y categorías siguen visibles tras scroll",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Precios presenta dos productos por fila con precio directo",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Precios conserva búsqueda y filtros durante scroll",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "name": "Cliente presenta dos productos por fila",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Sin overflow horizontal ni bloqueo de zoom",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Controles de compra mantienen44px y texto legible",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Acceso único al carrito y sin Probar PIN",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Búsqueda y categorías siguen visibles tras scroll",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Precios presenta dos productos por fila con precio directo",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Precios conserva búsqueda y filtros durante scroll",
+      "width": 1024,
+      "pass": true
+    },
+    {
+      "name": "Carrito modal cierra por button y preserva borrador",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Carrito modal cierra por escape y preserva borrador",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Carrito modal cierra por backdrop y preserva borrador",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Carrito modal cierra por drag y preserva borrador",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Modal conserva foco interno y dirección al reabrir",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Arrastre corto o cancelado restaura carrito sin cerrar",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Arrastre que revierte antes80px mantiene carrito abierto",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Carrito impide foco y scroll de fondo; cierre restaura catálogo",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Cambiar ruta desmonta modal y libera fondo",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Mis pedidos presenta varios activos, historial y propiedad",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "name": "Cerrar identidad en otra pestaña libera marco y scroll",
+      "width": 390,
+      "pass": true,
+      "observed": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "topInert": false,
+        "drawer": false
+      }
+    },
+    {
+      "name": "Nueva identidad no hereda carrito modal ni entrega anterior",
+      "width": 390,
+      "pass": true,
+      "drawerReopened": 0,
+      "address": "Dirección propia B sintética"
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-360-dark.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-375-dark.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\client-390-dark.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-390-dark.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-430-dark.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-768-dark.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-1024-dark.png"
+  ],
+  "screenshotHashes": {
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-360-dark.png": "0be608196517b9822b17880b3735101101836e533d914601d686afe9b1cae504",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-375-dark.png": "c606786921c8278c47e881b8077e8be68cf0a6db100f29f142a56f84b483926f",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\client-390-dark.png": "c3c9e980cd58bdec0ace8ccf89ebde58732d815fd24152fc5197897b3a08ce22",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-390-dark.png": "4a7391740ea2f637d5693f8cfbca5b450b24ecd8c31fdf2f1310d00d553284c6",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-430-dark.png": "fee30b740163709928c1656dcad8731f6661d84316bde9ecce4182423a8bb07f",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-768-dark.png": "ebb8874d51a8ec9af2db7643da6efbe0fb19837736a7fd7f843bfe5ae195823f",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-1024-dark.png": "beb85d672f3678b6116a6bc113e1d86e8d78ebe232118a0c267517e97ee5a620"
+  },
+  "pass": true,
+  "snapshot": {
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-mobile-qa-w4D5ot\\public",
+    "assets": {
+      "index.html": "07c0d86e71d8d40ea4cadb2dd40a1503f12e0716f0e1d87ec15a3f6190a5edc9",
+      "css/style.css": "9b59132776c9f32fd0a486128a0344322a14ba3a1f848d041fae3d75dd35e698",
+      "js/public-config.js": "969a62b1292eeda9935fce6e3b81e0b6c6926476c8159232c99df2ce522861cc",
+      "js/bundle.js": "e5992b1a929ee933dd5e87459a920edd61dd80bbe47f11595ee43e69f024b65f"
+    }
+  },
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "origin": "http://127.0.0.1:64182"
+}

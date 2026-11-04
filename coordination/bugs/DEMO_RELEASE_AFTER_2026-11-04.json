@@ -1,0 +1,373 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "synthetic": true,
+  "checks": [
+    {
+      "viewport": "390x844",
+      "name": "admin CRUD available",
+      "pass": true
+    },
+    {
+      "viewport": "390x844",
+      "name": "create UNIDAD and KG through real admin",
+      "pass": true,
+      "created": [
+        {
+          "id": "6ce76074-84ca-4add-aa06-b8f85dfbb7ff",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000071",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "UNIDAD",
+          "precio": 125,
+          "paso": 1,
+          "disponible": true,
+          "archivado": false
+        },
+        {
+          "id": "2c19cd22-d79e-4bb7-8a51-9925f92618ce",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000072",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "KG",
+          "precio": 1000,
+          "paso": 0.25,
+          "disponible": true,
+          "archivado": false
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "name": "zero price accepted and duplicate SKU visibly rejected",
+      "pass": true
+    },
+    {
+      "viewport": "390x844",
+      "name": "failed catalog write preserves form and retries exactly once",
+      "pass": true,
+      "persistedCount": 4
+    },
+    {
+      "viewport": "390x844",
+      "name": "customer form, dynamic category and mixed estimated checkout",
+      "pass": true,
+      "orderId": 101,
+      "totalEstimated": 375
+    },
+    {
+      "viewport": "390x844",
+      "name": "explicit UNIDAD confirmation and decimal kg with grams; unresolved closing blocked",
+      "pass": true,
+      "captureLayout": {
+        "header": {
+          "top": 166,
+          "bottom": 359,
+          "height": 193
+        },
+        "card": {
+          "top": 374.6875,
+          "bottom": 1310.6875,
+          "height": 936
+        },
+        "label": {
+          "top": 399.6875,
+          "bottom": 411.6875,
+          "height": 12
+        },
+        "rootOffset": "166px",
+        "bodyOffset": "166px",
+        "scrolled": []
+      },
+      "prepared": [
+        {
+          "producto_id": "6ce76074-84ca-4add-aa06-b8f85dfbb7ff",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "UNIDAD",
+          "precio_unitario": 125,
+          "cantidad_solicitada": 1,
+          "peso_real": 2,
+          "subtotal": 250,
+          "sin_stock": false,
+          "confirmado_preparacion": true
+        },
+        {
+          "producto_id": "2c19cd22-d79e-4bb7-8a51-9925f92618ce",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "KG",
+          "precio_unitario": 1000,
+          "cantidad_solicitada": 0.25,
+          "peso_real": 1.45,
+          "subtotal": 1450,
+          "sin_stock": false
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "name": "LISTO exact final, simulated WhatsApp and ENTREGADO",
+      "pass": true,
+      "messages": [
+        {
+          "id": "sim-1793811160594-603",
+          "kind": "order_ready",
+          "to": "5491100000071",
+          "text": "Hola Cliente sintético QA. Tu pedido #101 en Comercio Demo Nexo ya está preparado:\n\n- Unidad sintética QA (2 u): $250\n- Peso sintético QA (1.45 kg): $1.450\n\nTotal final: $1.700\nYa podés pasar a retirarlo por el mostrador.\n\nAlias para transferir: alias.demo.nexo\n(O podés abonar en efectivo al recibir).",
+          "at": "2026-11-04T16:52:40.594Z",
+          "simulated": true
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "name": "referenced unit change rejected; edit/archive preserve historical snapshots",
+      "pass": true,
+      "historicalFinal": 1700
+    },
+    {
+      "viewport": "390x844",
+      "name": "top offset follows banner reflow without viewport resize",
+      "pass": true,
+      "before": {
+        "stack": 166,
+        "css": 166,
+        "effectiveCss": 166,
+        "width": 390,
+        "height": 844
+      },
+      "after": {
+        "stack": 492,
+        "css": 492,
+        "effectiveCss": 492,
+        "width": 390,
+        "height": 844
+      },
+      "restored": {
+        "stack": 166,
+        "css": 166,
+        "effectiveCss": 166,
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "viewport": "390x844",
+      "name": "catalog warning and recovery preserve valid row, raw backup and other data",
+      "pass": true,
+      "recovered": [
+        {
+          "id": "qa-recovery-valid",
+          "nombre": "Recuperación sintética QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000075",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "KG",
+          "precio": 123.45,
+          "paso": 0.25,
+          "disponible": true,
+          "archivado": false
+        }
+      ],
+      "backup": {
+        "key": "nexo_demo_v1_products_backup_1793811164282_t1ucg562fg",
+        "raw": "[{\"id\":\"qa-recovery-valid\",\"nombre\":\"Recuperación sintética QA\",\"categoria\":\"Categoría sintética QA\",\"codigo\":\"000075\",\"detalle\":\"Sólo datos sintéticos de aceptación\",\"unidad_medida\":\"KG\",\"precio\":123.45,\"paso\":0.25,\"disponible\":true,\"archivado\":false},{}]"
+      }
+    },
+    {
+      "viewport": "390x844",
+      "name": "no pageerrors, data destinations or popups",
+      "pass": true,
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "viewport": "1024x768",
+      "name": "admin CRUD available",
+      "pass": true
+    },
+    {
+      "viewport": "1024x768",
+      "name": "create UNIDAD and KG through real admin",
+      "pass": true,
+      "created": [
+        {
+          "id": "77987520-c0eb-4122-a50b-5ada4d0b5f25",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000071",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "UNIDAD",
+          "precio": 125,
+          "paso": 1,
+          "disponible": true,
+          "archivado": false
+        },
+        {
+          "id": "3efe433c-5ae1-4ebf-86d9-8e98f08e869e",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000072",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "KG",
+          "precio": 1000,
+          "paso": 0.25,
+          "disponible": true,
+          "archivado": false
+        }
+      ]
+    },
+    {
+      "viewport": "1024x768",
+      "name": "zero price accepted and duplicate SKU visibly rejected",
+      "pass": true
+    },
+    {
+      "viewport": "1024x768",
+      "name": "failed catalog write preserves form and retries exactly once",
+      "pass": true,
+      "persistedCount": 4
+    },
+    {
+      "viewport": "1024x768",
+      "name": "customer form, dynamic category and mixed estimated checkout",
+      "pass": true,
+      "orderId": 101,
+      "totalEstimated": 375
+    },
+    {
+      "viewport": "1024x768",
+      "name": "explicit UNIDAD confirmation and decimal kg with grams; unresolved closing blocked",
+      "pass": true,
+      "prepared": [
+        {
+          "producto_id": "77987520-c0eb-4122-a50b-5ada4d0b5f25",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "UNIDAD",
+          "precio_unitario": 125,
+          "cantidad_solicitada": 1,
+          "peso_real": 2,
+          "subtotal": 250,
+          "sin_stock": false,
+          "confirmado_preparacion": true
+        },
+        {
+          "producto_id": "3efe433c-5ae1-4ebf-86d9-8e98f08e869e",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "KG",
+          "precio_unitario": 1000,
+          "cantidad_solicitada": 0.25,
+          "peso_real": 1.45,
+          "subtotal": 1450,
+          "sin_stock": false
+        }
+      ]
+    },
+    {
+      "viewport": "1024x768",
+      "name": "LISTO exact final, simulated WhatsApp and ENTREGADO",
+      "pass": true,
+      "messages": [
+        {
+          "id": "sim-1793811170956-376",
+          "kind": "order_ready",
+          "to": "5491100000071",
+          "text": "Hola Cliente sintético QA. Tu pedido #101 en Comercio Demo Nexo ya está preparado:\n\n- Unidad sintética QA (2 u): $250\n- Peso sintético QA (1.45 kg): $1.450\n\nTotal final: $1.700\nYa podés pasar a retirarlo por el mostrador.\n\nAlias para transferir: alias.demo.nexo\n(O podés abonar en efectivo al recibir).",
+          "at": "2026-11-04T16:52:50.956Z",
+          "simulated": true
+        }
+      ]
+    },
+    {
+      "viewport": "1024x768",
+      "name": "referenced unit change rejected; edit/archive preserve historical snapshots",
+      "pass": true,
+      "historicalFinal": 1700
+    },
+    {
+      "viewport": "1024x768",
+      "name": "top offset follows banner reflow without viewport resize",
+      "pass": true,
+      "before": {
+        "stack": 99,
+        "css": 99,
+        "effectiveCss": 99,
+        "width": 1024,
+        "height": 768
+      },
+      "after": {
+        "stack": 218,
+        "css": 218,
+        "effectiveCss": 218,
+        "width": 1024,
+        "height": 768
+      },
+      "restored": {
+        "stack": 99,
+        "css": 99,
+        "effectiveCss": 99,
+        "width": 1024,
+        "height": 768
+      }
+    },
+    {
+      "viewport": "1024x768",
+      "name": "catalog warning and recovery preserve valid row, raw backup and other data",
+      "pass": true,
+      "recovered": [
+        {
+          "id": "qa-recovery-valid",
+          "nombre": "Recuperación sintética QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000075",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "KG",
+          "precio": 123.45,
+          "paso": 0.25,
+          "disponible": true,
+          "archivado": false
+        }
+      ],
+      "backup": {
+        "key": "nexo_demo_v1_products_backup_1793811174492_hkczfsy2yqc",
+        "raw": "[{\"id\":\"qa-recovery-valid\",\"nombre\":\"Recuperación sintética QA\",\"categoria\":\"Categoría sintética QA\",\"codigo\":\"000075\",\"detalle\":\"Sólo datos sintéticos de aceptación\",\"unidad_medida\":\"KG\",\"precio\":123.45,\"paso\":0.25,\"disponible\":true,\"archivado\":false},{}]"
+      }
+    },
+    {
+      "viewport": "1024x768",
+      "name": "no pageerrors, data destinations or popups",
+      "pass": true,
+      "errors": [],
+      "unexpected": []
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [
+    "D:\\Escritorio\\nexo-pedidos\\coordination\\bugs\\DEMO_RELEASE_PREPARATION_390.png",
+    "D:\\Escritorio\\nexo-pedidos\\coordination\\bugs\\DEMO_RELEASE_ADMIN_1024.png"
+  ],
+  "pass": true,
+  "served": {
+    "origin": "http://127.0.0.1:50065",
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-release-qa-uYH1gl\\public",
+    "assets": 4,
+    "ephemeral": true,
+    "builtSource": false
+  },
+  "cleanedTemporary": true,
+  "visualReview": {
+    "inspectedWith": "view_image",
+    "admin1024": "Archivado y SKU 000071 legibles; catálogo de cuatro filas incluye el único producto creado tras reintento de escritura.",
+    "preparation390": "Rótulo EN PREPARACIÓN completo sin recorte. Header termina en359px y rótulo comienza en399.6875px; cantidades, gramos, total provisional y acciones legibles.",
+    "storageAndRecovery": "Aviso y botón reales comprobados por UI; fila válida123.45, respaldo raw exacto y otros datos conservados tras recarga.",
+    "limits": [
+      "Brave/Chromium headless en Windows; no Safari ni dispositivos físicos",
+      "Demo sintética local; sin DB, autenticación real ni entrega WhatsApp real"
+    ]
+  }
+}

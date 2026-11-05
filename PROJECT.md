@@ -1,49 +1,48 @@
-# Project: Mi Huerta — Mobile-First Redesign & UX/UI Overhaul
+# Project: Nexo Pedidos v1 — Mobile Order, Scale Weighing & Realtime Cloud System
 
-## Architecture
-- **Client PWA**: Single Page Application with dynamic views (`client.js`, `operator.js`, `admin.js`), managed by `app.js` and styled with `css/style.css` and Tailwind.
-- **Design System & Tokens**: Centralized CSS custom properties for Light, Dark (`[data-theme="dark"]`), and system preference (`prefers-color-scheme: dark`) with Verdulería status tokens (Entrantes, En Balanza, Listos, Cobrados, Cancelado/Sin Stock).
-- **Typography & Ergonomics**: Plus Jakarta Sans hierarchy, zero emojis/superfluous icons, min 44x44px touch targets on all interactive controls, min 16px font on inputs to prevent iOS auto-zoom, and 0 horizontal overflow (`overflow-x: hidden`) across 360px-430px viewports.
-- **State & Theme**: `store.js` hybrid adapter supporting `localStorage` (offline/file:/// mode) with dual theme keys (`theme` & `mihuerta_theme_v3`), `data-theme` attribute synchronization, and Supabase Cloud/Realtime integration.
-- **Packaging**: `build-bundle.ps1` consolidates modular JavaScript files into `js/bundle.js` for universal CORS-free file:/// execution and web server compatibility ($0/mes).
+## Architecture Overview
+- **Client & Staff PWA**: Single Page Application with dynamic views (`client.js`, `operator.js`, `admin.js`), orchestrated by `app.js` and styled via `css/style.css` and Tailwind CSS Play CDN.
+- **Design System & Ergonomics**: Plus Jakarta Sans typography, min 44x44px touch targets on all interactive elements, min 16px font inputs to prevent iOS auto-zoom, zero horizontal overflow (`overflow-x: clip`/`hidden`) across 360px-430px mobile viewports, and light/dark theme synchronization (`nexo_theme_v1`).
+- **Cloud Backend & Realtime**: Integrated with **Supabase** (PostgreSQL + Realtime WebSockets):
+  - `public.clientes`: Customer registry (`telefono`, `nombre`, `direccion`).
+  - `public.productos`: Dynamic catalog with categories, SKU/codes, weight steps, availability, archiving, and local image IDs.
+  - `public.pedidos`: Header and items JSONB with auto-incrementing serial ID (starting at #101) to eliminate multi-client order collision.
+  - Realtime WebSockets: Immediate order push to Operator Kanban with audio alert; instant catalog updates across all views.
+- **Dual WhatsApp Notification**:
+  - Direct web dispatch (`wa.me`) without server dependencies, formatting exact weighed items, totals, and payment alias.
+  - Autonomous Node.js daemon (`bot/index.js` using `@whiskeysockets/baileys`) subscribing to Supabase Realtime `LISTO` events.
+- **Image Pipeline**: In-browser client-side image compression (max 512px, <= 512 KiB) stored in IndexedDB with local session cleanup, preventing local storage bloat.
+- **Packaging & Confinement**: `build-bundle.ps1` consolidates modular JavaScript into `js/bundle.js` with UTF-8 encoding. Public build allowlist (`scripts/build-public.mjs`) confines output exclusively to `dist/public` for zero-cost serverless deployment on Vercel.
 
 ## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | CSS Design Tokens (Light/Dark) | Custom properties for canvas, surface, text, border, and Verdulería Kanban statuses | M1 | R1, R2, Explorer 1 |
-| 2 | Typography Hierarchy & Loading | Plus Jakarta Sans font loading with `<link rel="preconnect">`, clean typography scale, zero emojis | M1 | R1, Explorer 1 |
-| 3 | Root Viewport Overflow Guard | `overflow-x: hidden` and `max-width: 100vw` on root elements preventing horizontal scrolling | M1 | R1, Explorer 1 |
-| 4 | Dual-Key Theme Persistence | Check and persist both `theme` and `mihuerta_theme_v3` in `localStorage` with `prefers-color-scheme` fallback | M1 | R2, Explorer 3 |
-| 5 | Theme Synchronization & Meta Color | Sync `dark` class, `data-theme` attribute, and `<meta name="theme-color">` dynamically | M1 | R2, Explorer 1, Explorer 3 |
-| 6 | Global Typographic Theme Toggle | Clean typographic toggle component (min 44x44px) accessible across all views and headers | M1 | R2, Explorer 1 |
-| 7 | Quick Discard Button (×) on Product Card | Direct cancellation cross (min 44x44px) visible when `quantity > 0`, resetting to 0 immediately | M2 | R3, Explorer 2 |
-| 8 | Product Card Mobile Layout & Space Recovery | Absolute placement (`top-2.5 right-2.5`) freeing 50px for title/description and preventing mis-taps with stepper | M2 | R1, R3, Explorer 2 |
-| 9 | Client View Emoji & SVG Purge | Remove inline SVGs in product cards and cart drawer in favor of Plus Jakarta Sans typography | M2 | R1, Explorer 2 |
-| 10 | Client View Touch Ergonomics | Upgrade category pills, quantity stepper buttons, and quick weight shortcuts to >= 44x44px | M2 | R1, Explorer 1, Explorer 2 |
-| 11 | Operator Kanban Tab Bar Refinement | Fixed 48px height tabs with flex centering preventing asymmetric text wrapping on 360px phones | M3 | R1, Explorer 3 |
-| 12 | Operator Weighing Controls (44x44px) | Upgrade weight adjustment steppers (`btn-adjust-weight`) to 44x44px, and 44px action buttons | M3 | R1, Explorer 3 |
-| 13 | Admin Product Card 2-Tier Stack | 2-row layout separating info/stock from price steppers, eliminating 265px wrapping squeeze on 360px | M3 | R1, Explorer 3 |
-| 14 | Admin View Touch Targets | Upgrade price steppers, category pills, search clear, and header buttons to >= 44x44px | M3 | R1, Explorer 3 |
-| 15 | Bundle Compilation & UTF-8 Sync | Execute `build-bundle.ps1` to compile `js/bundle.js` with zero syntax errors (`node --check`) | M4 | R4, Explorer 3 |
-| 16 | Universal Compatibility Verification | Verify flawless execution via `file:///` and web server with zero console errors | M4 | R4, Explorer 3 |
-
-## Milestones
-| # | Name | Scope | Dependencies | Status |
-|---|------|-------|-------------|--------|
-| 1 | CSS Foundation, Tokens, Dark Mode & Global Controls | `css/style.css`, `index.html`, `js/store.js`, `js/app.js` | None | DONE |
-| 2 | Client View Mobile Redesign & Quick Discard Cross | `js/views/client.js` | M1 | DONE |
-| 3 | Operator & Admin Views Mobile-First Redesign | `js/views/operator.js`, `js/views/admin.js` | M1 | DONE |
-| 4 | Bundle Sync, Build Verification & Quality Gate | `build-bundle.ps1`, `js/bundle.js`, Reviewers, Challengers, Auditor | M1, M2, M3 | DONE |
+| # | Feature | Description | State | Layer |
+|---|---------|-------------|-------|-------|
+| 1 | Client Catalog & Weight Stepper | Responsive 2-column mobile catalog with unit and fractional kg steppers (0.25 / 0.5 kg) | LIVE | `client.js`, `store.js` |
+| 2 | Mobile Cart & Estimated Total | Side drawer cart with quick discard (×), delivery selection, and estimate disclaimer | LIVE | `client.js` |
+| 3 | Operator Kanban Mostrador | Live order board categorized into Pendiente, En preparación, and Listo | LIVE | `operator.js` |
+| 4 | Live Scale Weighing Flow | Real-weight input in kg with live gram readout, calculating exact balance total | LIVE | `operator.js`, `store.js` |
+| 5 | Operational Item Flexibility | Mark item sin stock ($0 subtotal), add/remove items, adjust delivery mode | LIVE | `operator.js` |
+| 6 | Admin Catalog & SKU Management | Add products, edit prices, pause availability, logical archive, and SKU codes | LIVE | `admin.js`, `store.js` |
+| 7 | Product Image Optimization | Camera/gallery upload, client-side resize to 512px, IndexedDB blob storage | LIVE | `images.js`, `admin.js` |
+| 8 | Cloud Persistence (Supabase) | PostgreSQL tables (`clientes`, `productos`, `pedidos`) with RLS and triggers | LIVE | `schema.sql`, `store.js` |
+| 9 | Realtime WebSockets & Alerts | Bi-directional sync between Client, Operator, and Admin with audio chime on new orders | LIVE | `store.js`, Supabase |
+| 10 | Serial Order ID Generation | Database-assigned sequential order numbers (#101+) avoiding client collisions | LIVE | `store.js`, Supabase |
+| 11 | WhatsApp Assisted Web Dispatch | Direct `wa.me` URL generation with full weighed ticket, delivery info, and alias | LIVE | `operator.js`, `store.js` |
+| 12 | Autonomous WhatsApp Bot | Baileys daemon with QR pairing, listening to Supabase Realtime `LISTO` events | LIVE | `bot/index.js` |
+| 13 | Isolated Demo Mode Fallback | Zero-network synthetic mode for offline presentations and testing | LIVE | `config.js`, `demo-data.js` |
+| 14 | Vercel Serverless Build | Build script generating public root allowlist with environment variable resolution | LIVE | `build-public.mjs` |
 
 ## Code Layout
-- `css/style.css`: Design tokens, dark mode variables, touch target helpers, overflow guards, typography rules.
-- `index.html`: Preconnect font tags, meta tags, anti-flicker theme script, simulator layout.
-- `js/store.js`: State management, theme getter/setter/listener, dual-key localStorage persistence.
-- `js/app.js`: View router, global header theme toggle listeners, PIN gate.
-- `js/views/client.js`: Client catalog, product cards with quick discard (×), cart drawer, tracking.
-- `js/views/operator.js`: Operator Kanban board, weighing modal, live scale steppers, order actions.
-- `js/views/admin.js`: Price and stock admin table/cards, category filter pills, cloud config.
-- `build-bundle.ps1`: Monolithic bundle builder for file:/// and web.
-- `js/bundle.js`: Consolidated application script.
-- `tests/`: Automated test suites (`test-adversarial-r1.cjs`, `adversarial-r2-r3-r4.test.mjs`).
-- `bot/`: WhatsApp notification daemon and automated test suites (`test-store-state.js`, `test-mock.js`, `test-order-flow.js`).
+- `js/app.js`: Application lifecycle, view router, theme listeners, staff PIN modal.
+- `js/config.js`: Public configuration parser, strict production validation, demo network guard.
+- `js/public-config.js`: Runtime public configuration (free of secrets).
+- `js/store.js`: Reactive central state store, Supabase Realtime client, local storage cache.
+- `js/images.js`: IndexedDB image storage and processing pipeline.
+- `js/html.js`: HTML entity sanitizer mitigating XSS injections.
+- `js/views/client.js`: Mobile customer catalog, interactive cart drawer, order history.
+- `js/views/operator.js`: Kanban preparation board, weighing modal, live scale controls.
+- `js/views/admin.js`: Product CRUD, category pills, price steppers, PIN lock settings.
+- `supabase/schema.sql`: Production DDL script with RLS, triggers, indexes, and Realtime publications.
+- `bot/`: WhatsApp connection service (`index.js`), demo server (`serve-demo.js`), static server (`static-server.js`).
+- `scripts/build-public.mjs`: Strict allowlist builder for `dist/public`.
+- `tests/`: Automated test suites for store logic, static server confinement, demo isolation, and cloud sync.

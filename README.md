@@ -1,81 +1,149 @@
-# Nexo Pedidos
+# Nexo Pedidos v1
 
-Demo funcional para validar pedidos con un comercio. Una instalación independiente por negocio, derivada de [MiHuerta](https://github.com/Facussttee/MiHuerta).
+Sistema ágil y móvil de pedidos en línea, pesaje de mostrador y administración de catálogo para comercios de cercanía (verdulerías, dietéticas, fiambrerías y tiendas de alimentos).
 
-El cliente arma un pedido estimado; el operario prepara productos por unidad o peso y confirma el total final. Administración permite crear, editar, pausar y archivar productos, con categorías y códigos/SKU. Los pedidos conservan sus nombres, unidades y precios históricos cuando cambia el catálogo.
+Desarrollado como una Progressive Web App (PWA) de una sola instalación por comercio, sin costos fijos de servidor propio: funciona sobre arquitectura serverless (**Vercel**) y Backend as a Service (**Supabase PostgreSQL + Realtime**).
 
-## Abrir la demo
+---
 
-Con Node.js disponible, desde la carpeta de este proyecto:
+## 🚀 Características Principales
 
+### 1. Vista Cliente (Catálogo y Pedido)
+* **Catálogo móvil optimizado**: Grilla adaptable (2 columnas desde 360 px) con fotos de productos, categorías dinámicas y buscador en tiempo real.
+* **Productos por peso y unidad**: Admite venta fraccionada (pasos de 0.25 o 0.5 kg) y productos unitarios (paso 1 u).
+* **Carrito y estimación clara**: Calcula el importe estimado previo, informando al cliente que los pesables tendrán su valor exacto al pasar por la balanza del local.
+* **Entrega flexible**: Selección entre retiro en mostrador o envío a domicilio con dirección y teléfono de contacto.
+* **Seguimiento e historial**: Pestaña "Mis pedidos" para seguir el estado en curso y consultar compras anteriores.
+
+### 2. Vista Operador (Balanza y Mostrador)
+* **Tablero Kanban en tiempo real**: Columnas automáticas de pedidos *Pendientes*, *En preparación* y *Listos*.
+* **Alerta sonora instantánea**: Beep sonoro automático al ingresar un nuevo pedido vía Supabase Realtime WebSocket.
+* **Pesaje en balanza**: Ajuste de peso real en kilogramos con visualización inmediata del equivalente en gramos.
+* **Flexibilidad operativa**: Posibilidad de marcar artículos sin stock/faltantes, sumar o quitar ítems y corregir la modalidad de entrega sobre la marcha.
+* **Cálculo de importe real**: Diferencia exacta entre total estimado y total real pesado.
+
+### 3. Vista Administrador (Precios y Catálogo)
+* **Gestión total de productos**: Alta, edición de precios, control de disponibilidad (pausar/activar stock) y archivado lógico.
+* **Fotos de productos**: Carga de imágenes desde cámara o galería móvil, optimizadas automáticamente en IndexedDB (512x512 px) para máximo rendimiento sin saturar almacenamiento.
+* **Códigos SKU y categorías**: Organización por códigos comerciales y categorías configurables según el rubro del negocio.
+* **Sincronización en la nube**: Cualquier cambio de precio o producto se actualiza inmediatamente en Supabase y se refleja en los clientes conectados.
+* **PIN de seguridad**: Bloqueo de acceso local para proteger la vista de precios y configuración en dispositivos compartidos.
+
+### 4. Mensajería WhatsApp (2 modalidades de operación)
+* **Opción A — Web Asistida (Sin instalación ni backend)**: Al marcar un pedido como *Listo*, el operador toca "Enviar WhatsApp" y se abre la conversación con el cliente conteniendo el desglose detallado de balanza, total exacto, dirección/retiro y alias de transferencia bancaria.
+* **Opción B — Bot Autónomo (Baileys + Node.js)**: Servicio complementario en [`bot/`](bot/) que vincula una línea de WhatsApp mediante código QR, escucha los pedidos listos en Supabase por WebSockets y dispara los mensajes de forma 100% automática, además de responder con el catálogo a quien escriba al número del comercio.
+
+---
+
+## 🛠️ Arquitectura Técnica
+
+```
+[ Cliente PWA ] <───────┐
+[ Operador Kanban ] <───┼──> (Supabase Realtime WebSockets)
+[ Administrador ] <─────┘         │
+                                  ▼
+                     [ Supabase PostgreSQL ]
+                     ├── public.clientes
+                     ├── public.productos
+                     └── public.pedidos (id SERIAL #101+)
+                                  ▲
+                                  │ (WebSocket Listener)
+                     [ Bot WhatsApp / Baileys ] (Opcional)
+```
+
+* **Frontend**: Vanilla JS modular empaquetado en [`js/bundle.js`](js/bundle.js) (sin frameworks pesados), CSS con Tailwind CSS Play CDN y diseño responsivo móvil (touch targets >= 44 px, inputs >= 16 px anti-zoom).
+* **Persistencia**: Híbrida local (`localStorage` + `IndexedDB`) con backend en la nube (**Supabase**) gobernado por Row Level Security (RLS).
+* **Hosting**: **Vercel** sirviendo la raíz estática confinada [`dist/public`](dist/public) generada por [`scripts/build-public.mjs`](scripts/build-public.mjs).
+
+---
+
+## 📋 Puesta en Marcha
+
+### 1. Base de datos en Supabase
+1. Creá un proyecto gratuito en [supabase.com](https://supabase.com).
+2. Andá a **SQL Editor** -> **New query**.
+3. Copiá y ejecutá el script completo de [`supabase/schema.sql`](supabase/schema.sql). Esto crea las tablas, índices, triggers de actualización, políticas de seguridad RLS, canales de Realtime y una semilla inicial de 17 productos.
+4. En **Project Settings** -> **API**, copiá tu **Project URL** y tu **anon public key** (`sb_publishable_...` o `eyJ...`).
+
+### 2. Despliegue en Vercel
+1. Importá el repositorio [Facussttee/nexo-pedidos](https://github.com/Facussttee/nexo-pedidos) en tu cuenta de Vercel.
+2. En la configuración del proyecto (**Settings** -> **Environment Variables**), configurá:
+   * `NEXT_PUBLIC_SUPABASE_URL` = `https://<tu-proyecto>.supabase.co`
+   * `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = `<tu-anon-key>`
+   * `BUSINESS_NAME` = `Nombre de tu Comercio` (opcional)
+   * `BUSINESS_ALIAS` = `tu.alias.mp` (opcional)
+   * `BUSINESS_WHATSAPP` = `54911XXXXXXXX` (opcional)
+3. Al desplegar, el comando de build genera automáticamente la configuración pública en `dist/public/js/public-config.js`.
+
+### 3. Ejecución Local (Desarrollo y Pruebas)
+Para probar localmente conectado a Supabase:
 ```powershell
+# En PowerShell:
+$env:VERCEL="1"
+$env:NEXT_PUBLIC_SUPABASE_URL="https://<tu-proyecto>.supabase.co"
+$env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<tu-anon-key>"
+node scripts/build-public.mjs
 node bot/serve-demo.js --host 127.0.0.1 --port 3000
 ```
+Abrir `http://127.0.0.1:3000` en el navegador.
 
-Abrir `http://127.0.0.1:3000/?demo=1`. Usar el cliente sintético de acceso rápido o completar un cliente de prueba. Las pestañas superiores cambian entre Cliente, Operario y Precios. El PIN inicial del personal es `1234`; es un bloqueo local de interfaz.
+### 4. Servicio de Bot de WhatsApp (Opcional)
+Para tener envío automático desatendido por WhatsApp:
+```powershell
+cd bot
+npm install
+# Crear archivo bot/.env basándose en bot/.env.example con tus credenciales
+npm start
+```
+Escaneá el código QR que aparece en la terminal desde WhatsApp (**Dispositivos vinculados**) y el bot quedará escuchando los pedidos listos en tiempo real.
 
-No hace falta instalar las dependencias del bot ni configurar Supabase. Para detener el servidor, Ctrl+C. La demo guarda en el navegador y usa datos sintéticos y WhatsApp simulado. No ingresar datos reales.
+---
 
-## Experiencia móvil e imágenes
+## 🧪 Verificación y Tests Automatizados
 
-Cliente y Precios muestran dos productos por fila desde 360 px; búsqueda y filtros quedan arriba al desplazarse. El carrito tiene un único acceso y admite Cerrar, Escape, fondo y arrastre hacia abajo. Mis pedidos separa pedidos en curso e historial del cliente actual.
-
-En Precios → Editar (o Nuevo producto), usar Agregar foto, elegir archivo y Guardar. Permite reemplazar y quitar la foto; Cancelar conserva la versión anterior. La selección del teléfono puede ofrecer cámara o galería según el navegador. JPEG, PNG y WebP; HEIC sólo si el navegador puede decodificarlo. Las imágenes se optimizan localmente.
-
-Pedidos, catálogo y fotos pertenecen al navegador y origen actuales: no se comparten entre PC y teléfono. Cambiar IP/puerto o borrar los datos del navegador puede hacer que dejen de estar disponibles. No es un respaldo ni sincronización entre dispositivos.
-
-Guía y límites: [demo móvil](docs/MOBILE_DEMO.md). Evidencia de la revisión: [entrega móvil](coordination/DELIVERY_MOBILE.md).
-
-## Recorrido para validar con el comercio
-
-1. En Precios, crear un producto por unidad y otro por kilo; probar una categoría nueva y un SKU con ceros iniciales.
-2. En Cliente, agregar ambos al carrito, revisar el estimado y confirmar retiro o envío.
-3. En Operario, tomar el pedido. Confirmar las unidades con Listo e ingresar el peso real en kg; el equivalente en gramos aparece debajo.
-4. Probar un faltante, agregar/quitar un ítem y corregir entrega. No se permite finalizar con ítems sin resolver.
-5. Finalizar y comparar el estimado con el total preparado. Un total final de cero sigue siendo cero.
-6. Usar WhatsApp simulado y marcar el pedido entregado. Después editar o archivar el producto y comprobar que el pedido conserva sus datos.
-
-Si falla el guardado del pedido, el carrito permanece disponible para reintentar. Si se guardó el pedido pero falló la limpieza posterior, la demo identifica el pedido recibido y evita duplicarlo al reintentar. Estas garantías son locales; no equivalen a transacciones entre dispositivos.
-
-Si el catálogo está corrupto, se muestra un aviso y una recuperación explícita. Antes de recuperar se guarda una copia del original; se conservan las filas válidas y, si no hay ninguna, se usa el catálogo sintético.
-
-## Build y pruebas locales
-
-Probado en el entorno local con Node.js 26.13.0:
+La suite de pruebas valida integridad de estado, aislamiento de demo, seguridad contra inyección y sincronización en la nube:
 
 ```powershell
+# Compilar bundle y chequear sintaxis:
 powershell -ExecutionPolicy Bypass -File .\build-bundle.ps1
 node --check js/bundle.js
+
+# Construir directorio público:
 node scripts/build-public.mjs
-node tests/test-delivery-store.mjs
-node tests/test-preparation-input.test.mjs
-node tests/test-demo-isolation.test.mjs
-node tests/test-static-server.test.mjs
-node bot/test-store-state.js
-node tests/test-phone-numeric-validation.test.mjs
-node tests/test-html-escaping.test.mjs
+
+# Ejecutar suites de test:
+node tests/test-production-supabase-sync.test.mjs    # Sincronización completa con Supabase
+node tests/test-demo-isolation.test.mjs             # Aislamiento y fail-closed de demo
+node tests/test-static-server.test.mjs              # Servidor estático y confinamiento
+node tests/test-delivery-store.mjs                  # Lógica de pesaje, balanza y subtotales
+node tests/test-phone-numeric-validation.test.mjs   # Sanitización de teléfonos de clientes
+node bot/test-store-state.js                        # Máquina de estados de pedidos
+node tests/test-html-escaping.test.mjs              # Mitigación de XSS en renderizado
 ```
 
-Las pruebas de navegador y sus reportes están en `coordination/reviews` y `coordination/bugs`; usan Playwright/Brave del entorno de QA. No son requisitos para iniciar la demo.
+---
 
-`index.html` carga el bundle clásico para conservar compatibilidad con apertura local. Regenerarlo siempre que cambie un módulo JS. El servidor publica exclusivamente `dist/public`, construido mediante una lista de cuatro activos; nunca servir la raíz Git.
+## 📁 Estructura del Repositorio
 
-## Alcance de esta entrega
+* `js/`
+  * `app.js`: Enrutador de vistas y eventos de navegación.
+  * `config.js`: Resolución y validación estricta de configuración pública (demo vs producción).
+  * `public-config.js`: Declaración de configuración pública para el navegador (sin secretos).
+  * `store.js`: Gestor central reactivo de estado, almacenamiento local y cliente Supabase Realtime.
+  * `images.js`: Procesamiento, compresión y almacenamiento IndexedDB de fotos de productos.
+  * `bundle.js`: Archivo compilado unificado para producción y ejecución universal.
+  * `views/`: Vistas de interfaz (`client.js`, `operator.js`, `admin.js`).
+* `supabase/`
+  * `schema.sql`: Script DDL completo de PostgreSQL, tablas, RLS, Realtime y semilla.
+  * `001_pilot.sql`: Migración de base de datos piloto.
+* `bot/`: Servicio de mensajería Baileys WhatsApp con escucha de eventos de balanza.
+* `scripts/`: Scripts de build y generación de raíz pública estática (`build-public.mjs`).
+* `tests/`: Suites de pruebas unitarias, de integración y seguridad.
+* `docs/`: Documentación de producto, comparativas de UX y arquitectura.
 
-Es una demo local para validar experiencia y operación. Disponibilidad significa activo/pausado, no inventario cuantitativo. El PIN no es autenticación de servidor. Auth/RLS, transacciones remotas, reservas, pagos separados y WhatsApp durable quedan para una etapa posterior; el checkout real está bloqueado en esta entrega.
+---
 
-La presentación utiliza Tailwind Play CDN y Google Fonts. Necesita conexión para esos recursos visuales; no se promete funcionamiento autónomo sin red.
+## 📄 Licencia y Créditos
 
-No ejecutar `bot/index.js`, `bot/seed.js`, `bot/test-mock.js` ni `bot/test-order-flow.js` para probar esta demo: son rutas de integración con efectos externos. MiHuerta y sus servicios quedan fuera de este proyecto.
-
-## Documentación
-
-- [Estado de entrega, evidencia y atención requerida](coordination/DELIVERY_STATUS.md)
-- [Producto y límites](docs/PRODUCT.md)
-- [Demo y configuración pública](docs/DEMO.md)
-- [Servidor estático](docs/STATIC_SERVER.md)
-- [Tablero](coordination/BOARD.md)
-- [Historial del primer checkpoint](coordination/CHECKPOINT.md)
-- [Relevamiento para una futura importación](docs/RELEVAMIENTO_IMPORTACION.md)
-
-Los documentos `docs/01` a `docs/05`, `PROJECT.md` y `AGENT.md` conservan contexto histórico de MiHuerta. Las reglas de esta copia están en `AGENTS.md`. El repositorio independiente es privado: [Facussttee/nexo-pedidos](https://github.com/Facussttee/nexo-pedidos). No se asignó una licencia nueva.
+Nexo Pedidos es una evolución independiente derivada del proyecto original [MiHuerta](https://github.com/Facussttee/MiHuerta) de Facundo Argüello.
+Repositorio oficial: [Facussttee/nexo-pedidos](https://github.com/Facussttee/nexo-pedidos).

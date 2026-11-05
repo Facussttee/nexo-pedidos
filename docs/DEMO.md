@@ -1,64 +1,68 @@
-# Modo Demo y Configuración Pública (`NEXO_PUBLIC_CONFIG`)
+# Configuración y Modos de Ejecución (`NEXO_PUBLIC_CONFIG`)
 
-Nexo Pedidos inicia **por defecto en Modo Demo aislado** con datos sintéticos. Ninguna instalación nueva se conecta a proyectos heredados ni envía mensajes reales.
+Nexo Pedidos cuenta con dos modos de operación claramente diferenciados: **Modo Demo (aislado)** y **Modo Producción (Supabase + Realtime)**.
 
-## 1. Comportamiento del Modo Demo (predeterminado)
+---
 
-Cuando `window.NEXO_PUBLIC_CONFIG` no está definido o tiene `mode: "demo"`:
+## 1. Modo Producción (Nube y Tiempo Real)
 
-- **Bloqueo de APIs de datos, Supabase y WhatsApp:** no se carga el SDK de Supabase (`@supabase/supabase-js`), no se invoca `supabase.createClient` y un guard en runtime bloquea las APIs de datos y navegación saliente desde JS (`fetch`, `WebSocket`, `EventSource`, `XMLHttpRequest`, `navigator.sendBeacon` y `window.open`).
-- **Alcance de activos estáticos (sin promesa de offline total):** en este tramo `index.html` todavía referencia hojas de estilo/tipografía externas mediante etiquetas estáticas (Tailwind Play CDN y Google Fonts). Esa dependencia visual queda registrada como pendiente para empaquetado local posterior; el aislamiento de este paquete cubre las APIs de datos, el backend Supabase y la mensajería de WhatsApp.
-- **Namespace propio:** todos los datos locales se guardan bajo el prefijo `nexo_demo_v1_*` (y `nexo_theme_v1` para el tema visual). Cualquier dato preexistente bajo `mihuerta_*` en el navegador es ignorado por completo y nunca se migra.
-- **Datos sintéticos:** el catálogo, los clientes (`Ana Demo (sintética)` — `1100000001`, `Bruno Demo (sintético)` — `1100000002`), los pedidos iniciales (`#101`, `#102`) y el perfil del comercio (`Comercio Demo Nexo`, alias `alias.demo.nexo`) son valores sintéticos de demostración. El botón de acceso rápido con cliente sintético (`#btn-quick-demo-user`) se renderiza y habilita únicamente cuando `store.isDemo()` es `true`.
-- **WhatsApp simulado:** tanto la consulta del cliente como el botón de aviso de pedido pesado registran el mensaje en memoria/almacenamiento local (`nexo_demo_v1_simulated_messages`) y muestran confirmación visual de simulación sin abrir enlaces `wa.me`.
-- **Aviso persistente:** la barra superior muestra en todo momento el cartel `MODO DEMO · Datos sintéticos · WhatsApp simulado · Sin conexión a servicios reales`.
-- **Panel de administración acotado:** desde la interfaz no se pueden ingresar URLs ni claves de Supabase; sólo se permite ajustar precios/disponibilidad y el PIN local de interfaz.
+En Modo Producción, la aplicación se conecta a **Supabase** para sincronizar pedidos, catálogo y clientes entre todos los dispositivos en tiempo real.
 
-## 2. Archivo de configuración pública (`js/public-config.js`)
+### Declaración en `js/public-config.js`
+Este archivo se genera automáticamente en Vercel a través de [`scripts/build-public.mjs`](../scripts/build-public.mjs) a partir de las variables de entorno, o puede configurarse manualmente:
 
-La configuración pública vive en `js/public-config.js` y se carga en `index.html` **antes** de `js/bundle.js` (compatible con `file:///` y servidor estático sin duplicar configuración dentro del bundle).
+```javascript
+window.NEXO_PUBLIC_CONFIG = {
+  mode: "production",
+  business: {
+    name: "Nombre del Comercio",
+    alias: "alias.bancario.mp",
+    whatsapp: "54911XXXXXXXX",
+    whatsappDisplay: "+54 11 XXXX-XXXX"
+  },
+  supabase: {
+    url: "https://<tu-proyecto>.supabase.co",
+    anonKey: "sb_publishable_... o eyJ..."
+  }
+};
+```
 
-### Ejemplo en Modo Demo (valor por defecto del repositorio)
+### Características en Producción
+* **Conexión Supabase**: Carga la librería oficial `@supabase/supabase-js` desde CDN y establece conexión REST y WebSocket Realtime.
+* **Sincronización multi-dispositivo**:
+  * Un pedido creado por un cliente en su teléfono sube a la tabla `pedidos` en Supabase y aparece al instante en la pantalla del operador en la PC con alerta sonora.
+  * Los cambios de precio o stock realizados por el administrador en la tabla `productos` se reflejan en tiempo real en los clientes.
+* **Numeración oficial de pedidos**: Supabase asigna el identificador correlativo (`id SERIAL` a partir de #101) garantizando unicidad sin colisiones entre múltiples compradores simultáneos.
+* **Seguridad (Fail-Closed)**: Si falta algún campo obligatorio (`business.name`, `supabase.url` con `https://`, o `supabase.anonKey`), o si se intenta colar una clave secreta (`service_role`, `sb_secret_`), la aplicación se bloquea con una pantalla de error explícita y no permite operar localmente en falso.
 
-```js
+---
+
+## 2. Modo Demo (Aislado y Sintético)
+
+Cuando no se define configuración o se especifica `mode: "demo"`, Nexo Pedidos opera de manera 100% aislada:
+
+```javascript
 window.NEXO_PUBLIC_CONFIG = {
   mode: "demo"
 };
 ```
 
-Opcionalmente se puede personalizar el perfil sintético en demo:
+### Comportamiento en Modo Demo
+* **Bloqueo estricto de APIs de datos**: Un guard en runtime intercepta y bloquea `fetch`, `WebSocket`, `XMLHttpRequest`, `EventSource` y `window.open` para garantizar que no se realicen conexiones no deseadas a servidores externos.
+* **Datos sintéticos locales**: Catálogo predeterminado de 17 productos, clientes de prueba (`Ana Demo`, `Bruno Demo`), pedidos iniciales (#101, #102) y perfil sintético (`Comercio Demo Nexo`).
+* **WhatsApp simulado**: Los mensajes de pedidos listos y consultas no abren WhatsApp real, sino que se registran localmente en el historial de simulación.
+* **Namespace aislado**: Almacenamiento exclusivo en `nexo_demo_v1_*`, sin alterar datos productivos.
+* **Cartel indicador**: Barra superior persistente indicando que se encuentra en modo demostración.
 
-```js
-window.NEXO_PUBLIC_CONFIG = {
-  mode: "demo",
-  business: {
-    name: "Fiambrería Demo Nexo",
-    alias: "fiambreria.demo.nexo",
-    whatsapp: "5491100000000",
-    whatsappDisplay: "+54 11 0000-0000 (demo)"
-  }
-};
-```
+---
 
-### Ejemplo en Modo Producción (una instalación por comercio)
+## 3. Despliegue en Vercel
 
-```js
-window.NEXO_PUBLIC_CONFIG = {
-  mode: "production",
-  business: {
-    name: "Nombre del Comercio",
-    alias: "alias.bancario.comercio",
-    whatsapp: "54911XXXXXXXX"
-  },
-  supabase: {
-    url: "https://<tu-proyecto>.supabase.co",
-    anonKey: "<clave-publica-anon-o-publishable>"
-  }
-};
-```
+En Vercel, el builder [`scripts/build-public.mjs`](../scripts/build-public.mjs) inspecciona las variables de entorno de producción:
+* `NEXT_PUBLIC_SUPABASE_URL` o `SUPABASE_URL`
+* `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` o `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+* `BUSINESS_NAME` (opcional, por defecto "Nexo Pedidos")
+* `BUSINESS_ALIAS` (opcional)
+* `BUSINESS_WHATSAPP` (opcional)
 
-## 3. Reglas de seguridad y fallo cerrado en Producción
-
-1. **Separación estricta de secretos:** `js/public-config.js` es público y llega al navegador. **Nunca** coloques allí `service_role`, `sb_secret_*`, secretos JWT, contraseñas de base de datos ni tokens de WhatsApp/Meta. Si el validador detecta un JWT con `role !== "anon"`, un prefijo `sb_secret_` o propiedades prohibidas (`serviceRoleKey`, `secret`, `password`, `databaseUrl`), bloquea el arranque.
-2. **Sin fallback silencioso ni accesos demo:** si `mode` es `"production"` y falta `business.name`, `supabase.url` (debe ser `https://`) o `supabase.anonKey`, la aplicación **no inicia**, muestra el detalle de errores en pantalla y bloquea la creación de pedidos para no simular éxito local. Cuando la configuración productiva es válida, tampoco se siembran clientes/pedidos sintéticos ni se ofrece el botón de acceso rápido de cliente demo.
-3. **Límites actuales (previos a NP-004..NP-009):** este paquete aísla la demo y el contrato de configuración pública; la autenticación de personal con RLS, la creación transaccional idempotente y el outbox de WhatsApp se implementan en sus paquetes dedicados posteriores.
+Con ellas genera `dist/public/js/public-config.js` antes de servir los activos estáticos, asegurando que el cliente navegador reciba la configuración productiva sin exponer ningún secreto del servidor.

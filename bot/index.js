@@ -68,7 +68,8 @@ const CATALOG_WEB_URL =
     : RAW_CATALOG_URL;
 
 const COOLDOWN_MINUTES = Number(process.env.COOLDOWN_MINUTES || 180);
-const PAYMENT_ALIAS = process.env.PAYMENT_ALIAS || "mihuerta.verduras";
+const BUSINESS_NAME = process.env.BUSINESS_NAME || "Nexo Pedidos";
+const PAYMENT_ALIAS = process.env.PAYMENT_ALIAS || "alias.demo.nexo";
 
 // Servidor Web Local Integrado para servir únicamente la raíz pública generada (dist/public)
 function startLocalWebServer() {
@@ -226,7 +227,7 @@ function buildOrderReadyMessage(order) {
       : "Modalidad: Ya podés pasar a retirarlo por el mostrador del local.";
 
   return (
-    `¡Hola ${order.cliente_nombre || ""}! Tu pedido #${order.id} en *Mi Huerta* ya fue pesado y está listo:\n\n` +
+    `¡Hola ${order.cliente_nombre || ""}! Tu pedido #${order.id} en *${BUSINESS_NAME}* ya fue pesado y está listo:\n\n` +
     `${lines.join("\n")}\n\n` +
     `*Total exacto en balanza: $${totalExacto}*\n` +
     `${entregaInfo}\n\n` +
@@ -270,7 +271,7 @@ async function startWhatsAppBot() {
         console.log("Sesión cerrada desde el teléfono. Borrá la carpeta auth_info_baileys para volver a escanear.");
       }
     } else if (connection === "open") {
-      console.log("\n[OK] Bot de WhatsApp Mi Huerta conectado y activo.");
+      console.log("\n[OK] Bot de WhatsApp ${BUSINESS_NAME} conectado y activo.");
       setupSupabaseRealtimeListener(sock);
       reconcilePendingReadyOrders(sock);
     }
@@ -304,7 +305,7 @@ async function startWhatsAppBot() {
       const personalCatalogLink = `${CATALOG_WEB_URL}/?tel=${localPhone}`;
 
       const welcomeText =
-        `¡Hola! Bienvenido a *Verdulería Mi Huerta*.\n\n` +
+        `¡Hola! Bienvenido a *${BUSINESS_NAME}*.\n\n` +
         `Armá tu pedido del día con los precios actualizados entrando directamente a tu catálogo acá:\n` +
         `${personalCatalogLink}\n\n` +
         `_Elegí lo que necesites y apenas lo pesemos en la balanza del local te avisamos por acá con el importe exacto._`;

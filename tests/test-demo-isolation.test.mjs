@@ -115,6 +115,7 @@ function runBundleInSandbox({ publicConfigScript = null, prefillStorage = {} } =
     },
     addEventListener() {},
     setAttribute() {},
+    removeAttribute() {},
     querySelector() { return null; },
     querySelectorAll() { return []; },
     appendChild(child) {

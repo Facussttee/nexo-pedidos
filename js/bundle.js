@@ -1143,11 +1143,20 @@ class Store {
 
       if (prodRes.data && prodRes.data.length > 0) {
         const mappedProducts = prodRes.data.map((p) => ({
-          ...p,
+          id: p.id,
+          nombre: p.nombre,
+          categoria: p.categoria,
+          unidad_medida: p.unidad_medida,
           precio: Number(p.precio),
-          paso: Number(p.paso || 0.5)
+          disponible: Boolean(p.disponible),
+          paso: Number(p.paso || 0.5),
+          codigo: p.codigo || "",
+          detalle: p.detalle || "",
+          archivado: Boolean(p.archivado),
+          imagen_id: p.imagen_id || null
         }));
         safeSet(this.storageKeys.PRODUCTS, mappedProducts);
+        this.notify("products_changed");
       }
 
       if (cliRes && cliRes.data && cliRes.data.length > 0) {
@@ -1179,6 +1188,7 @@ class Store {
           items: Array.isArray(o.items) ? o.items : []
         }));
         this.persistOrders(mappedOrders);
+        this.notify("orders_changed");
       }
 
       this.notify("storage_sync");
@@ -1210,9 +1220,12 @@ class Store {
   async syncOrderToSupabase(order) {
     if (!this.supabase || !order) return;
     try {
+      const cleanPhone = order.cliente && order.cliente.telefono
+        ? String(order.cliente.telefono).replace(/\D/g, "")
+        : "";
+
       // Garantizar que el cliente exista en Supabase antes de insertar el pedido para satisfacer la Foreign Key
-      if (order.cliente && order.cliente.telefono) {
-        const cleanPhone = String(order.cliente.telefono).replace(/\D/g, "");
+      if (cleanPhone) {
         await this.supabase.from("clientes").upsert({
           telefono: cleanPhone,
           nombre: order.cliente.nombre || "Cliente",
@@ -1221,19 +1234,73 @@ class Store {
         });
       }
 
-      await this.supabase.from("pedidos").upsert({
-        id: order.id,
-        cliente_telefono: order.cliente.telefono,
-        cliente_nombre: order.cliente.nombre,
-        tipo_entrega: order.tipo_entrega,
-        direccion_entrega: order.direccion_entrega,
-        estado: order.estado,
-        total_estimado: order.total_estimado,
-        total_real: order.total_real,
-        items: order.items
-      });
+      const orderPayload = {
+        cliente_telefono: cleanPhone || null,
+        cliente_nombre: order.cliente?.nombre || "Cliente",
+        tipo_entrega: order.tipo_entrega || "RETIRO",
+        direccion_entrega: order.direccion_entrega || (order.tipo_entrega === "DELIVERY" ? "" : "Retiro en Mostrador"),
+        estado: order.estado || "PENDIENTE",
+        total_estimado: Number(order.total_estimado || 0),
+        total_real: order.total_real !== null && order.total_real !== undefined ? Number(order.total_real) : null,
+        items: Array.isArray(order.items) ? order.items : [],
+        fecha: order.fecha || new Date().toISOString()
+      };
+
+      if (!order._isNew && order.id) {
+        orderPayload.id = order.id;
+      }
+
+      const res = order._isNew
+        ? await this.supabase.from("pedidos").insert(orderPayload).select()
+        : await this.supabase.from("pedidos").upsert(orderPayload).select();
+
+      if (res.error) {
+        if (order._isNew && order.id) {
+          await this.supabase.from("pedidos").upsert({ id: order.id, ...orderPayload });
+        }
+        console.warn("Error guardando pedido en Supabase:", res.error);
+        this.notify("cloud_error", res.error.message);
+      } else if (res.data && res.data[0] && res.data[0].id) {
+        order._isNew = false;
+        const dbId = res.data[0].id;
+        const oldId = order.id;
+        order.id = dbId;
+        const currentOrders = this.getOrders();
+        this.persistOrders(currentOrders.map((o) => (o.id === oldId || o.id === dbId ? { ...o, id: dbId, _isNew: false } : o)));
+        if (this.getActiveOrderId() === oldId) {
+          this.setActiveOrderId(dbId);
+        }
+        this.notify("orders_changed");
+      }
     } catch (err) {
       console.warn("Error guardando pedido en Supabase:", err);
+    }
+  }
+
+  async syncProductToSupabase(product) {
+    if (!this.supabase || !product) return;
+    try {
+      const payload = {
+        id: product.id,
+        nombre: product.nombre,
+        categoria: product.categoria,
+        unidad_medida: product.unidad_medida,
+        precio: Number(product.precio),
+        disponible: Boolean(product.disponible),
+        paso: Number(product.paso || 0.5),
+        codigo: product.codigo ? String(product.codigo).trim().toUpperCase() : "",
+        detalle: product.detalle ? String(product.detalle).trim() : "",
+        archivado: Boolean(product.archivado),
+        imagen_id: product.imagen_id || null,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await this.supabase.from("productos").upsert(payload);
+      if (error) {
+        console.warn("Error guardando producto en Supabase:", error);
+        this.notify("cloud_error", error.message);
+      }
+    } catch (err) {
+      console.warn("Error guardando producto en Supabase:", err);
     }
   }
 
@@ -1381,7 +1448,7 @@ class Store {
   }
 
   saveProduct(draft, productId = null) {
-    this.requireDemo();
+    if (!this.config.ok) throw new Error("Configuración inválida.");
     const products = this.getAdminProducts();
     if (this.catalogError) throw new Error(this.catalogError);
     const previous = productId === null ? null : products.find((p) => p.id === productId);
@@ -1408,11 +1475,12 @@ class Store {
     }
     writeCritical(this.storageKeys.PRODUCTS, previous ? products.map((p) => p.id === id ? saved : p) : [...products, saved]);
     this.notify("products_changed");
+    this.syncProductToSupabase(saved);
     return saved;
   }
 
   archiveProduct(id, archived = true) {
-    this.requireDemo();
+    if (!this.config.ok) throw new Error("Configuración inválida.");
     const products = this.getAdminProducts();
     if (this.catalogError) throw new Error(this.catalogError);
     const product = products.find((p) => p.id === id);
@@ -1420,6 +1488,7 @@ class Store {
     const saved = { ...product, archivado: archived };
     writeCritical(this.storageKeys.PRODUCTS, products.map((p) => p.id === id ? saved : p));
     this.notify("products_changed");
+    this.syncProductToSupabase(saved);
     return saved;
   }
 
@@ -1686,7 +1755,6 @@ class Store {
 
   createOrder({ cliente, tipo_entrega, direccion_entrega }) {
     if (!this.config.ok) return null;
-    if (!this.isDemo()) throw new Error("La confirmación de pedidos reales requiere el servidor; esta entrega sólo permite demo.");
     const { items, totalEstimado } = this.getCartSummary();
     const orders = this.getOrders();
     const cartKey = this.checkoutCartKey();
@@ -1709,6 +1777,7 @@ class Store {
       direccion_entrega: tipo_entrega === "DELIVERY" ? direccion_entrega : "Retiro en Mostrador",
       estado: "PENDIENTE", fecha: new Date().toISOString(),
       total_estimado: totalEstimado, total_real: null, checkout_cart_key: cartKey,
+      _isNew: true,
       items: items.map((item) => ({
         producto_id: item.producto_id, nombre: item.nombre, categoria: item.categoria,
         unidad_medida: item.unidad_medida, precio_unitario: item.precio_unitario,

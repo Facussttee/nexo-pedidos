@@ -281,6 +281,7 @@ console.log("\n--- SUITE 2: Public Build Allowlist, Build Confinement & NP-002 D
         },
         addEventListener() {},
         setAttribute() {},
+        removeAttribute() {},
         querySelector() { return null; },
         querySelectorAll() { return []; },
         appendChild() {},

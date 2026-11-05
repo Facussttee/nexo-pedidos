@@ -318,14 +318,25 @@ const isMain =
 if (isMain) {
   const result = buildPublic();
   if (process.env.VERCEL) {
-    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    if (!url || new URL(url).protocol !== "https:" || !/^sb_publishable_[\w-]+$/.test(anonKey || "")) {
-      throw new Error("Vercel requiere la URL de Supabase y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
+    const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+    const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
+    if (!url || !anonKey || /^sb_secret_/i.test(anonKey)) {
+      throw new Error("Vercel requiere la URL https de Supabase y una clave pública válida (NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY).");
     }
-    const config = { mode: "production", business: { name: "Nexo Piloto" }, supabase: { url, anonKey } };
+    const businessName = (process.env.BUSINESS_NAME || "Nexo Pedidos").trim();
+    const businessAlias = (process.env.BUSINESS_ALIAS || "").trim();
+    const businessWhatsapp = (process.env.BUSINESS_WHATSAPP || "").replace(/\D/g, "");
+    const config = {
+      mode: "production",
+      business: {
+        name: businessName,
+        alias: businessAlias,
+        whatsapp: businessWhatsapp
+      },
+      supabase: { url, anonKey }
+    };
     fs.writeFileSync(path.join(result.outDir, "js/public-config.js"),
-      `window.NEXO_PUBLIC_CONFIG = ${JSON.stringify(config)};\n`);
+      `window.NEXO_PUBLIC_CONFIG = ${JSON.stringify(config, null, 2)};\n`);
   }
   console.log(`[BUILD PUBLIC] Raíz pública generada en: ${result.outDir}`);
   for (const file of result.files) {

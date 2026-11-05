@@ -263,15 +263,26 @@ async function startWhatsAppBot() {
 
     if (connection === "close") {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-      console.log(`[CONEXIÓN CERRADA] Código: ${statusCode}. Reconectando: ${shouldReconnect}`);
-      if (shouldReconnect) {
-        setTimeout(startWhatsAppBot, 3000);
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+      console.log(`[CONEXIÓN CERRADA] Código: ${statusCode}. Desvinculado: ${isLoggedOut}`);
+
+      if (isLoggedOut) {
+        console.log("\n[SESIÓN REVOCADA / 401] La sesión fue cerrada desde el teléfono o expiró.");
+        console.log("[AUTO-RECUPERACIÓN] Purgando credenciales antiguas y generando un nuevo QR en 2 segundos...");
+        try {
+          if (fs.existsSync(authDir)) {
+            fs.rmSync(authDir, { recursive: true, force: true });
+          }
+        } catch (err) {
+          console.warn("[AVISO] No se pudo limpiar la carpeta de autenticación:", err.message);
+        }
+        setTimeout(startWhatsAppBot, 2000);
       } else {
-        console.log("Sesión cerrada desde el teléfono. Borrá la carpeta auth_info_baileys para volver a escanear.");
+        console.log("[RECONEXIÓN] Reconectando sesión existente en 3 segundos...");
+        setTimeout(startWhatsAppBot, 3000);
       }
     } else if (connection === "open") {
-      console.log("\n[OK] Bot de WhatsApp ${BUSINESS_NAME} conectado y activo.");
+      console.log(`\n[OK] Bot de WhatsApp ${BUSINESS_NAME} conectado y activo.`);
       setupSupabaseRealtimeListener(sock);
       reconcilePendingReadyOrders(sock);
     }

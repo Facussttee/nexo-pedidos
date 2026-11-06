@@ -1,0 +1,33 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "Quitar durante normalización permite guardar sin bloqueo",
+      "pass": false,
+      "failure": "page.waitForFunction: Timeout 4000ms exceeded."
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "pass": false,
+  "snapshot": {
+    "index.html": {
+      "bytes": 6283,
+      "sha256": "07c0d86e71d8d40ea4cadb2dd40a1503f12e0716f0e1d87ec15a3f6190a5edc9"
+    },
+    "css/style.css": {
+      "bytes": 13502,
+      "sha256": "9b59132776c9f32fd0a486128a0344322a14ba3a1f848d041fae3d75dd35e698"
+    },
+    "js/public-config.js": {
+      "bytes": 1091,
+      "sha256": "969a62b1292eeda9935fce6e3b81e0b6c6926476c8159232c99df2ce522861cc"
+    },
+    "js/bundle.js": {
+      "bytes": 259529,
+      "sha256": "9818ef9ee9476839e315b93b3cb5ac487ef906367f720f1f9b9b62ea39b2d8bc"
+    }
+  },
+  "origin": "http://127.0.0.1:51103"
+}

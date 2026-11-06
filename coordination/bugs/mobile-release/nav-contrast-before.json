@@ -1,0 +1,40 @@
+{
+  "synthetic": true,
+  "theme": "light",
+  "checks": [
+    {
+      "name": "Rol activo conserva contraste al apuntarlo",
+      "width": 390,
+      "pass": false,
+      "colors": {
+        "foreground": "rgb(255, 255, 255)",
+        "background": "rgb(255, 255, 255)"
+      },
+      "ratio": 1,
+      "failure": "Rótulo del rol activo sin contraste suficiente al apuntarlo"
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\client-390-light-viewport.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-390-light-viewport.png"
+  ],
+  "screenshotHashes": {
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\client-390-light-viewport.png": "26f510d0edea39bc1eeb9e9a6bc6f7a7d8e2378702af80e11c0fb3c7c2eed6ca",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-390-light-viewport.png": "eae40a5a2e712cf046913619bfcf3a37a1fcf19ef60b8da49d225e9b52aac396"
+  },
+  "pass": false,
+  "snapshot": {
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-mobile-qa-D29oCj\\public",
+    "assets": {
+      "index.html": "07c0d86e71d8d40ea4cadb2dd40a1503f12e0716f0e1d87ec15a3f6190a5edc9",
+      "css/style.css": "9b59132776c9f32fd0a486128a0344322a14ba3a1f848d041fae3d75dd35e698",
+      "js/public-config.js": "969a62b1292eeda9935fce6e3b81e0b6c6926476c8159232c99df2ce522861cc",
+      "js/bundle.js": "fb64c13b564356422d2c2c749d11e4f48ba0e504253ed183f8880bf65905340b"
+    }
+  },
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "origin": "http://127.0.0.1:59865",
+  "visualOnly": true
+}

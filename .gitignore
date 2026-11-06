@@ -1,0 +1,29 @@
+# Sistema operativo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencias y Sesiones del Bot de WhatsApp
+node_modules/
+bot/node_modules/
+auth_info_baileys/
+bot/auth_info_baileys/
+.env
+.env.local
+bot/.env
+.cooldowns.json
+bot/.cooldowns.json
+
+# Metadatos de agentes
+.agents/
+
+# Raíz pública generada por allowlist
+dist/

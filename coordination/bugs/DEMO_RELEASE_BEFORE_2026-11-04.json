@@ -1,0 +1,44 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "synthetic": true,
+  "checks": [
+    {
+      "viewport": "390x844",
+      "name": "admin CRUD available",
+      "pass": false,
+      "failure": "Feature ausente: no existe Nuevo producto"
+    },
+    {
+      "viewport": "390x844",
+      "name": "no pageerrors, data destinations or popups",
+      "pass": true,
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "viewport": "1024x768",
+      "name": "admin CRUD available",
+      "pass": false,
+      "failure": "Feature ausente: no existe Nuevo producto"
+    },
+    {
+      "viewport": "1024x768",
+      "name": "no pageerrors, data destinations or popups",
+      "pass": true,
+      "errors": [],
+      "unexpected": []
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [],
+  "pass": false,
+  "served": {
+    "origin": "http://127.0.0.1:50365",
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-release-qa-pMhply\\public",
+    "assets": 4,
+    "ephemeral": true,
+    "builtSource": false
+  },
+  "cleanedTemporary": true
+}

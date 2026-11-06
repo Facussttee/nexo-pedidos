@@ -1,0 +1,122 @@
+[
+  {
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "before": {
+      "y": 21,
+      "rootHeight": 3856,
+      "bodyHeight": 3856,
+      "viewport": 768,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 448,
+      "navDisplay": "block"
+    },
+    "after": {
+      "y": 21,
+      "rootHeight": 3856,
+      "bodyHeight": 3856,
+      "viewport": 768,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 448,
+      "navDisplay": "block"
+    },
+    "wheelMoved": false,
+    "tailwindStatus": 200,
+    "failed": [],
+    "errors": []
+  },
+  {
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "before": {
+      "y": 0,
+      "rootHeight": 3856,
+      "bodyHeight": 3856,
+      "viewport": 1024,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 448,
+      "navDisplay": "block"
+    },
+    "after": {
+      "y": 0,
+      "rootHeight": 3856,
+      "bodyHeight": 3856,
+      "viewport": 1024,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 448,
+      "navDisplay": "block"
+    },
+    "wheelMoved": false,
+    "tailwindStatus": 200,
+    "failed": [],
+    "errors": []
+  },
+  {
+    "viewport": {
+      "width": 1024,
+      "height": 768
+    },
+    "before": {
+      "y": 21,
+      "rootHeight": 3856,
+      "bodyHeight": 3856,
+      "viewport": 768,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 448,
+      "navDisplay": "block"
+    },
+    "after": {
+      "y": 21,
+      "rootHeight": 3856,
+      "bodyHeight": 3856,
+      "viewport": 768,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 448,
+      "navDisplay": "block"
+    },
+    "wheelMoved": false,
+    "tailwindStatus": 200,
+    "failed": [],
+    "errors": []
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "before": {
+      "y": 0,
+      "rootHeight": 3958,
+      "bodyHeight": 3958,
+      "viewport": 844,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 390,
+      "navDisplay": "block"
+    },
+    "after": {
+      "y": 0,
+      "rootHeight": 3958,
+      "bodyHeight": 3958,
+      "viewport": 844,
+      "bodyOverflow": "hidden auto",
+      "rootOverflow": "hidden auto",
+      "cardWidth": 390,
+      "navDisplay": "block"
+    },
+    "wheelMoved": false,
+    "tailwindStatus": 200,
+    "failed": [],
+    "errors": []
+  }
+]

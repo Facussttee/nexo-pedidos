@@ -1,0 +1,478 @@
+/* ========================================================
+   Mi Huerta - Estilos Base Mobile-First
+   Enfoque: Minimalista, sobrio, tipográfico y táctil.
+   ======================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  color-scheme: light;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sim-bar-h: 0px;
+
+  /* Surfaces & Canvas */
+  --bg-canvas: #f8fafc;           /* Slate 50 */
+  --bg-surface: #ffffff;          /* White */
+  --bg-surface-elevated: #ffffff; /* Card / Modal */
+  --bg-muted: #f1f5f9;            /* Slate 100 */
+  --bg-subtle: #e2e8f0;           /* Slate 200 */
+
+  /* Typography Colors */
+  --text-primary: #0f172a;        /* Slate 900 - Contrast 16:1 */
+  --text-secondary: #475569;      /* Slate 600 - Contrast 5.5:1 */
+  --text-muted: #64748b;          /* Slate 500 - Contrast 4.6:1 */
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-subtle: #e2e8f0;       /* Slate 200 */
+  --border-default: #cbd5e1;      /* Slate 300 */
+  --border-strong: #94a3b8;       /* Slate 400 */
+
+  /* Brand Palette (Fresh Produce Emerald) */
+  --brand-primary: #059669;       /* Emerald 600 */
+  --brand-hover: #047857;         /* Emerald 700 */
+  --brand-active: #065f46;        /* Emerald 800 */
+  --brand-subtle: #ecfdf5;        /* Emerald 50 */
+  --brand-contrast: #ffffff;
+
+  /* Verdulería Kanban & Order Status Tokens */
+  /* Entrantes (PENDIENTE - Amber) */
+  --status-pending-bg: #fef3c7;
+  --status-pending-border: #fcd34d;
+  --status-pending-text: #78350f;
+  --status-pending-accent: #d97706;
+
+  /* En Balanza (EN_PREPARACION - Blue) */
+  --status-scale-bg: #eff6ff;
+  --status-scale-border: #93c5fd;
+  --status-scale-text: #1e3a8a;
+  --status-scale-accent: #2563eb;
+
+  /* Listos (LISTO - Emerald) */
+  --status-ready-bg: #ecfdf5;
+  --status-ready-border: #6ee7b7;
+  --status-ready-text: #064e3b;
+  --status-ready-accent: #059669;
+
+  /* Cobrados / Entregados (ENTREGADO - Slate) */
+  --status-paid-bg: #f1f5f9;
+  --status-paid-border: #cbd5e1;
+  --status-paid-text: #334155;
+  --status-paid-accent: #64748b;
+
+  /* Cancelado / Sin Stock (Rose) */
+  --status-cancel-bg: #fff1f2;
+  --status-cancel-border: #fca5a5;
+  --status-cancel-text: #881337;
+  --status-cancel-accent: #e11d48;
+
+  /* Touch Ergonomics Standard */
+  --touch-target-min: 44px;
+}
+
+/* Fallback de tema oscuro para preferencia del sistema operativo */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]),
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    /* Surfaces & Canvas */
+    --bg-canvas: #020617;           /* Slate 950 */
+    --bg-surface: #0f172a;          /* Slate 900 */
+    --bg-surface-elevated: #1e293b; /* Slate 800 */
+    --bg-muted: #1e293b;            /* Slate 800 */
+    --bg-subtle: #334155;           /* Slate 700 */
+
+    /* Typography Colors */
+    --text-primary: #f8fafc;        /* Slate 50 - Contrast 16:1 */
+    --text-secondary: #94a3b8;      /* Slate 400 - Contrast 6.5:1 */
+    --text-muted: #64748b;          /* Slate 500 - Contrast 4.5:1 */
+    --text-inverse: #020617;
+
+    /* Borders */
+    --border-subtle: #1e293b;       /* Slate 800 */
+    --border-default: #334155;      /* Slate 700 */
+    --border-strong: #475569;       /* Slate 600 */
+
+    /* Brand Palette */
+    --brand-primary: #10b981;       /* Emerald 500 */
+    --brand-hover: #34d399;         /* Emerald 400 */
+    --brand-active: #059669;        /* Emerald 600 */
+    --brand-subtle: rgba(6, 78, 59, 0.45);
+    --brand-contrast: #020617;
+
+    /* Verdulería Kanban & Order Status Tokens */
+    --status-pending-bg: rgba(69, 26, 3, 0.7);
+    --status-pending-border: #92400e;
+    --status-pending-text: #fde68a;
+    --status-pending-accent: #f59e0b;
+
+    --status-scale-bg: rgba(23, 37, 84, 0.7);
+    --status-scale-border: #1e40af;
+    --status-scale-text: #bfdbfe;
+    --status-scale-accent: #3b82f6;
+
+    --status-ready-bg: rgba(6, 78, 59, 0.7);
+    --status-ready-border: #065f46;
+    --status-ready-text: #a7f3d0;
+    --status-ready-accent: #10b981;
+
+    --status-paid-bg: #1e293b;
+    --status-paid-border: #334155;
+    --status-paid-text: #cbd5e1;
+    --status-paid-accent: #94a3b8;
+
+    --status-cancel-bg: rgba(76, 5, 25, 0.7);
+    --status-cancel-border: #9f1239;
+    --status-cancel-text: #fecdd3;
+    --status-cancel-accent: #f43f5e;
+  }
+}
+
+/* Activación explícita por clase o atributo data-theme */
+html.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces & Canvas */
+  --bg-canvas: #020617;           /* Slate 950 */
+  --bg-surface: #0f172a;          /* Slate 900 */
+  --bg-surface-elevated: #1e293b; /* Slate 800 */
+  --bg-muted: #1e293b;            /* Slate 800 */
+  --bg-subtle: #334155;           /* Slate 700 */
+
+  /* Typography Colors */
+  --text-primary: #f8fafc;        /* Slate 50 - Contrast 16:1 */
+  --text-secondary: #94a3b8;      /* Slate 400 - Contrast 6.5:1 */
+  --text-muted: #64748b;          /* Slate 500 - Contrast 4.5:1 */
+  --text-inverse: #020617;
+
+  /* Borders */
+  --border-subtle: #1e293b;       /* Slate 800 */
+  --border-default: #334155;      /* Slate 700 */
+  --border-strong: #475569;       /* Slate 600 */
+
+  /* Brand Palette */
+  --brand-primary: #10b981;       /* Emerald 500 */
+  --brand-hover: #34d399;         /* Emerald 400 */
+  --brand-active: #059669;        /* Emerald 600 */
+  --brand-subtle: rgba(6, 78, 59, 0.45);
+  --brand-contrast: #020617;
+
+  /* Verdulería Kanban & Order Status Tokens */
+  --status-pending-bg: rgba(69, 26, 3, 0.7);
+  --status-pending-border: #92400e;
+  --status-pending-text: #fde68a;
+  --status-pending-accent: #f59e0b;
+
+  --status-scale-bg: rgba(23, 37, 84, 0.7);
+  --status-scale-border: #1e40af;
+  --status-scale-text: #bfdbfe;
+  --status-scale-accent: #3b82f6;
+
+  --status-ready-bg: rgba(6, 78, 59, 0.7);
+  --status-ready-border: #065f46;
+  --status-ready-text: #a7f3d0;
+  --status-ready-accent: #10b981;
+
+  --status-paid-bg: #1e293b;
+  --status-paid-border: #334155;
+  --status-paid-text: #cbd5e1;
+  --status-paid-accent: #94a3b8;
+
+  --status-cancel-bg: rgba(76, 5, 25, 0.7);
+  --status-cancel-border: #9f1239;
+  --status-cancel-text: #fecdd3;
+  --status-cancel-accent: #f43f5e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Guardia global contra desbordamiento horizontal en pantallas móviles (360px - 430px) */
+html {
+  max-width: 100vw;
+  overflow-x: clip;
+  overflow-y: auto;
+  position: relative;
+}
+
+body {
+  max-width: 100vw;
+  overflow-x: clip;
+  overflow-y: visible;
+  position: relative;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  background-color: var(--bg-canvas, #f8fafc);
+  color: var(--text-primary, #0f172a);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html.dark body,
+[data-theme="dark"] body {
+  background-color: var(--bg-canvas, #020617);
+  color: var(--text-primary, #f1f5f9);
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color-scheme: dark;
+}
+
+/* Prevenir auto-zoom intrusivo en iOS Safari (requiere font-size >= 16px en inputs) */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Ocultar barra de scroll en contenedores horizontales */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Transiciones y animaciones fluidas */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes flashSuccess {
+  0% { border-color: #059669; background-color: #ecfdf5; }
+  100% { border-color: #cbd5e1; background-color: #ffffff; }
+}
+
+@keyframes flashSuccessDark {
+  0% { border-color: #10b981; background-color: #064e3b; }
+  100% { border-color: #334155; background-color: #0f172a; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 2s ease-in-out infinite;
+}
+
+.flash-saved {
+  animation: flashSuccess 1.2s ease forwards;
+}
+
+html.dark .flash-saved {
+  animation: flashSuccessDark 1.2s ease forwards;
+}
+
+/* Deshabilitar zoom accidental de doble toque */
+button, input, select, a {
+  touch-action: manipulation;
+}
+
+/* Micro-interacciones táctiles */
+.tap-feedback {
+  transition: transform 0.12s cubic-bezier(0.2, 0, 0, 1), opacity 0.12s ease;
+  user-select: none;
+  touch-action: manipulation;
+}
+.tap-feedback:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+}
+
+/* Áreas seguras en dispositivos con notch / Home Bar (iPhone / Android) */
+.safe-pb {
+  padding-bottom: max(1.25rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
+}
+.pb-24.safe-pb {
+  padding-bottom: max(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)));
+}
+.pb-28.safe-pb {
+  padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom, 0px)));
+}
+.pb-32.safe-pb {
+  padding-bottom: max(8rem, calc(8rem + env(safe-area-inset-bottom, 0px)));
+}
+.pb-36.safe-pb,
+.sm\:pb-36.safe-pb {
+  padding-bottom: max(9rem, calc(9rem + env(safe-area-inset-bottom, 0px)));
+}
+.safe-floating-bottom {
+  bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
+}
+.safe-mb {
+  margin-bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
+}
+
+/* Píldoras de categorías con desplazamiento horizontal sin aplastamiento */
+.category-pill,
+.admin-cat-pill {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Altura mínima accesible para toques con pulgar (WCAG Touch Targets) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sticky header helper con offset reactivo según simulator bar */
+.sticky-header-offset {
+  top: var(--sim-bar-h, 0px);
+}
+
+
+/* Aviso persistente de Modo Demo / Error de Configuración */
+.nexo-demo-banner {
+  background-color: #fffbeb;
+  color: #78350f;
+  border-bottom: 1px solid #fde68a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  padding: 6px 12px;
+  line-height: 1.35;
+}
+html.dark .nexo-demo-banner {
+  background-color: #451a03;
+  color: #fde68a;
+  border-bottom-color: #78350f;
+}
+.nexo-demo-banner.is-error {
+  background-color: #fef2f2;
+  color: #7f1d1d;
+  border-bottom-color: #fecaca;
+}
+html.dark .nexo-demo-banner.is-error {
+  background-color: #450a0a;
+  color: #fecaca;
+  border-bottom-color: #7f1d1d;
+}
+
+
+/* Grillas de 2 columnas en mobile >=360px y 1 columna en <360px */
+.products-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 360px) {
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+@media (min-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.admin-products-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 360px) {
+  .admin-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+@media (min-width: 768px) {
+  .admin-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .admin-products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Modal de carrito accesible sobre la cabecera demo */
+.cart-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background-color: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.cart-modal-dialog {
+  width: 100%;
+  max-width: 28rem;
+  max-height: 85vh;
+  max-height: 85dvh;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface, #ffffff);
+  border-top: 1px solid var(--border-subtle, #e2e8f0);
+}
+html.dark .cart-modal-dialog {
+  background-color: var(--bg-surface, #0f172a);
+  border-top-color: var(--border-subtle, #1e293b);
+}
+
+/* Soporte de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

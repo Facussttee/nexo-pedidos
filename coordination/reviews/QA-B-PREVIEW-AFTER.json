@@ -1,0 +1,82 @@
+{
+  "source": "D:\\Escritorio\\nexo-pedidos\\docs\\proposals\\QA-B.html",
+  "rows": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "errors": [],
+      "external": [],
+      "checks": [
+        {
+          "name": "no horizontal page overflow",
+          "pass": true
+        },
+        {
+          "name": "switch preset unitario",
+          "pass": true
+        },
+        {
+          "name": "switch preset pesable",
+          "pass": true
+        },
+        {
+          "name": "switch preset mixto",
+          "pass": true
+        },
+        {
+          "name": "unit confirmation can be toggled off",
+          "pass": true
+        },
+        {
+          "name": "open catalog and product modal",
+          "pass": true
+        },
+        {
+          "name": "prototype input does not execute HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "errors": [],
+      "external": [],
+      "checks": [
+        {
+          "name": "no horizontal page overflow",
+          "pass": true
+        },
+        {
+          "name": "switch preset unitario",
+          "pass": true
+        },
+        {
+          "name": "switch preset pesable",
+          "pass": true
+        },
+        {
+          "name": "switch preset mixto",
+          "pass": true
+        },
+        {
+          "name": "unit confirmation can be toggled off",
+          "pass": true
+        },
+        {
+          "name": "open catalog and product modal",
+          "pass": true
+        },
+        {
+          "name": "prototype input does not execute HTML",
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "pass": true
+}

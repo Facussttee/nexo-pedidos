@@ -1,0 +1,62 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\review",
+  "payload": "\"><img src=x onerror=window.__qaCross=1>",
+  "checks": [
+    {
+      "name": "client name text",
+      "marker": 0,
+      "injected": 0,
+      "literalPreserved": true,
+      "pass": true
+    },
+    {
+      "name": "cart address attribute",
+      "marker": 0,
+      "injected": 0,
+      "literalPreserved": true,
+      "pass": true
+    },
+    {
+      "name": "tracking address text",
+      "marker": 0,
+      "injected": 0,
+      "literalPreserved": true,
+      "pass": true
+    },
+    {
+      "name": "operator name/address text",
+      "marker": 0,
+      "injected": 0,
+      "literalPreserved": true,
+      "pass": true
+    },
+    {
+      "name": "operator edit attributes",
+      "marker": 0,
+      "injected": 0,
+      "literalPreserved": true,
+      "pass": true
+    },
+    {
+      "name": "stored snapshots unchanged",
+      "pass": true
+    },
+    {
+      "name": "client product text/detail/category",
+      "marker": 1,
+      "injected": 3,
+      "literalPreserved": false,
+      "pass": false
+    },
+    {
+      "name": "admin product text",
+      "marker": 0,
+      "injected": 0,
+      "literalPreserved": true,
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "pass": false
+}

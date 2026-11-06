@@ -1,0 +1,288 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\quality",
+  "at": "2026-11-04T16:36:37.064Z",
+  "checks": [
+    {
+      "name": "visible issue and explicit recovery contracts exist",
+      "pass": true
+    },
+    {
+      "name": "not JSON: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "not JSON: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "not JSON: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "not JSON: issue exposed for visible UI",
+      "pass": true
+    },
+    {
+      "name": "not JSON: recovery is durable, not a memory-only success",
+      "pass": true
+    },
+    {
+      "name": "not JSON: explicit recovery returns valid data",
+      "pass": true
+    },
+    {
+      "name": "not JSON: original recoverable in a separate durable backup",
+      "pass": true
+    },
+    {
+      "name": "not JSON: recovery preserves other records",
+      "pass": true
+    },
+    {
+      "name": "not JSON: recovery survives reload",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: issue exposed for visible UI",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: recovery is durable, not a memory-only success",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: explicit recovery returns valid data",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: original recoverable in a separate durable backup",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: recovery preserves other records",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: recovery survives reload",
+      "pass": true
+    },
+    {
+      "name": "explicit null: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "explicit null: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "explicit null: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "explicit null: issue exposed for visible UI",
+      "pass": true
+    },
+    {
+      "name": "explicit null: recovery is durable, not a memory-only success",
+      "pass": true
+    },
+    {
+      "name": "explicit null: explicit recovery returns valid data",
+      "pass": true
+    },
+    {
+      "name": "explicit null: original recoverable in a separate durable backup",
+      "pass": true
+    },
+    {
+      "name": "explicit null: recovery preserves other records",
+      "pass": true
+    },
+    {
+      "name": "explicit null: recovery survives reload",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: issue exposed for visible UI",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: recovery is durable, not a memory-only success",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: explicit recovery returns valid data",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: original recoverable in a separate durable backup",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: recovery preserves other records",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: recovery survives reload",
+      "pass": true
+    },
+    {
+      "name": "infinite price: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "infinite price: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "infinite price: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "infinite price: issue exposed for visible UI",
+      "pass": true
+    },
+    {
+      "name": "infinite price: recovery is durable, not a memory-only success",
+      "pass": true
+    },
+    {
+      "name": "infinite price: explicit recovery returns valid data",
+      "pass": true
+    },
+    {
+      "name": "infinite price: original recoverable in a separate durable backup",
+      "pass": true
+    },
+    {
+      "name": "infinite price: recovery preserves other records",
+      "pass": true
+    },
+    {
+      "name": "infinite price: recovery survives reload",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: issue exposed for visible UI",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: recovery is durable, not a memory-only success",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: explicit recovery returns valid data",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: original recoverable in a separate durable backup",
+      "pass": true
+    },
+    {
+      "name": "recovery preserves valid row and its price",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: recovery preserves other records",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: recovery survives reload",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: valid data and price preserved",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: no recovery issue",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: valid data and price preserved",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: no recovery issue",
+      "pass": true
+    },
+    {
+      "name": "failed recovery is explicit and does not replace original",
+      "pass": true
+    },
+    {
+      "name": "recovery can be retried after storage returns",
+      "pass": true
+    },
+    {
+      "name": "no data or SDK network calls",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "network": [],
+  "limits": [
+    "Reload creates a new Store; browser reload is verified separately."
+  ],
+  "pass": true
+}

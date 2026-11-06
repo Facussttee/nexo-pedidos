@@ -1,0 +1,308 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "synthetic": true,
+  "checks": [
+    {
+      "viewport": "390x844",
+      "name": "admin CRUD available",
+      "pass": true
+    },
+    {
+      "viewport": "390x844",
+      "name": "create UNIDAD and KG through real admin",
+      "pass": true,
+      "created": [
+        {
+          "id": "8359082b-1a69-4e16-82f9-bd476d6eb3b7",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000071",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "UNIDAD",
+          "precio": 125,
+          "paso": 1,
+          "disponible": true,
+          "archivado": false
+        },
+        {
+          "id": "0bfa77d7-5db2-4e8d-8399-fdc95ad17fe5",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000072",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "KG",
+          "precio": 1000,
+          "paso": 0.25,
+          "disponible": true,
+          "archivado": false
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "name": "zero price accepted and duplicate SKU visibly rejected",
+      "pass": true
+    },
+    {
+      "viewport": "390x844",
+      "name": "customer form, dynamic category and mixed estimated checkout",
+      "pass": true,
+      "orderId": 101,
+      "totalEstimated": 375
+    },
+    {
+      "viewport": "390x844",
+      "name": "explicit UNIDAD confirmation and decimal kg with grams; unresolved closing blocked",
+      "pass": false,
+      "captureLayout": {
+        "header": {
+          "top": 211.6875,
+          "bottom": 404.6875,
+          "height": 193
+        },
+        "card": {
+          "top": 374.6875,
+          "bottom": 1310.6875,
+          "height": 936
+        },
+        "label": {
+          "top": 399.6875,
+          "bottom": 411.6875,
+          "height": 12
+        },
+        "rootOffset": "166px",
+        "bodyOffset": "46px",
+        "scrolled": []
+      },
+      "failure": "Cabecera hasta 404.6875px tapa rótulo desde 399.6875px",
+      "prepared": [
+        {
+          "producto_id": "8359082b-1a69-4e16-82f9-bd476d6eb3b7",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "UNIDAD",
+          "precio_unitario": 125,
+          "cantidad_solicitada": 1,
+          "peso_real": 2,
+          "subtotal": 250,
+          "sin_stock": false,
+          "confirmado_preparacion": true
+        },
+        {
+          "producto_id": "0bfa77d7-5db2-4e8d-8399-fdc95ad17fe5",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "KG",
+          "precio_unitario": 1000,
+          "cantidad_solicitada": 0.25,
+          "peso_real": 1.45,
+          "subtotal": 1450,
+          "sin_stock": false
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "name": "LISTO exact final, simulated WhatsApp and ENTREGADO",
+      "pass": true,
+      "messages": [
+        {
+          "id": "sim-1793810764757-600",
+          "kind": "order_ready",
+          "to": "5491100000071",
+          "text": "Hola Cliente sintético QA. Tu pedido #101 en Comercio Demo Nexo ya está preparado:\n\n- Unidad sintética QA (2 u): $250\n- Peso sintético QA (1.45 kg): $1.450\n\nTotal final: $1.700\nYa podés pasar a retirarlo por el mostrador.\n\nAlias para transferir: alias.demo.nexo\n(O podés abonar en efectivo al recibir).",
+          "at": "2026-11-04T16:46:04.757Z",
+          "simulated": true
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "name": "referenced unit change rejected; edit/archive preserve historical snapshots",
+      "pass": true,
+      "historicalFinal": 1700
+    },
+    {
+      "viewport": "390x844",
+      "name": "top offset follows banner reflow without viewport resize",
+      "pass": false,
+      "before": {
+        "stack": 166,
+        "css": 166,
+        "effectiveCss": 46,
+        "width": 390,
+        "height": 844
+      },
+      "after": {
+        "stack": 492,
+        "css": 492,
+        "effectiveCss": 46,
+        "width": 390,
+        "height": 844
+      },
+      "restored": {
+        "stack": 166,
+        "css": 166,
+        "effectiveCss": 46,
+        "width": 390,
+        "height": 844
+      },
+      "failure": "Offset efectivo body 46px distinto de cabecera 492px tras reflow"
+    },
+    {
+      "viewport": "390x844",
+      "name": "no pageerrors, data destinations or popups",
+      "pass": true,
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "viewport": "1024x768",
+      "name": "admin CRUD available",
+      "pass": true
+    },
+    {
+      "viewport": "1024x768",
+      "name": "create UNIDAD and KG through real admin",
+      "pass": true,
+      "created": [
+        {
+          "id": "37f4ec40-dfc8-4573-a55a-2417228042de",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000071",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "UNIDAD",
+          "precio": 125,
+          "paso": 1,
+          "disponible": true,
+          "archivado": false
+        },
+        {
+          "id": "24538b61-3241-4deb-9456-14865b530ca2",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "codigo": "000072",
+          "detalle": "Sólo datos sintéticos de aceptación",
+          "unidad_medida": "KG",
+          "precio": 1000,
+          "paso": 0.25,
+          "disponible": true,
+          "archivado": false
+        }
+      ]
+    },
+    {
+      "viewport": "1024x768",
+      "name": "zero price accepted and duplicate SKU visibly rejected",
+      "pass": true
+    },
+    {
+      "viewport": "1024x768",
+      "name": "customer form, dynamic category and mixed estimated checkout",
+      "pass": true,
+      "orderId": 101,
+      "totalEstimated": 375
+    },
+    {
+      "viewport": "1024x768",
+      "name": "explicit UNIDAD confirmation and decimal kg with grams; unresolved closing blocked",
+      "pass": true,
+      "prepared": [
+        {
+          "producto_id": "37f4ec40-dfc8-4573-a55a-2417228042de",
+          "nombre": "Unidad sintética QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "UNIDAD",
+          "precio_unitario": 125,
+          "cantidad_solicitada": 1,
+          "peso_real": 2,
+          "subtotal": 250,
+          "sin_stock": false,
+          "confirmado_preparacion": true
+        },
+        {
+          "producto_id": "24538b61-3241-4deb-9456-14865b530ca2",
+          "nombre": "Peso sintético QA",
+          "categoria": "Categoría sintética QA",
+          "unidad_medida": "KG",
+          "precio_unitario": 1000,
+          "cantidad_solicitada": 0.25,
+          "peso_real": 1.45,
+          "subtotal": 1450,
+          "sin_stock": false
+        }
+      ]
+    },
+    {
+      "viewport": "1024x768",
+      "name": "LISTO exact final, simulated WhatsApp and ENTREGADO",
+      "pass": true,
+      "messages": [
+        {
+          "id": "sim-1793810771196-940",
+          "kind": "order_ready",
+          "to": "5491100000071",
+          "text": "Hola Cliente sintético QA. Tu pedido #101 en Comercio Demo Nexo ya está preparado:\n\n- Unidad sintética QA (2 u): $250\n- Peso sintético QA (1.45 kg): $1.450\n\nTotal final: $1.700\nYa podés pasar a retirarlo por el mostrador.\n\nAlias para transferir: alias.demo.nexo\n(O podés abonar en efectivo al recibir).",
+          "at": "2026-11-04T16:46:11.196Z",
+          "simulated": true
+        }
+      ]
+    },
+    {
+      "viewport": "1024x768",
+      "name": "referenced unit change rejected; edit/archive preserve historical snapshots",
+      "pass": true,
+      "historicalFinal": 1700
+    },
+    {
+      "viewport": "1024x768",
+      "name": "top offset follows banner reflow without viewport resize",
+      "pass": false,
+      "before": {
+        "stack": 99,
+        "css": 99,
+        "effectiveCss": 46,
+        "width": 1024,
+        "height": 768
+      },
+      "after": {
+        "stack": 218,
+        "css": 218,
+        "effectiveCss": 46,
+        "width": 1024,
+        "height": 768
+      },
+      "restored": {
+        "stack": 99,
+        "css": 99,
+        "effectiveCss": 46,
+        "width": 1024,
+        "height": 768
+      },
+      "failure": "Offset efectivo body 46px distinto de cabecera 218px tras reflow"
+    },
+    {
+      "viewport": "1024x768",
+      "name": "no pageerrors, data destinations or popups",
+      "pass": true,
+      "errors": [],
+      "unexpected": []
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [
+    "D:\\Escritorio\\nexo-pedidos\\coordination\\bugs\\DEMO_RELEASE_PREPARATION_390.png",
+    "D:\\Escritorio\\nexo-pedidos\\coordination\\bugs\\DEMO_RELEASE_ADMIN_1024.png"
+  ],
+  "pass": false,
+  "served": {
+    "origin": "http://127.0.0.1:59115",
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-release-qa-7YPw51\\public",
+    "assets": 4,
+    "ephemeral": true,
+    "builtSource": false
+  },
+  "cleanedTemporary": true
+}

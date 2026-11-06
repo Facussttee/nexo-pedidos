@@ -1,0 +1,138 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "payload": "<img src=x onerror=window.__qaDelivery=1> & \" ' Ω",
+  "quotedId": "qa-id\" data-qa-injected=\"id\" onmouseover=\"window.__qaDelivery=1",
+  "cssId": "qa-admin\"].broken:#",
+  "checks": [
+    {
+      "name": "catalog product nombre",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "catalog product detalle",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "catalog product categoria",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "cart snapshot nombre",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "dataPreserved": true,
+      "interaction": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "cart snapshot categoria",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "dataPreserved": true,
+      "interaction": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "preparation historical item name/category",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "dataPreserved": true,
+      "interaction": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "client quoted product ID add/cart",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "operator quoted product ID selector/add",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "admin CSS-sensitive ID direct price",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    },
+    {
+      "name": "admin CSS-sensitive ID price stepper",
+      "pass": true,
+      "errors": [],
+      "unexpected": [],
+      "literalPreserved": true,
+      "interaction": true,
+      "dataPreserved": true,
+      "marker": 0,
+      "handlers": [],
+      "injectedAttributes": 0
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "pass": true,
+  "served": {
+    "origin": "http://127.0.0.1:51014",
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-delivery-qa-tXI4Fj\\public",
+    "ephemeral": true,
+    "builtSource": false
+  },
+  "cleanedTemporary": true
+}

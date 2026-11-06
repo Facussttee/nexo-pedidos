@@ -1,0 +1,237 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "errors": [],
+  "blocked": [],
+  "dialogs": [],
+  "before": {
+    "orders": [
+      {
+        "id": 101,
+        "demo": true,
+        "cliente": {
+          "nombre": "Ana Demo (sintética)",
+          "telefono": "1100000001",
+          "direccion": "Calle Ficticia 101 (demo)"
+        },
+        "tipo_entrega": "DELIVERY",
+        "direccion_entrega": "Calle Ficticia 101 (demo)",
+        "estado": "PENDIENTE",
+        "fecha": "2026-11-04T15:08:20.433Z",
+        "total_estimado": 6400,
+        "total_real": null,
+        "items": [
+          {
+            "producto_id": "prod-9",
+            "nombre": "Tomate Redondo Premium",
+            "unidad_medida": "KG",
+            "precio_unitario": 2600,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 2600,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-1",
+            "nombre": "Banana Cavendish",
+            "unidad_medida": "KG",
+            "precio_unitario": 1800,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 1800,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-2",
+            "nombre": "Manzana Roja Elegida",
+            "unidad_medida": "KG",
+            "precio_unitario": 2200,
+            "cantidad_solicitada": 0.5,
+            "peso_real": null,
+            "subtotal": 1100,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-13",
+            "nombre": "Acelga de Huerta",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 900,
+            "cantidad_solicitada": 1,
+            "peso_real": 1,
+            "subtotal": 900,
+            "sin_stock": false
+          }
+        ]
+      },
+      {
+        "id": 102,
+        "demo": true,
+        "cliente": {
+          "nombre": "Bruno Demo (sintético)",
+          "telefono": "1100000002",
+          "direccion": "Retiro en Local"
+        },
+        "tipo_entrega": "RETIRO",
+        "direccion_entrega": "Retiro por Mostrador",
+        "estado": "EN_PREPARACION",
+        "fecha": "2026-11-04T14:48:20.433Z",
+        "total_estimado": 4700,
+        "total_real": null,
+        "items": [
+          {
+            "producto_id": "prod-7",
+            "nombre": "Papa Negra Cepillada",
+            "unidad_medida": "KG",
+            "precio_unitario": 950,
+            "cantidad_solicitada": 2,
+            "peso_real": 2.15,
+            "subtotal": 2043,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-10",
+            "nombre": "Zanahoria Fresca",
+            "unidad_medida": "KG",
+            "precio_unitario": 1300,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 1300,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-3",
+            "nombre": "Naranja de Jugo",
+            "unidad_medida": "KG",
+            "precio_unitario": 1400,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 1400,
+            "sin_stock": false
+          }
+        ]
+      }
+    ],
+    "cart": {
+      "prod-1": {
+        "producto_id": "prod-1",
+        "nombre": "Banana Cavendish",
+        "categoria": "Frutas",
+        "unidad_medida": "KG",
+        "precio_unitario": 1800,
+        "cantidad": 0.5,
+        "subtotal_estimado": 900
+      }
+    }
+  },
+  "after": {
+    "orders": [
+      {
+        "id": 101,
+        "demo": true,
+        "cliente": {
+          "nombre": "Ana Demo (sintética)",
+          "telefono": "1100000001",
+          "direccion": "Calle Ficticia 101 (demo)"
+        },
+        "tipo_entrega": "DELIVERY",
+        "direccion_entrega": "Calle Ficticia 101 (demo)",
+        "estado": "PENDIENTE",
+        "fecha": "2026-11-04T15:08:20.433Z",
+        "total_estimado": 6400,
+        "total_real": null,
+        "items": [
+          {
+            "producto_id": "prod-9",
+            "nombre": "Tomate Redondo Premium",
+            "unidad_medida": "KG",
+            "precio_unitario": 2600,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 2600,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-1",
+            "nombre": "Banana Cavendish",
+            "unidad_medida": "KG",
+            "precio_unitario": 1800,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 1800,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-2",
+            "nombre": "Manzana Roja Elegida",
+            "unidad_medida": "KG",
+            "precio_unitario": 2200,
+            "cantidad_solicitada": 0.5,
+            "peso_real": null,
+            "subtotal": 1100,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-13",
+            "nombre": "Acelga de Huerta",
+            "unidad_medida": "UNIDAD",
+            "precio_unitario": 900,
+            "cantidad_solicitada": 1,
+            "peso_real": 1,
+            "subtotal": 900,
+            "sin_stock": false
+          }
+        ]
+      },
+      {
+        "id": 102,
+        "demo": true,
+        "cliente": {
+          "nombre": "Bruno Demo (sintético)",
+          "telefono": "1100000002",
+          "direccion": "Retiro en Local"
+        },
+        "tipo_entrega": "RETIRO",
+        "direccion_entrega": "Retiro por Mostrador",
+        "estado": "EN_PREPARACION",
+        "fecha": "2026-11-04T14:48:20.433Z",
+        "total_estimado": 4700,
+        "total_real": null,
+        "items": [
+          {
+            "producto_id": "prod-7",
+            "nombre": "Papa Negra Cepillada",
+            "unidad_medida": "KG",
+            "precio_unitario": 950,
+            "cantidad_solicitada": 2,
+            "peso_real": 2.15,
+            "subtotal": 2043,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-10",
+            "nombre": "Zanahoria Fresca",
+            "unidad_medida": "KG",
+            "precio_unitario": 1300,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 1300,
+            "sin_stock": false
+          },
+          {
+            "producto_id": "prod-3",
+            "nombre": "Naranja de Jugo",
+            "unidad_medida": "KG",
+            "precio_unitario": 1400,
+            "cantidad_solicitada": 1,
+            "peso_real": null,
+            "subtotal": 1400,
+            "sin_stock": false
+          }
+        ]
+      }
+    ],
+    "cart": {},
+    "writeFailures": 1,
+    "visible": "CATÁLOGO DEL DÍA\nAbierto\nPedido\n0\nHola, Cliente de Persistencia Demo\nCambiar\nTema:\nClaro\nTodos\n17\nFrutas\n6\nVerduras\n6\nHojas Verdes\n3\nAlmacén\n2\nFRUTAS\n/\nPor kilo\nBanana Cavendish\n\nEcuador Seleccionada\n\n$1.800\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nManzana Roja Elegida\n\nAlto Valle, Río Negro\n\n$2.200\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nNaranja de Jugo\n\nSan Pedro dulce y jugosa\n\n$1.400\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nLimón Comercial\n\nTucumano cuatro estaciones\n\n$1.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nFrutilla Seleccionada\n\nCoronda madura y fresca\n\n$4.500\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor unidad\nPalta Hass Madura\n\nPunto justo para consumir\n\n$1.200\n/ u.\nAgregar\n+\nVERDURAS\n/\nPor kilo\nPapa Negra Cepillada\n\nBalcarce lavada y firme\n\n$950\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCebolla Selección\n\nSeca de primera calidad\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nTomate Redondo Premium\n\nPlatense maduro en planta\n\n$2.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZanahoria Fresca\n\nDulce y crujiente\n\n$1.300\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZapallito Verde Tronco\n\nChico y tierno\n\n$1.700\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCalabaza Anco Butternut\n\nCremosa y dulce\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nAcelga de Huerta\n\nAtado fresco del día\n\n$900\n/ u.\nAgregar\n+\nHOJAS VERDES\n/\nPor kilo\nLechuga Mantecosa\n\nHojas tiernas y limpias\n\n$2.800\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nEspinaca Fresca\n\nAtado grande seleccionado\n\n$1.100\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Maple x 30)\n\nCastaños de gallinas libres\n\n$5.200\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Docena)\n\nCaja seleccionada x 12 u.\n\n$2.300\n/ u.\nAgregar\n+\n\nComercio Demo Nexo | Catálogo y Pesaje en Balanza\n\nAcceso Personal del Local"
+  },
+  "reproduced": true
+}

@@ -1,0 +1,121 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos",
+  "at": "2026-11-04T16:14:05.823Z",
+  "checks": [
+    {
+      "name": "visible issue and explicit recovery contracts exist",
+      "pass": false
+    },
+    {
+      "name": "not JSON: getter cannot expose malformed catalogue",
+      "pass": false
+    },
+    {
+      "name": "not JSON: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "not JSON: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: getter cannot expose malformed catalogue",
+      "pass": false
+    },
+    {
+      "name": "object instead of array: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "object instead of array: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "explicit null: getter cannot expose malformed catalogue",
+      "pass": false
+    },
+    {
+      "name": "explicit null: reading preserves original raw data",
+      "pass": false
+    },
+    {
+      "name": "explicit null: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: getter cannot expose malformed catalogue",
+      "pass": false
+    },
+    {
+      "name": "incomplete entry: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "incomplete entry: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "infinite price: getter cannot expose malformed catalogue",
+      "pass": false
+    },
+    {
+      "name": "infinite price: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "infinite price: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: getter cannot expose malformed catalogue",
+      "pass": false
+    },
+    {
+      "name": "mixed valid and invalid: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "mixed valid and invalid: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "valid catalogue: valid data and price preserved",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: getter cannot expose malformed catalogue",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: reading preserves original raw data",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: reading preserves orders/customer/cart/config",
+      "pass": true
+    },
+    {
+      "name": "valid empty catalogue: valid data and price preserved",
+      "pass": true
+    },
+    {
+      "name": "no data or SDK network calls",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "network": [],
+  "pass": false
+}

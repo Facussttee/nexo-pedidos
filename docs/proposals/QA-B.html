@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Propuesta Visual: Preparación y Administración — Nexo Pedidos (QA-B)</title>
+  <style>
+    /* ========================================================
+       Estilos Autocontenidos - Sin dependencias externas
+       Optimizados para 390px (Mobile) y 1024px (Tablet/Desktop)
+       ======================================================== */
+    :root {
+      --bg-canvas: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-muted: #f1f5f9;
+      --bg-subtle: #e2e8f0;
+      --border-color: #cbd5e1;
+      --border-subtle: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-subtle: #64748b;
+      --brand: #059669;
+      --brand-hover: #047857;
+      --brand-light: #ecfdf5;
+      --brand-border: #a7f3d0;
+      --amber-bg: #fffbeb;
+      --amber-border: #fde68a;
+      --amber-text: #92400e;
+      --rose-bg: #fff1f2;
+      --rose-border: #fecdd3;
+      --rose-text: #9f1239;
+      --blue-bg: #eff6ff;
+      --blue-border: #bfdbfe;
+      --blue-text: #1e40af;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Banner Oficial de la Propuesta */
+    .proposal-banner {
+      background-color: #047857;
+      color: #ffffff;
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.02em;
+      border-bottom: 2px solid #065f46;
+      line-height: 1.4;
+    }
+    .proposal-banner .badge {
+      display: inline-block;
+      background-color: #ffffff;
+      color: #047857;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* Barra Superior de Navegación del Prototipo */
+    .top-nav {
+      background-color: #0f172a;
+      color: #ffffff;
+      padding: 8px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .top-nav-container {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .nav-title {
+      font-size: 14px;
+      font-weight: 900;
+      color: #34d399;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .nav-tabs {
+      display: inline-flex;
+      background-color: #1e293b;
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+    }
+    .nav-tab-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-tab-btn:hover {
+      color: #ffffff;
+    }
+    .nav-tab-btn.active {
+      background-color: var(--brand);
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* Contenedor Principal */
+    .main-wrapper {
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      flex: 1;
+    }
+
+    /* Pestañas de Vista */
+    .view-section {
+      display: none;
+    }
+    .view-section.active {
+      display: block;
+    }
+
+    /* Sub-barra de ejemplos (Presets en Preparación) */
+    .preset-selector-bar {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .preset-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .preset-subtitle {
+      font-size: 11px;
+      color: var(--text-subtle);
+      font-weight: 500;
+    }
+    .preset-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-preset {
+      min-height: 44px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-muted);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-preset:hover {
+      background-color: var(--bg-subtle);
+      color: var(--text-main);
+    }
+    .btn-preset.active {
+      background-color: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    /* Tarjeta Principal de Pedido */
+    .order-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .order-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      background-color: #fafbfc;
+    }
+    .order-id-badge {
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--brand);
+      background-color: var(--brand-light);
+      border: 1px solid var(--brand-border);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .customer-info h2 {
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--text-main);
+      margin-top: 2px;
+    }
+    .customer-meta {
+      font-size: 12px;
+      color: var(--text-subtle);
+      margin-top: 2px;
+    }
+    .delivery-tag {
+      font-weight: 700;
+      color: #0369a1;
+      background-color: #e0f2fe;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* Progreso de Preparación */
+    .progress-bar-container {
+      padding: 12px 20px;
+      background-color: var(--bg-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .progress-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .progress-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #f59e0b;
+    }
+    .progress-indicator.complete {
+      background-color: var(--brand);
+    }
+    .progress-track {
+      flex: 1;
+      min-width: 120px;
+      height: 8px;
+      background-color: var(--bg-subtle);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background-color: var(--brand);
+      transition: width 0.25s ease;
+    }
+
+    /* Lista de Ítems en Preparación */
+    .items-container {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Tarjeta de Ítem */
+    .item-card {
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 14px;
+      transition: all 0.15s ease;
+    }
+    .item-card.is-ready {
+      background-color: #f0fdf4;
+      border-color: #86efac;
+    }
+    .item-card.is-missing {
+      background-color: var(--rose-bg);
+      border-color: var(--rose-border);
+      opacity: 0.7;
+    }
+    .item-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .item-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .item-tag {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+    .tag-unit {
+      background-color: #e0e7ff;
+      color: #3730a3;
+    }
+    .tag-weight {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    .item-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 2px;
+    }
+    .item-card.is-missing .item-name {
+      text-decoration: line-through;
+      color: var(--rose-text);
+    }
+    .item-demand {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .item-demand strong {
+      color: var(--text-main);
+      font-weight: 800;
+    }
+
+    /* Acciones superiores del ítem (Faltante / Quitar) */
+    .item-actions-top {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-item-action {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-item-action:hover {
+      background-color: var(--bg-muted);
+      color: var(--text-main);
+    }
+    .btn-item-action.active-missing {
+      background-color: #e11d48;
+      border-color: #e11d48;
+      color: #ffffff;
+    }
+
+    /* Zona de Preparación del Ítem (Diferenciada: Unitario vs Pesable) */
+    .prep-box {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Control Unitario: Stepper limpio de enteros y botón de Listo */
+    .unit-stepper-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stepper-btn {
+      min-height: 44px;
+      min-width: 44px;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      font-size: 20px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stepper-btn:hover {
+      background-color: var(--bg-muted);
+    }
+    .stepper-value {
+      font-size: 18px;
+      font-weight: 900;
+      min-width: 40px;
+      text-align: center;
+      color: var(--text-main);
+    }
+    .btn-ready-toggle {
+      min-height: 44px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-ready-toggle.is-ready {
+      background-color: var(--brand);
+      color: #ffffff;
+      border-color: var(--brand);
+    }
+
+    /* Control Pesable: Input en kg con visualización en gramos */
+    .weight-input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .weight-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .weight-input {
+      min-height: 44px;
+      width: 120px;
+      font-size: 16px;
+      font-weight: 900;
+      text-align: center;
+      padding: 8px 30px 8px 10px;
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      outline: none;
+      color: var(--text-main);
+      background-color: var(--bg-surface);
+    }
+    .weight-input:focus {
+      border-color: #2563eb;
+    }
+    .weight-input-wrapper .unit-affix {
+      position: absolute;
+      right: 8px;
+      top: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-subtle);
+      pointer-events: none;
+    }
+    .weight-gram-hint {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      background-color: var(--bg-muted);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .item-subtotal {
+      text-align: right;
+    }
+    .subtotal-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      text-transform: uppercase;
+    }
+    .subtotal-amount {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text-main);
+    }
+
+    /* Footer del Pedido: Totales y Acciones Principales */
+    .order-footer {
+      padding: 16px 20px;
+      background-color: #f8fafc;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .total-col-est {
+      font-size: 12px;
+      color: var(--text-subtle);
+    }
+    .total-col-est strong {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .total-col-real {
+      text-align: right;
+    }
+    .total-col-real .final-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-subtle);
+    }
+    .total-col-real .final-amount {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--brand);
+    }
+
+    /* Botones de acción operativos */
+    .operational-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-op-secondary {
+      min-height: 44px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-op-secondary:hover {
+      background-color: var(--bg-muted);
+      color: var(--text-main);
+    }
+    .btn-op-danger {
+      color: #e11d48;
+      border-color: #fecdd3;
+    }
+    .btn-op-danger:hover {
+      background-color: #ffe4e6;
+    }
+    .btn-op-primary {
+      min-height: 48px;
+      flex: 1;
+      min-width: 180px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 900;
+      border-radius: 12px;
+      border: none;
+      background-color: var(--brand);
+      color: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 6px -1px rgba(5,150,105,0.25);
+    }
+    .btn-op-primary:hover {
+      background-color: var(--brand-hover);
+    }
+
+    /* ========================================================
+       PANEL DE ADMINISTRACIÓN: CATÁLOGO Y CRUD (QA-C PREVIEW)
+       ======================================================== */
+    .admin-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .admin-header {
+      padding: 18px 20px;
+      background-color: #fafbfc;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .admin-header-titles h2 {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--text-main);
+    }
+    .admin-header-titles p {
+      font-size: 12px;
+      color: var(--text-subtle);
+    }
+    .btn-new-product {
+      min-height: 44px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 900;
+      border-radius: 12px;
+      border: none;
+      background-color: #0f172a;
+      color: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-new-product:hover {
+      background-color: #1e293b;
+    }
+
+    /* Filtros y Búsqueda */
+    .admin-filters-bar {
+      padding: 12px 20px;
+      background-color: var(--bg-canvas);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .search-input {
+      min-height: 44px;
+      font-size: 16px;
+      padding: 8px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      flex: 1;
+      min-width: 200px;
+      outline: none;
+      background-color: var(--bg-surface);
+    }
+    .cat-pill {
+      min-height: 44px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+    .cat-pill.active {
+      background-color: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    /* Tabla / Lista de Productos */
+    .product-list-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .product-list-table th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-subtle);
+      background-color: var(--bg-muted);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .product-list-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .product-list-table tr:hover {
+      background-color: #f8fafc;
+    }
+    .product-name-col strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .product-name-col span {
+      font-size: 11px;
+      color: var(--text-subtle);
+    }
+    .price-editable-tag {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--text-main);
+    }
+
+    /* Toggle Switch */
+    .switch-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Modal de Formulario de Producto (Mock visual interactivo) */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: rgba(15, 23, 42, 0.65);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-box {
+      background-color: #ffffff;
+      border-radius: 20px;
+      max-width: 500px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fafbfc;
+    }
+    .modal-header h3 {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text-main);
+    }
+    .btn-close-modal {
+      min-height: 44px;
+      min-width: 44px;
+      background: transparent;
+      border: none;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text-subtle);
+      cursor: pointer;
+    }
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+    .form-input, .form-select {
+      min-height: 44px;
+      font-size: 16px;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      outline: none;
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: var(--brand);
+    }
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+    .form-row > * {
+      flex: 1;
+    }
+    .modal-footer {
+      padding: 16px 20px;
+      background-color: #fafbfc;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Mensajes Informativos de la Propuesta */
+    .proposal-callout {
+      background-color: #f1f5f9;
+      border-left: 4px solid #047857;
+      padding: 12px 16px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.4;
+    }
+    .proposal-callout strong {
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. Banner Oficial de la Propuesta -->
+  <div class="proposal-banner">
+    <span class="badge">Propuesta Visual QA-B</span>
+    Prototipo Autocontenido para Evaluación de UX en Mostrador y Administración · Sin persistencia ni conexión real
+  </div>
+
+  <!-- 2. Barra Superior de Control de Vistas -->
+  <header class="top-nav">
+    <div class="top-nav-container">
+      <span class="nav-title">Nexo Pedidos · Evolución Visual</span>
+      <nav class="nav-tabs" aria-label="Selector de pantalla">
+        <button id="tab-btn-prep" class="nav-tab-btn active" onclick="switchView('prep')">
+          1. Puesto de Preparación
+        </button>
+        <button id="tab-btn-admin" class="nav-tab-btn" onclick="switchView('admin')">
+          2. Catálogo & CRUD
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 3. Contenedor Principal -->
+  <main class="main-wrapper">
+
+    <!-- ========================================================
+         VISTA 1: PUESTO DE PREPARACIÓN (OPERARIO ADAPTABLE)
+         ======================================================== -->
+    <section id="view-prep" class="view-section active">
+
+      <!-- Cuadro Explicativo de la Propuesta -->
+      <div class="proposal-callout">
+        <strong>Propuesta B: Preparación sin balanza forzada.</strong> En este diseño, los artículos por <strong>UNIDAD</strong> se preparan con un contador simple de enteros y confirmación de un toque («Listo»). Los artículos por <strong>KG</strong> preservan la entrada precisa en balanza y visualización dual (g / kg). El precio final sólo se confirma al completar el pedido.
+      </div>
+
+      <!-- Barra de Presets de Prueba (Unitario / Pesable / Mixto) -->
+      <div class="preset-selector-bar">
+        <div>
+          <h3 class="preset-title">Ejemplos para Inspección Visual:</h3>
+          <p class="preset-subtitle">Cambiá de rubro para verificar cómo se adapta la tarjeta a cada ítem:</p>
+        </div>
+        <div class="preset-btns">
+          <button id="preset-mixto" class="btn-preset active" onclick="loadPreset('mixto')">
+            Pedido Mixto (Pollería / Almacén)
+          </button>
+          <button id="preset-unitario" class="btn-preset" onclick="loadPreset('unitario')">
+            Pedido 100% Unitario (Panadería / Kiosco)
+          </button>
+          <button id="preset-pesable" class="btn-preset" onclick="loadPreset('pesable')">
+            Pedido 100% Pesable (Verdulería)
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjeta Principal del Pedido Seleccionado -->
+      <div class="order-card">
+        <!-- Header del Pedido -->
+        <div class="order-header">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="order-id" class="order-id-badge">Pedido #104</span>
+              <span id="order-status-pill" style="font-size: 11px; font-weight: 800; background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 9999px;">
+                EN PREPARACIÓN
+              </span>
+            </div>
+            <div class="customer-info">
+              <h2 id="order-customer-name">Carlos Benítez</h2>
+              <p class="customer-meta">WhatsApp: <span id="order-customer-phone">+54 9 11 5544-3322</span> · <span id="order-delivery-mode" class="delivery-tag">Cadete a Domicilio</span></p>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 11px; color: var(--text-subtle); display: block;">Hora Ingreso</span>
+            <span style="font-size: 13px; font-weight: 800; color: var(--text-main);">10:42 hs</span>
+          </div>
+        </div>
+
+        <!-- Barra de Progreso de Preparados -->
+        <div class="progress-bar-container">
+          <div class="progress-label">
+            <span id="progress-dot" class="progress-indicator"></span>
+            <span id="progress-text">2 de 3 ítems listos</span>
+          </div>
+          <div class="progress-track">
+            <div id="progress-bar-fill" class="progress-fill" style="width: 66%;"></div>
+          </div>
+        </div>
+
+        <!-- Lista de Ítems en Preparación -->
+        <div id="items-list-container" class="items-container">
+          <!-- Se inyecta dinámicamente según el preset seleccionado -->
+        </div>
+
+        <!-- Footer del Pedido: Totales y Acciones Operativas -->
+        <div class="order-footer">
+          <div class="totals-row">
+            <div class="total-col-est">
+              <span>Total Estimado al Pedir:</span><br>
+              <strong id="order-total-est">$8.500</strong>
+            </div>
+            <div class="total-col-real">
+              <span class="final-title">Total Final Preparado:</span><br>
+              <span id="order-total-final" class="final-amount">$8.740</span>
+            </div>
+          </div>
+
+          <!-- Acciones Operativas Preservadas -->
+          <div class="operational-actions">
+            <button class="btn-op-secondary" onclick="alert('Propuesta: Abre modal para corregir dirección o cambiar entre Retiro y Delivery.')" title="Editar forma o dirección de entrega">
+              Editar Entrega
+            </button>
+            <button class="btn-op-secondary" onclick="alert('Propuesta: Permite sumar un ítem que el cliente pidió por WhatsApp a último momento.')" title="Agregar ítem al pedido">
+              + Sumar Ítem
+            </button>
+            <button class="btn-op-secondary btn-op-danger" onclick="cancelOrderPrompt()" title="Cancelar suavemente el pedido">
+              Cancelar Pedido
+            </button>
+            <button class="btn-op-primary" onclick="finishOrderPrompt()" title="Completar pesaje y pasar a Listo">
+              Finalizar y Notificar Listo
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VISTA 2: ADMINISTRACIÓN DE CATÁLOGO Y CRUD (QA-C PREVIEW)
+         ======================================================== -->
+    <section id="view-admin" class="view-section">
+
+      <!-- Cuadro Explicativo de la Propuesta -->
+      <div class="proposal-callout">
+        <strong>Propuesta C: Administración con alta y archivo lógico.</strong> Permite al comerciante registrar nuevos artículos sin depender de desarrolladores, editar precios en un toque y desactivar o archivar productos históricos sin romper pedidos previos.
+      </div>
+
+      <div class="admin-card">
+        <!-- Header del Administrador -->
+        <div class="admin-header">
+          <div class="admin-header-titles">
+            <h2>Catálogo y Precios del Local</h2>
+            <p>Control de disponibilidad inmediata, alta de productos y edición de valores.</p>
+          </div>
+          <button class="btn-new-product" onclick="openNewProductModal()">
+            + Nuevo Producto
+          </button>
+        </div>
+
+        <!-- Filtros y Búsqueda -->
+        <div class="admin-filters-bar">
+          <input
+            type="text"
+            id="admin-search"
+            class="search-input"
+            placeholder="Buscar por nombre o SKU..."
+            oninput="filterAdminProducts()"
+          />
+          <div style="display: flex; gap: 6px; overflow-x: auto;">
+            <button class="cat-pill active" onclick="filterAdminCat('Todos', this)">Todos (<span id="cat-count-all">6</span>)</button>
+            <button class="cat-pill" onclick="filterAdminCat('Granja', this)">Granja (2)</button>
+            <button class="cat-pill" onclick="filterAdminCat('Almacén', this)">Almacén (2)</button>
+            <button class="cat-pill" onclick="filterAdminCat('Panadería', this)">Panadería (2)</button>
+          </div>
+        </div>
+
+        <!-- Tabla de Productos -->
+        <div style="overflow-x: auto;">
+          <table class="product-list-table">
+            <thead>
+              <tr>
+                <th>Producto / SKU</th>
+                <th>Categoría</th>
+                <th>Unidad</th>
+                <th>Precio Actual</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="admin-tbody">
+              <!-- Renderizado dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================
+       MODAL: FORMULARIO DE ALTA / EDICIÓN DE PRODUCTO
+       ======================================================== -->
+  <div id="modal-product" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">Nuevo Producto en Catálogo</h3>
+        <button class="btn-close-modal" onclick="closeProductModal()">&times;</button>
+      </div>
+      <form id="form-product" onsubmit="saveProduct(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="prod-name">Nombre del Producto *</label>
+            <input type="text" id="prod-name" class="form-input" placeholder="Ej: Pan de Campo con Masa Madre" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="prod-cat">Categoría *</label>
+              <select id="prod-cat" class="form-select" required>
+                <option value="Panadería">Panadería</option>
+                <option value="Granja">Granja</option>
+                <option value="Almacén">Almacén</option>
+                <option value="Verdulería">Verdulería</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="prod-sku">Código / SKU (Opcional)</label>
+              <input type="text" id="prod-sku" class="form-input" placeholder="Ej: PAN-01" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="prod-unit">Modalidad de Venta *</label>
+              <select id="prod-unit" class="form-select" onchange="onModalUnitChange()" required>
+                <option value="UNIDAD">Por Unidad (UNIDAD)</option>
+                <option value="KG">Al Peso (KG)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="prod-step">Paso Permitido</label>
+              <select id="prod-step" class="form-select" required>
+                <option value="1">1 unidad (entero)</option>
+                <option value="0.5">0.5 kg (medio kilo)</option>
+                <option value="0.25">0.25 kg (cuarto kilo)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="prod-price">Precio Público ($) *</label>
+            <input type="number" id="prod-price" class="form-input" placeholder="Ej: 2400" min="1" step="1" required />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-item-action" onclick="closeProductModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-op-primary" style="min-height: 44px; padding: 10px 18px;">
+            Guardar Producto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       LÓGICA JAVASCRIPT AUTOCONTENIDA (SIN PERSISTENCIA / MOCK)
+       ======================================================== -->
+  <script>
+    function escapeProposalText(value) {
+      const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return String(value ?? '').replace(/[&<>"']/g, char => entities[char]);
+    }
+    // Presets de demostración
+    const PRESETS = {
+      mixto: {
+        id: "#104",
+        customer: "Carlos Benítez",
+        phone: "+54 9 11 5544-3322",
+        delivery: "Cadete a Domicilio",
+        items: [
+          {
+            id: 1,
+            nombre: "Pechuga de Pollo Fresca",
+            unidad_medida: "KG",
+            precio_unitario: 5200,
+            cantidad_solicitada: 1.5,
+            peso_real: 1.620,
+            sin_stock: false,
+            categoria: "Granja"
+          },
+          {
+            id: 2,
+            nombre: "Maple de Huevos N°1 (30 u)",
+            unidad_medida: "UNIDAD",
+            precio_unitario: 3800,
+            cantidad_solicitada: 1,
+            cantidad_preparada: 1,
+            sin_stock: false,
+            categoria: "Granja",
+            isReady: true
+          },
+          {
+            id: 3,
+            nombre: "Aceite de Oliva Extra Virgen 500ml",
+            unidad_medida: "UNIDAD",
+            precio_unitario: 6400,
+            cantidad_solicitada: 1,
+            cantidad_preparada: 1,
+            sin_stock: false,
+            categoria: "Almacén",
+            isReady: true
+          }
+        ]
+      },
+      unitario: {
+        id: "#105",
+        customer: "Mariana López",
+        phone: "+54 9 11 9988-7766",
+        delivery: "Retiro en Mostrador",
+        items: [
+          {
+            id: 1,
+            nombre: "Pan de Campo Artesanal",
+            unidad_medida: "UNIDAD",
+            precio_unitario: 2200,
+            cantidad_solicitada: 2,
+            cantidad_preparada: 2,
+            sin_stock: false,
+            categoria: "Panadería",
+            isReady: true
+          },
+          {
+            id: 2,
+            nombre: "Medialunas de Manteca (Docena)",
+            unidad_medida: "UNIDAD",
+            precio_unitario: 4800,
+            cantidad_solicitada: 1,
+            cantidad_preparada: 1,
+            sin_stock: false,
+            categoria: "Panadería",
+            isReady: true
+          },
+          {
+            id: 3,
+            nombre: "Mermelada de Frutos Rojos 400g",
+            unidad_medida: "UNIDAD",
+            precio_unitario: 3100,
+            cantidad_solicitada: 1,
+            cantidad_preparada: 0,
+            sin_stock: false,
+            categoria: "Almacén",
+            isReady: false
+          }
+        ]
+      },
+      pesable: {
+        id: "#106",
+        customer: "Roberto Giménez",
+        phone: "+54 9 11 3322-1100",
+        delivery: "Cadete a Domicilio",
+        items: [
+          {
+            id: 1,
+            nombre: "Tomate Redondo Especial",
+            unidad_medida: "KG",
+            precio_unitario: 2600,
+            cantidad_solicitada: 2.0,
+            peso_real: 2.150,
+            sin_stock: false,
+            categoria: "Verdulería"
+          },
+          {
+            id: 2,
+            nombre: "Banana Cavendish Elegida",
+            unidad_medida: "KG",
+            precio_unitario: 1800,
+            cantidad_solicitada: 1.5,
+            peso_real: 1.480,
+            sin_stock: false,
+            categoria: "Frutas"
+          },
+          {
+            id: 3,
+            nombre: "Papa Negra de Campo",
+            unidad_medida: "KG",
+            precio_unitario: 950,
+            cantidad_solicitada: 3.0,
+            peso_real: 3.200,
+            sin_stock: false,
+            categoria: "Verdulería"
+          }
+        ]
+      }
+    };
+
+    // Estado en memoria
+    let currentOrder = JSON.parse(JSON.stringify(PRESETS.mixto));
+
+    // Productos del Administrador
+    let adminProducts = [
+      { id: "P1", sku: "GRJ-01", nombre: "Pechuga de Pollo Fresca", categoria: "Granja", unidad_medida: "KG", precio: 5200, disponible: true, archivado: false },
+      { id: "P2", sku: "GRJ-02", nombre: "Maple de Huevos N°1 (30 u)", categoria: "Granja", unidad_medida: "UNIDAD", precio: 3800, disponible: true, archivado: false },
+      { id: "P3", sku: "ALM-01", nombre: "Aceite de Oliva Extra Virgen", categoria: "Almacén", unidad_medida: "UNIDAD", precio: 6400, disponible: true, archivado: false },
+      { id: "P4", sku: "ALM-02", nombre: "Mermelada de Frutos Rojos", categoria: "Almacén", unidad_medida: "UNIDAD", precio: 3100, disponible: false, archivado: false },
+      { id: "P5", sku: "PAN-01", nombre: "Pan de Campo Artesanal", categoria: "Panadería", unidad_medida: "UNIDAD", precio: 2200, disponible: true, archivado: false },
+      { id: "P6", sku: "PAN-02", nombre: "Medialunas de Manteca (Docena)", categoria: "Panadería", unidad_medida: "UNIDAD", precio: 4800, disponible: true, archivado: false }
+    ];
+
+    let currentAdminCat = "Todos";
+    let adminSearchQuery = "";
+
+    // Conmutador de Vistas (Preparación / Admin)
+    function switchView(viewName) {
+      document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
+      document.querySelectorAll(".nav-tab-btn").forEach(btn => btn.classList.remove("active"));
+
+      if (viewName === "prep") {
+        document.getElementById("view-prep").classList.add("active");
+        document.getElementById("tab-btn-prep").classList.add("active");
+      } else {
+        document.getElementById("view-admin").classList.add("active");
+        document.getElementById("tab-btn-admin").classList.add("active");
+        renderAdmin();
+      }
+    }
+
+    // Carga de Preset de Ejemplo
+    function loadPreset(key) {
+      document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+      document.getElementById("preset-" + key).classList.add("active");
+      currentOrder = JSON.parse(JSON.stringify(PRESETS[key]));
+      renderOrder();
+    }
+
+    // Render del Pedido en Preparación
+    function renderOrder() {
+      document.getElementById("order-id").textContent = "Pedido " + currentOrder.id;
+      document.getElementById("order-customer-name").textContent = currentOrder.customer;
+      document.getElementById("order-customer-phone").textContent = currentOrder.phone;
+      document.getElementById("order-delivery-mode").textContent = currentOrder.delivery;
+
+      const container = document.getElementById("items-list-container");
+      container.innerHTML = "";
+
+      let totalEstimado = 0;
+      let totalReal = 0;
+      let readyCount = 0;
+      const totalItems = currentOrder.items.length;
+
+      currentOrder.items.forEach((item, idx) => {
+        const isUnit = item.unidad_medida === "UNIDAD";
+
+        // Cálculos
+        const subtotalEst = Math.round(item.cantidad_solicitada * item.precio_unitario);
+        totalEstimado += subtotalEst;
+
+        let subtotalReal = 0;
+        let isReady = false;
+
+        if (item.sin_stock) {
+          subtotalReal = 0;
+          isReady = true; // El ítem anulado cuenta como resuelto
+        } else if (isUnit) {
+          const qtyPrep = typeof item.cantidad_preparada === "number" ? item.cantidad_preparada : item.cantidad_solicitada;
+          subtotalReal = Math.round(qtyPrep * item.precio_unitario);
+          isReady = item.isReady === true;
+        } else {
+          if (item.peso_real !== null && item.peso_real > 0) {
+            subtotalReal = Math.round(item.peso_real * item.precio_unitario);
+            isReady = true;
+          }
+        }
+
+        if (!item.sin_stock) {
+          totalReal += subtotalReal;
+        }
+        if (isReady) readyCount++;
+
+        // Renderizado de tarjeta de ítem
+        const card = document.createElement("div");
+        card.className = "item-card" + (item.sin_stock ? " is-missing" : (isReady ? " is-ready" : ""));
+
+        card.innerHTML = `
+          <div class="item-card-top">
+            <div class="item-details">
+              <span class="item-tag ${isUnit ? 'tag-unit' : 'tag-weight'}">
+                ${isUnit ? 'Artículo por Unidad' : 'Artículo al Peso'}
+              </span>
+              <h4 class="item-name">${escapeProposalText(item.nombre)}</h4>
+              <p class="item-demand">
+                Solicitó: <strong>${item.cantidad_solicitada} ${isUnit ? 'u.' : 'kg'}</strong>
+                <span style="color: var(--text-subtle);">($${item.precio_unitario.toLocaleString('es-AR')} / ${isUnit ? 'u' : 'kg'})</span>
+              </p>
+            </div>
+            <div class="item-actions-top">
+              <button
+                class="btn-item-action ${item.sin_stock ? 'active-missing' : ''}"
+                onclick="toggleMissing(${idx})"
+                title="Marcar falta de producto"
+              >
+                ${item.sin_stock ? 'Anulado' : 'Sin Stock'}
+              </button>
+              <button
+                class="btn-item-action"
+                style="color: #e11d48;"
+                onclick="removeItem(${idx})"
+                title="Quitar ítem del pedido"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+
+          ${!item.sin_stock ? `
+            <div class="prep-box">
+              ${isUnit ? `
+                <!-- Controles Unitarios: Stepper de enteros y botón Listo -->
+                <div class="unit-stepper-group">
+                  <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">
+                    Preparado:
+                  </span>
+                  <button class="stepper-btn" onclick="adjustUnitQty(${idx}, -1)" title="Restar 1 unidad">&minus;</button>
+                  <span class="stepper-value">${item.cantidad_preparada !== undefined ? item.cantidad_preparada : item.cantidad_solicitada}</span>
+                  <button class="stepper-btn" onclick="adjustUnitQty(${idx}, 1)" title="Sumar 1 unidad">&plus;</button>
+                  <button class="btn-ready-toggle ${isReady ? 'is-ready' : ''}" onclick="toggleUnitReady(${idx})">
+                    ${isReady ? '&#10003; Listo' : 'Marcar Listo'}
+                  </button>
+                </div>
+              ` : `
+                <!-- Controles Pesables: Balanza real en kg y display en g -->
+                <div class="weight-input-group">
+                  <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">
+                    Balanza:
+                  </span>
+                  <div class="weight-input-wrapper">
+                    <input
+                      type="number"
+                      step="0.005"
+                      class="weight-input"
+                      value="${item.peso_real !== null ? item.peso_real : ''}"
+                      placeholder="0.000"
+                      onchange="updateWeight(${idx}, this.value)"
+                    />
+                    <span class="unit-affix">kg</span>
+                  </div>
+                  <span class="weight-gram-hint">
+                    ${item.peso_real ? Math.round(item.peso_real * 1000) + ' g' : 'Sin pesar'}
+                  </span>
+                </div>
+              `}
+
+              <div class="item-subtotal">
+                <span class="subtotal-label">Subtotal</span><br>
+                <span class="subtotal-amount">$${subtotalReal.toLocaleString('es-AR')}</span>
+              </div>
+            </div>
+          ` : `
+            <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: #e11d48;">
+              &bull; Ítem marcado como faltante en el local ($0).
+            </div>
+          `}
+        `;
+
+        container.appendChild(card);
+      });
+
+      // Actualizar Totales y Barra de Progreso
+      document.getElementById("order-total-est").textContent = "$" + totalEstimado.toLocaleString("es-AR");
+      document.getElementById("order-total-final").textContent = "$" + totalReal.toLocaleString("es-AR");
+
+      const pct = totalItems > 0 ? Math.round((readyCount / totalItems) * 100) : 0;
+      document.getElementById("progress-bar-fill").style.width = pct + "%";
+      document.getElementById("progress-text").textContent = readyCount + " de " + totalItems + " ítems preparados";
+
+      const dot = document.getElementById("progress-dot");
+      if (pct === 100) {
+        dot.className = "progress-indicator complete";
+      } else {
+        dot.className = "progress-indicator";
+      }
+    }
+
+    // Handlers de Preparación
+    function toggleMissing(idx) {
+      currentOrder.items[idx].sin_stock = !currentOrder.items[idx].sin_stock;
+      renderOrder();
+    }
+
+    function removeItem(idx) {
+      if (confirm("¿Quitar este producto del pedido?")) {
+        currentOrder.items.splice(idx, 1);
+        renderOrder();
+      }
+    }
+
+    function adjustUnitQty(idx, delta) {
+      const item = currentOrder.items[idx];
+      let cur = item.cantidad_preparada !== undefined ? item.cantidad_preparada : item.cantidad_solicitada;
+      cur = Math.max(0, cur + delta);
+      item.cantidad_preparada = cur;
+      item.isReady = false; // La cantidad cambiada debe confirmarse otra vez.
+      renderOrder();
+    }
+
+    function toggleUnitReady(idx) {
+      const item = currentOrder.items[idx];
+      item.isReady = !item.isReady;
+      if (item.isReady && (item.cantidad_preparada === undefined || item.cantidad_preparada === 0)) {
+        item.cantidad_preparada = item.cantidad_solicitada;
+      }
+      renderOrder();
+    }
+
+    function updateWeight(idx, val) {
+      const num = parseFloat(val);
+      currentOrder.items[idx].peso_real = isNaN(num) || num <= 0 ? null : num;
+      renderOrder();
+    }
+
+    function cancelOrderPrompt() {
+      if (confirm("Propuesta B: ¿Cancelar suavemente este pedido (#cancelOrder)?")) {
+        alert("El pedido pasó a estado CANCELADO sin borrado físico de la base de datos.");
+      }
+    }
+
+    function finishOrderPrompt() {
+      alert("Propuesta B: ¡Pedido Completado! El total final es definitivo y se enviará la notificación con los valores reales.");
+    }
+
+    // ========================================================
+    // LÓGICA DE ADMINISTRACIÓN (CATÁLOGO Y CRUD)
+    // ========================================================
+    function renderAdmin() {
+      const tbody = document.getElementById("admin-tbody");
+      tbody.innerHTML = "";
+
+      const filtered = adminProducts.filter(p => {
+        if (p.archivado) return false;
+        const matchCat = currentAdminCat === "Todos" || p.categoria === currentAdminCat;
+        const matchQuery = p.nombre.toLowerCase().includes(adminSearchQuery) || (p.sku && p.sku.toLowerCase().includes(adminSearchQuery));
+        return matchCat && matchQuery;
+      });
+
+      document.getElementById("cat-count-all").textContent = adminProducts.filter(p => !p.archivado).length;
+
+      filtered.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="product-name-col">
+            <strong>${escapeProposalText(p.nombre)}</strong>
+            <span>SKU: ${escapeProposalText(p.sku || 'Sin código')}</span>
+          </td>
+          <td>
+            <span class="item-tag tag-unit" style="background-color: var(--bg-muted); color: var(--text-main);">
+              ${escapeProposalText(p.categoria)}
+            </span>
+          </td>
+          <td>
+            <span class="item-tag ${p.unidad_medida === 'UNIDAD' ? 'tag-unit' : 'tag-weight'}">
+              ${p.unidad_medida === 'UNIDAD' ? 'Por Unidad' : 'Por Kilo'}
+            </span>
+          </td>
+          <td>
+            <span class="price-editable-tag">$${p.precio.toLocaleString('es-AR')}</span>
+          </td>
+          <td>
+            <label class="switch-label">
+              <input type="checkbox" ${p.disponible ? 'checked' : ''} onchange="toggleProductAvail('${p.id}')" />
+              <span style="color: ${p.disponible ? 'var(--brand)' : 'var(--text-subtle)'};">
+                ${p.disponible ? 'Activo' : 'Pausado'}
+              </span>
+            </label>
+          </td>
+          <td style="text-align: right;">
+            <button class="btn-item-action" onclick="archiveProduct('${p.id}')" title="Archivado lógico sin borrado destructivo">
+              Archivar
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterAdminCat(cat, btn) {
+      currentAdminCat = cat;
+      document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      renderAdmin();
+    }
+
+    function filterAdminProducts() {
+      adminSearchQuery = document.getElementById("admin-search").value.toLowerCase().trim();
+      renderAdmin();
+    }
+
+    function toggleProductAvail(id) {
+      const p = adminProducts.find(x => x.id === id);
+      if (p) p.disponible = !p.disponible;
+      renderAdmin();
+    }
+
+    function archiveProduct(id) {
+      if (confirm("Propuesta C: ¿Archivar este producto? Desaparece del catálogo pero se conservan los snapshots en pedidos históricos.")) {
+        const p = adminProducts.find(x => x.id === id);
+        if (p) p.archivado = true;
+        renderAdmin();
+      }
+    }
+
+    // Modal de Nuevo Producto
+    function openNewProductModal() {
+      document.getElementById("modal-product").classList.add("active");
+    }
+
+    function closeProductModal() {
+      document.getElementById("modal-product").classList.remove("active");
+      document.getElementById("form-product").reset();
+    }
+
+    function closeModalOnBackdrop(e) {
+      if (e.target.id === "modal-product") {
+        closeProductModal();
+      }
+    }
+
+    function onModalUnitChange() {
+      const u = document.getElementById("prod-unit").value;
+      const stepSel = document.getElementById("prod-step");
+      if (u === "UNIDAD") {
+        stepSel.value = "1";
+      } else {
+        stepSel.value = "0.5";
+      }
+    }
+
+    function saveProduct(e) {
+      e.preventDefault();
+      const nombre = document.getElementById("prod-name").value.trim();
+      const categoria = document.getElementById("prod-cat").value;
+      const sku = document.getElementById("prod-sku").value.trim();
+      const unidad = document.getElementById("prod-unit").value;
+      const precio = parseInt(document.getElementById("prod-price").value, 10);
+
+      if (!nombre || isNaN(precio)) return;
+
+      adminProducts.unshift({
+        id: "P" + (adminProducts.length + 1),
+        sku: sku || "SKU-" + (adminProducts.length + 1),
+        nombre: nombre,
+        categoria: categoria,
+        unidad_medida: unidad,
+        precio: precio,
+        disponible: true,
+        archivado: false
+      });
+
+      closeProductModal();
+      renderAdmin();
+      alert("Producto agregado a la lista de la propuesta.");
+    }
+
+    // Arranque inicial
+    renderOrder();
+  </script>
+</body>
+</html>

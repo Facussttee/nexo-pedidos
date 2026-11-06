@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "theme": "dark",
+  "checks": [
+    {
+      "name": "Rol activo conserva contraste al apuntarlo",
+      "width": 390,
+      "pass": true,
+      "colors": {
+        "foreground": "rgb(15, 23, 42)",
+        "background": "rgb(255, 255, 255)"
+      },
+      "ratio": 17.85253496299567
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "screenshots": [
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\client-390-dark-viewport.png",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-390-dark-viewport.png"
+  ],
+  "screenshotHashes": {
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\client-390-dark-viewport.png": "4b0ce6341f201c8b807e8d78f242b0375bd5a1f1885607740488d23144a51137",
+    "C:\\Users\\Facu\\.codex\\visualizations\\2026\\11\\04\\01a1a723-fdfc-7591-8968-0aefa804d870\\nexo-mobile-qa\\admin-390-dark-viewport.png": "0d90526f1ce23d51d44ebedddc354303f8ec52bed1fcf68ce858691268462492"
+  },
+  "pass": true,
+  "snapshot": {
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-mobile-qa-i0zsXB\\public",
+    "assets": {
+      "index.html": "07c0d86e71d8d40ea4cadb2dd40a1503f12e0716f0e1d87ec15a3f6190a5edc9",
+      "css/style.css": "9b59132776c9f32fd0a486128a0344322a14ba3a1f848d041fae3d75dd35e698",
+      "js/public-config.js": "969a62b1292eeda9935fce6e3b81e0b6c6926476c8159232c99df2ce522861cc",
+      "js/bundle.js": "e5992b1a929ee933dd5e87459a920edd61dd80bbe47f11595ee43e69f024b65f"
+    }
+  },
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\mobile-images",
+  "origin": "http://127.0.0.1:51464",
+  "visualOnly": true
+}

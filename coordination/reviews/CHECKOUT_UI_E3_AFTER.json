@@ -1,0 +1,3225 @@
+{
+  "root": "D:\\Escritorio\\nexo-pedidos-worktrees\\quality",
+  "at": "2026-11-04T16:08:37.942Z",
+  "cases": [
+    {
+      "mode": "orders-failure",
+      "checks": [
+        {
+          "name": "fault exercised",
+          "pass": true,
+          "detail": [
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_orders",
+              "blocked": true
+            }
+          ]
+        },
+        {
+          "name": "critical failure preserves durable orders/cart/active",
+          "pass": true
+        },
+        {
+          "name": "drawer remains and visible recovery error",
+          "pass": true,
+          "detail": {
+            "text": "CATÁLOGO DEL DÍA\nAbierto\nPedido\n1\nHola, Cliente QA Checkout Sintético\nCambiar\nTema:\nClaro\nTodos\n17\nFrutas\n6\nVerduras\n6\nHojas Verdes\n3\nAlmacén\n2\n×\nFRUTAS\n/\nPor kilo\nEN PEDIDO\nBanana Cavendish\n\nEcuador Seleccionada\n\n$1.800\n/ kg\n($900)\n−\n0.5 kg\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nManzana Roja Elegida\n\nAlto Valle, Río Negro\n\n$2.200\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nNaranja de Jugo\n\nSan Pedro dulce y jugosa\n\n$1.400\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nLimón Comercial\n\nTucumano cuatro estaciones\n\n$1.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nFrutilla Seleccionada\n\nCoronda madura y fresca\n\n$4.500\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor unidad\nPalta Hass Madura\n\nPunto justo para consumir\n\n$1.200\n/ u.\nAgregar\n+\nVERDURAS\n/\nPor kilo\nPapa Negra Cepillada\n\nBalcarce lavada y firme\n\n$950\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCebolla Selección\n\nSeca de primera calidad\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nTomate Redondo Premium\n\nPlatense maduro en planta\n\n$2.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZanahoria Fresca\n\nDulce y crujiente\n\n$1.300\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZapallito Verde Tronco\n\nChico y tierno\n\n$1.700\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCalabaza Anco Butternut\n\nCremosa y dulce\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nAcelga de Huerta\n\nAtado fresco del día\n\n$900\n/ u.\nAgregar\n+\nHOJAS VERDES\n/\nPor kilo\nLechuga Mantecosa\n\nHojas tiernas y limpias\n\n$2.800\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nEspinaca Fresca\n\nAtado grande seleccionado\n\n$1.100\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Maple x 30)\n\nCastaños de gallinas libres\n\n$5.200\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Docena)\n\nCaja seleccionada x 12 u.\n\n$2.300\n/ u.\nAgregar\n+\n\nComercio Demo Nexo | Catálogo y Pesaje en Balanza\n\nAcceso Personal del Local\n1 ítem\nTOTAL ESTIMADO\n$900\nVer Pedido\n\nNo se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá.\n\nTu Pedido\n\nRevisá las cantidades antes de confirmar\n\nTema:\nClaro\nCerrar\nFRUTAS\nBanana Cavendish\n$900\n($1.800/kg)\n−\n0.5\n+\n×\nMÉTODO DE ENTREGA\nRetiro en Local\nListo en 20-30 min | Sin costo\nEnvío a Domicilio\nCadete a tu puerta\nPESAJE EN BALANZA\n\nEl total indicado es una estimación. En el mostrador se pesan las unidades reales y te notificaremos el comprobante con los gramos exactos y el importe final.\n\nTOTAL ESTIMADO\nSujeto a balanza\n$900\nConfirmar Pedido",
+            "alerts": [
+              "No se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá."
+            ]
+          }
+        },
+        {
+          "name": "no false received order after failed save",
+          "pass": true
+        },
+        {
+          "name": "restored retry creates exactly one genuine order",
+          "pass": true
+        },
+        {
+          "name": "retry tracks new durable order ID",
+          "pass": true
+        },
+        {
+          "name": "reload keeps same accepted order and tracking",
+          "pass": true
+        },
+        {
+          "name": "no unexpected pageerrors or destinations",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "unexpected": [],
+      "before": {
+        "orders": [
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:39.216Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:39.216Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808519789-0.8094718411554943\"}}",
+        "active": null,
+        "attempts": []
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:39.216Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:39.216Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808519789-0.8094718411554943\"}}",
+        "active": null,
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": true
+          }
+        ]
+      },
+      "notice": {
+        "text": "CATÁLOGO DEL DÍA\nAbierto\nPedido\n1\nHola, Cliente QA Checkout Sintético\nCambiar\nTema:\nClaro\nTodos\n17\nFrutas\n6\nVerduras\n6\nHojas Verdes\n3\nAlmacén\n2\n×\nFRUTAS\n/\nPor kilo\nEN PEDIDO\nBanana Cavendish\n\nEcuador Seleccionada\n\n$1.800\n/ kg\n($900)\n−\n0.5 kg\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nManzana Roja Elegida\n\nAlto Valle, Río Negro\n\n$2.200\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nNaranja de Jugo\n\nSan Pedro dulce y jugosa\n\n$1.400\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nLimón Comercial\n\nTucumano cuatro estaciones\n\n$1.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nFrutilla Seleccionada\n\nCoronda madura y fresca\n\n$4.500\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor unidad\nPalta Hass Madura\n\nPunto justo para consumir\n\n$1.200\n/ u.\nAgregar\n+\nVERDURAS\n/\nPor kilo\nPapa Negra Cepillada\n\nBalcarce lavada y firme\n\n$950\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCebolla Selección\n\nSeca de primera calidad\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nTomate Redondo Premium\n\nPlatense maduro en planta\n\n$2.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZanahoria Fresca\n\nDulce y crujiente\n\n$1.300\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZapallito Verde Tronco\n\nChico y tierno\n\n$1.700\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCalabaza Anco Butternut\n\nCremosa y dulce\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nAcelga de Huerta\n\nAtado fresco del día\n\n$900\n/ u.\nAgregar\n+\nHOJAS VERDES\n/\nPor kilo\nLechuga Mantecosa\n\nHojas tiernas y limpias\n\n$2.800\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nEspinaca Fresca\n\nAtado grande seleccionado\n\n$1.100\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Maple x 30)\n\nCastaños de gallinas libres\n\n$5.200\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Docena)\n\nCaja seleccionada x 12 u.\n\n$2.300\n/ u.\nAgregar\n+\n\nComercio Demo Nexo | Catálogo y Pesaje en Balanza\n\nAcceso Personal del Local\n1 ítem\nTOTAL ESTIMADO\n$900\nVer Pedido\n\nNo se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá.\n\nTu Pedido\n\nRevisá las cantidades antes de confirmar\n\nTema:\nClaro\nCerrar\nFRUTAS\nBanana Cavendish\n$900\n($1.800/kg)\n−\n0.5\n+\n×\nMÉTODO DE ENTREGA\nRetiro en Local\nListo en 20-30 min | Sin costo\nEnvío a Domicilio\nCadete a tu puerta\nPESAJE EN BALANZA\n\nEl total indicado es una estimación. En el mostrador se pesan las unidades reales y te notificaremos el comprobante con los gramos exactos y el importe final.\n\nTOTAL ESTIMADO\nSujeto a balanza\n$900\nConfirmar Pedido",
+        "alerts": [
+          "No se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá."
+        ]
+      },
+      "afterRetry": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:40.589Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808519789-0.8094718411554943\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:39.216Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:39.216Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "103",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": true
+          }
+        ]
+      },
+      "reloaded": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:40.589Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808519789-0.8094718411554943\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:39.216Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:39.216Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "103",
+        "attempts": []
+      },
+      "pass": true
+    },
+    {
+      "mode": "all-writes",
+      "checks": [
+        {
+          "name": "fault exercised",
+          "pass": true,
+          "detail": [
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_orders",
+              "blocked": true
+            }
+          ]
+        },
+        {
+          "name": "critical failure preserves durable orders/cart/active",
+          "pass": true
+        },
+        {
+          "name": "drawer remains and visible recovery error",
+          "pass": true,
+          "detail": {
+            "text": "CATÁLOGO DEL DÍA\nAbierto\nPedido\n1\nHola, Cliente QA Checkout Sintético\nCambiar\nTema:\nClaro\nTodos\n17\nFrutas\n6\nVerduras\n6\nHojas Verdes\n3\nAlmacén\n2\n×\nFRUTAS\n/\nPor kilo\nEN PEDIDO\nBanana Cavendish\n\nEcuador Seleccionada\n\n$1.800\n/ kg\n($900)\n−\n0.5 kg\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nManzana Roja Elegida\n\nAlto Valle, Río Negro\n\n$2.200\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nNaranja de Jugo\n\nSan Pedro dulce y jugosa\n\n$1.400\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nLimón Comercial\n\nTucumano cuatro estaciones\n\n$1.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nFrutilla Seleccionada\n\nCoronda madura y fresca\n\n$4.500\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor unidad\nPalta Hass Madura\n\nPunto justo para consumir\n\n$1.200\n/ u.\nAgregar\n+\nVERDURAS\n/\nPor kilo\nPapa Negra Cepillada\n\nBalcarce lavada y firme\n\n$950\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCebolla Selección\n\nSeca de primera calidad\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nTomate Redondo Premium\n\nPlatense maduro en planta\n\n$2.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZanahoria Fresca\n\nDulce y crujiente\n\n$1.300\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZapallito Verde Tronco\n\nChico y tierno\n\n$1.700\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCalabaza Anco Butternut\n\nCremosa y dulce\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nAcelga de Huerta\n\nAtado fresco del día\n\n$900\n/ u.\nAgregar\n+\nHOJAS VERDES\n/\nPor kilo\nLechuga Mantecosa\n\nHojas tiernas y limpias\n\n$2.800\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nEspinaca Fresca\n\nAtado grande seleccionado\n\n$1.100\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Maple x 30)\n\nCastaños de gallinas libres\n\n$5.200\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Docena)\n\nCaja seleccionada x 12 u.\n\n$2.300\n/ u.\nAgregar\n+\n\nComercio Demo Nexo | Catálogo y Pesaje en Balanza\n\nAcceso Personal del Local\n1 ítem\nTOTAL ESTIMADO\n$900\nVer Pedido\n\nNo se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá.\n\nTu Pedido\n\nRevisá las cantidades antes de confirmar\n\nTema:\nClaro\nCerrar\nFRUTAS\nBanana Cavendish\n$900\n($1.800/kg)\n−\n0.5\n+\n×\nMÉTODO DE ENTREGA\nRetiro en Local\nListo en 20-30 min | Sin costo\nEnvío a Domicilio\nCadete a tu puerta\nPESAJE EN BALANZA\n\nEl total indicado es una estimación. En el mostrador se pesan las unidades reales y te notificaremos el comprobante con los gramos exactos y el importe final.\n\nTOTAL ESTIMADO\nSujeto a balanza\n$900\nConfirmar Pedido",
+            "alerts": [
+              "No se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá."
+            ]
+          }
+        },
+        {
+          "name": "no false received order after failed save",
+          "pass": true
+        },
+        {
+          "name": "restored retry creates exactly one genuine order",
+          "pass": true
+        },
+        {
+          "name": "retry tracks new durable order ID",
+          "pass": true
+        },
+        {
+          "name": "reload keeps same accepted order and tracking",
+          "pass": true
+        },
+        {
+          "name": "no unexpected pageerrors or destinations",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "unexpected": [],
+      "before": {
+        "orders": [
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:41.983Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:41.983Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808522413-0.04836175034403922\"}}",
+        "active": null,
+        "attempts": []
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:41.983Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:41.983Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808522413-0.04836175034403922\"}}",
+        "active": null,
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": true
+          }
+        ]
+      },
+      "notice": {
+        "text": "CATÁLOGO DEL DÍA\nAbierto\nPedido\n1\nHola, Cliente QA Checkout Sintético\nCambiar\nTema:\nClaro\nTodos\n17\nFrutas\n6\nVerduras\n6\nHojas Verdes\n3\nAlmacén\n2\n×\nFRUTAS\n/\nPor kilo\nEN PEDIDO\nBanana Cavendish\n\nEcuador Seleccionada\n\n$1.800\n/ kg\n($900)\n−\n0.5 kg\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nManzana Roja Elegida\n\nAlto Valle, Río Negro\n\n$2.200\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nNaranja de Jugo\n\nSan Pedro dulce y jugosa\n\n$1.400\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nLimón Comercial\n\nTucumano cuatro estaciones\n\n$1.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor kilo\nFrutilla Seleccionada\n\nCoronda madura y fresca\n\n$4.500\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nFRUTAS\n/\nPor unidad\nPalta Hass Madura\n\nPunto justo para consumir\n\n$1.200\n/ u.\nAgregar\n+\nVERDURAS\n/\nPor kilo\nPapa Negra Cepillada\n\nBalcarce lavada y firme\n\n$950\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCebolla Selección\n\nSeca de primera calidad\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nTomate Redondo Premium\n\nPlatense maduro en planta\n\n$2.600\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZanahoria Fresca\n\nDulce y crujiente\n\n$1.300\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nZapallito Verde Tronco\n\nChico y tierno\n\n$1.700\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nVERDURAS\n/\nPor kilo\nCalabaza Anco Butternut\n\nCremosa y dulce\n\n$1.100\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nAcelga de Huerta\n\nAtado fresco del día\n\n$900\n/ u.\nAgregar\n+\nHOJAS VERDES\n/\nPor kilo\nLechuga Mantecosa\n\nHojas tiernas y limpias\n\n$2.800\n/ kg\nAgregar\n+\nAJUSTE RÁPIDO:\n500g\n1 kg\n2 kg\nHOJAS VERDES\n/\nPor unidad\nEspinaca Fresca\n\nAtado grande seleccionado\n\n$1.100\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Maple x 30)\n\nCastaños de gallinas libres\n\n$5.200\n/ u.\nAgregar\n+\nALMACÉN\n/\nPor unidad\nHuevos de Campo (Docena)\n\nCaja seleccionada x 12 u.\n\n$2.300\n/ u.\nAgregar\n+\n\nComercio Demo Nexo | Catálogo y Pesaje en Balanza\n\nAcceso Personal del Local\n1 ítem\nTOTAL ESTIMADO\n$900\nVer Pedido\n\nNo se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá.\n\nTu Pedido\n\nRevisá las cantidades antes de confirmar\n\nTema:\nClaro\nCerrar\nFRUTAS\nBanana Cavendish\n$900\n($1.800/kg)\n−\n0.5\n+\n×\nMÉTODO DE ENTREGA\nRetiro en Local\nListo en 20-30 min | Sin costo\nEnvío a Domicilio\nCadete a tu puerta\nPESAJE EN BALANZA\n\nEl total indicado es una estimación. En el mostrador se pesan las unidades reales y te notificaremos el comprobante con los gramos exactos y el importe final.\n\nTOTAL ESTIMADO\nSujeto a balanza\n$900\nConfirmar Pedido",
+        "alerts": [
+          "No se pudo guardar: almacenamiento no disponible o sin espacio. Tus datos anteriores se conservan. Reintentá."
+        ]
+      },
+      "afterRetry": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:43.210Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808522413-0.04836175034403922\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:41.983Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:41.983Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "103",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": true
+          }
+        ]
+      },
+      "reloaded": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:43.210Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808522413-0.04836175034403922\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:41.983Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:41.983Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "103",
+        "attempts": []
+      },
+      "pass": true
+    },
+    {
+      "mode": "cleanup-active",
+      "checks": [
+        {
+          "name": "fault exercised",
+          "pass": true,
+          "detail": [
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_orders",
+              "blocked": false
+            },
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_active_order",
+              "blocked": true
+            },
+            {
+              "method": "removeItem",
+              "key": "nexo_demo_v1_cart",
+              "blocked": false
+            }
+          ]
+        },
+        {
+          "name": "cleanup failure still accepts exactly one order",
+          "pass": true
+        },
+        {
+          "name": "visible receipt names accepted ID without false save-failed claim",
+          "pass": true,
+          "detail": {
+            "text": "Volver al Catálogo\nTema:\nClaro\nCOMPROBANTE DIGITAL\nPedido #9901\n\nPedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.\n\nPENDIENTE\nPedido Recibido\n\nEl pedido ingresó en la cola del mostrador.\n\nEntrega:\nRetiro en Mostrador\nTotal Estimado:\n$900\nDETALLE DE PRODUCTOS\nBanana Cavendish\n0.5 kg (aprox)\n$900\nSimular consulta por WhatsApp (Demo)\nRealizar Otro Pedido",
+            "alerts": [
+              "Pedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento."
+            ]
+          }
+        },
+        {
+          "name": "reload retains accepted order with no duplicate",
+          "pass": true
+        },
+        {
+          "name": "retry after reload never duplicates accepted checkout",
+          "pass": true
+        },
+        {
+          "name": "no unexpected pageerrors or destinations",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "unexpected": [],
+      "before": {
+        "orders": [
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.293Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:44.662Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:44.662Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808525102-0.19282644458193943\"}}",
+        "active": "9900",
+        "attempts": []
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9901,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.622Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808525102-0.19282644458193943\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.293Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:44.662Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:44.662Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "9900",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": false
+          },
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_active_order",
+            "blocked": true
+          },
+          {
+            "method": "removeItem",
+            "key": "nexo_demo_v1_cart",
+            "blocked": false
+          }
+        ]
+      },
+      "notice": {
+        "text": "Volver al Catálogo\nTema:\nClaro\nCOMPROBANTE DIGITAL\nPedido #9901\n\nPedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.\n\nPENDIENTE\nPedido Recibido\n\nEl pedido ingresó en la cola del mostrador.\n\nEntrega:\nRetiro en Mostrador\nTotal Estimado:\n$900\nDETALLE DE PRODUCTOS\nBanana Cavendish\n0.5 kg (aprox)\n$900\nSimular consulta por WhatsApp (Demo)\nRealizar Otro Pedido",
+        "alerts": [
+          "Pedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento."
+        ]
+      },
+      "reloaded": {
+        "orders": [
+          {
+            "id": 9901,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.622Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808525102-0.19282644458193943\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.293Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:44.662Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:44.662Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "9900",
+        "attempts": []
+      },
+      "retryEnabledAfterReload": false,
+      "afterRetry": {
+        "orders": [
+          {
+            "id": 9901,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.622Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808525102-0.19282644458193943\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:45.293Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:44.662Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:44.662Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": null,
+        "active": "9900",
+        "attempts": []
+      },
+      "pass": true
+    },
+    {
+      "mode": "cleanup-cart",
+      "checks": [
+        {
+          "name": "fault exercised",
+          "pass": true,
+          "detail": [
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_orders",
+              "blocked": false
+            },
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_active_order",
+              "blocked": false
+            },
+            {
+              "method": "removeItem",
+              "key": "nexo_demo_v1_cart",
+              "blocked": true
+            }
+          ]
+        },
+        {
+          "name": "cleanup failure still accepts exactly one order",
+          "pass": true
+        },
+        {
+          "name": "visible receipt names accepted ID without false save-failed claim",
+          "pass": true,
+          "detail": {
+            "text": "Volver al Catálogo\nTema:\nClaro\nCOMPROBANTE DIGITAL\nPedido #103\n\nPedido #103 recibido y guardado. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.\n\nPENDIENTE\nPedido Recibido\n\nEl pedido ingresó en la cola del mostrador.\n\nEntrega:\nRetiro en Mostrador\nTotal Estimado:\n$900\nDETALLE DE PRODUCTOS\nBanana Cavendish\n0.5 kg (aprox)\n$900\nSimular consulta por WhatsApp (Demo)\nRealizar Otro Pedido",
+            "alerts": [
+              "Pedido #103 recibido y guardado. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento."
+            ]
+          }
+        },
+        {
+          "name": "reload retains accepted order with no duplicate",
+          "pass": true
+        },
+        {
+          "name": "retry after reload never duplicates accepted checkout",
+          "pass": true
+        },
+        {
+          "name": "no unexpected pageerrors or destinations",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "unexpected": [],
+      "before": {
+        "orders": [
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:47.079Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:47.079Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}}",
+        "active": null,
+        "attempts": []
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:47.963Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:47.079Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:47.079Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}}",
+        "active": "103",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": false
+          },
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_active_order",
+            "blocked": false
+          },
+          {
+            "method": "removeItem",
+            "key": "nexo_demo_v1_cart",
+            "blocked": true
+          }
+        ]
+      },
+      "notice": {
+        "text": "Volver al Catálogo\nTema:\nClaro\nCOMPROBANTE DIGITAL\nPedido #103\n\nPedido #103 recibido y guardado. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.\n\nPENDIENTE\nPedido Recibido\n\nEl pedido ingresó en la cola del mostrador.\n\nEntrega:\nRetiro en Mostrador\nTotal Estimado:\n$900\nDETALLE DE PRODUCTOS\nBanana Cavendish\n0.5 kg (aprox)\n$900\nSimular consulta por WhatsApp (Demo)\nRealizar Otro Pedido",
+        "alerts": [
+          "Pedido #103 recibido y guardado. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento."
+        ]
+      },
+      "reloaded": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:47.963Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:47.079Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:47.079Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}}",
+        "active": "103",
+        "attempts": []
+      },
+      "retryEnabledAfterReload": true,
+      "afterRetry": {
+        "orders": [
+          {
+            "id": 103,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:47.963Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:47.079Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:47.079Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808527474-0.058846433533307096\"}}",
+        "active": "103",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_active_order",
+            "blocked": false
+          },
+          {
+            "method": "removeItem",
+            "key": "nexo_demo_v1_cart",
+            "blocked": true
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "mode": "cleanup-both",
+      "checks": [
+        {
+          "name": "fault exercised",
+          "pass": true,
+          "detail": [
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_orders",
+              "blocked": false
+            },
+            {
+              "method": "setItem",
+              "key": "nexo_demo_v1_active_order",
+              "blocked": true
+            },
+            {
+              "method": "removeItem",
+              "key": "nexo_demo_v1_cart",
+              "blocked": true
+            }
+          ]
+        },
+        {
+          "name": "cleanup failure still accepts exactly one order",
+          "pass": true
+        },
+        {
+          "name": "visible receipt names accepted ID without false save-failed claim",
+          "pass": true,
+          "detail": {
+            "text": "Volver al Catálogo\nTema:\nClaro\nCOMPROBANTE DIGITAL\nPedido #9901\n\nPedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.\n\nPENDIENTE\nPedido Recibido\n\nEl pedido ingresó en la cola del mostrador.\n\nEntrega:\nRetiro en Mostrador\nTotal Estimado:\n$900\nDETALLE DE PRODUCTOS\nBanana Cavendish\n0.5 kg (aprox)\n$900\nSimular consulta por WhatsApp (Demo)\nRealizar Otro Pedido",
+            "alerts": [
+              "Pedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento."
+            ]
+          }
+        },
+        {
+          "name": "reload retains accepted order with no duplicate",
+          "pass": true
+        },
+        {
+          "name": "retry after reload never duplicates accepted checkout",
+          "pass": true
+        },
+        {
+          "name": "no unexpected pageerrors or destinations",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "unexpected": [],
+      "before": {
+        "orders": [
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.621Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:50.031Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:50.031Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}}",
+        "active": "9900",
+        "attempts": []
+      },
+      "after": {
+        "orders": [
+          {
+            "id": 9901,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.944Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.621Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:50.031Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:50.031Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}}",
+        "active": "9900",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_orders",
+            "blocked": false
+          },
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_active_order",
+            "blocked": true
+          },
+          {
+            "method": "removeItem",
+            "key": "nexo_demo_v1_cart",
+            "blocked": true
+          }
+        ]
+      },
+      "notice": {
+        "text": "Volver al Catálogo\nTema:\nClaro\nCOMPROBANTE DIGITAL\nPedido #9901\n\nPedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.\n\nPENDIENTE\nPedido Recibido\n\nEl pedido ingresó en la cola del mostrador.\n\nEntrega:\nRetiro en Mostrador\nTotal Estimado:\n$900\nDETALLE DE PRODUCTOS\nBanana Cavendish\n0.5 kg (aprox)\n$900\nSimular consulta por WhatsApp (Demo)\nRealizar Otro Pedido",
+        "alerts": [
+          "Pedido #9901 recibido y guardado. No se pudo actualizar el acceso al pedido. El carrito conserva una copia; reintentar no duplica este pedido. Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento."
+        ]
+      },
+      "reloaded": {
+        "orders": [
+          {
+            "id": 9901,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.944Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.621Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:50.031Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:50.031Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}}",
+        "active": "9900",
+        "attempts": []
+      },
+      "retryEnabledAfterReload": true,
+      "afterRetry": {
+        "orders": [
+          {
+            "id": 9901,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro en Mostrador",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.944Z",
+            "total_estimado": 900,
+            "total_real": null,
+            "checkout_cart_key": "[[\"prod-1\",{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}]]",
+            "items": [
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "categoria": "Frutas",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 9900,
+            "demo": true,
+            "cliente": {
+              "telefono": "1100000088",
+              "nombre": "Cliente QA Checkout Sintético",
+              "direccion": "Calle Ficticia QA 88"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro sintético",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T16:08:50.621Z",
+            "total_estimado": 100,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "qa-prior",
+                "nombre": "Pedido anterior sintético",
+                "categoria": "QA",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 100,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 100,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 101,
+            "demo": true,
+            "cliente": {
+              "nombre": "Ana Demo (sintética)",
+              "telefono": "1100000001",
+              "direccion": "Calle Ficticia 101 (demo)"
+            },
+            "tipo_entrega": "DELIVERY",
+            "direccion_entrega": "Calle Ficticia 101 (demo)",
+            "estado": "PENDIENTE",
+            "fecha": "2026-11-04T15:53:50.031Z",
+            "total_estimado": 6400,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-9",
+                "nombre": "Tomate Redondo Premium",
+                "unidad_medida": "KG",
+                "precio_unitario": 2600,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 2600,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-1",
+                "nombre": "Banana Cavendish",
+                "unidad_medida": "KG",
+                "precio_unitario": 1800,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1800,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-2",
+                "nombre": "Manzana Roja Elegida",
+                "unidad_medida": "KG",
+                "precio_unitario": 2200,
+                "cantidad_solicitada": 0.5,
+                "peso_real": null,
+                "subtotal": 1100,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-13",
+                "nombre": "Acelga de Huerta",
+                "unidad_medida": "UNIDAD",
+                "precio_unitario": 900,
+                "cantidad_solicitada": 1,
+                "peso_real": 1,
+                "subtotal": 900,
+                "sin_stock": false
+              }
+            ]
+          },
+          {
+            "id": 102,
+            "demo": true,
+            "cliente": {
+              "nombre": "Bruno Demo (sintético)",
+              "telefono": "1100000002",
+              "direccion": "Retiro en Local"
+            },
+            "tipo_entrega": "RETIRO",
+            "direccion_entrega": "Retiro por Mostrador",
+            "estado": "EN_PREPARACION",
+            "fecha": "2026-11-04T15:33:50.031Z",
+            "total_estimado": 4700,
+            "total_real": null,
+            "items": [
+              {
+                "producto_id": "prod-7",
+                "nombre": "Papa Negra Cepillada",
+                "unidad_medida": "KG",
+                "precio_unitario": 950,
+                "cantidad_solicitada": 2,
+                "peso_real": 2.15,
+                "subtotal": 2043,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-10",
+                "nombre": "Zanahoria Fresca",
+                "unidad_medida": "KG",
+                "precio_unitario": 1300,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1300,
+                "sin_stock": false
+              },
+              {
+                "producto_id": "prod-3",
+                "nombre": "Naranja de Jugo",
+                "unidad_medida": "KG",
+                "precio_unitario": 1400,
+                "cantidad_solicitada": 1,
+                "peso_real": null,
+                "subtotal": 1400,
+                "sin_stock": false
+              }
+            ]
+          }
+        ],
+        "cart": "{\"prod-1\":{\"producto_id\":\"prod-1\",\"nombre\":\"Banana Cavendish\",\"categoria\":\"Frutas\",\"unidad_medida\":\"KG\",\"precio_unitario\":1800,\"cantidad\":0.5,\"subtotal_estimado\":900,\"checkout_revision\":\"1793808530455-0.8537112937963748\"}}",
+        "active": "9900",
+        "attempts": [
+          {
+            "method": "setItem",
+            "key": "nexo_demo_v1_active_order",
+            "blocked": true
+          },
+          {
+            "method": "removeItem",
+            "key": "nexo_demo_v1_cart",
+            "blocked": true
+          }
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "unexpected": [],
+  "pass": true,
+  "limits": [
+    "Browser local demo only; no server transaction, DB, messages, multi-tab or atomicity guarantee."
+  ],
+  "served": {
+    "origin": "http://127.0.0.1:62853",
+    "publicRoot": "C:\\Users\\Facu\\AppData\\Local\\Temp\\nexo-checkout-ui-qa-bxn2aj\\public",
+    "ephemeral": true,
+    "builtSource": false
+  },
+  "cleanedTemporary": true
+}

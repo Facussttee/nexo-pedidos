@@ -60,7 +60,7 @@ function createSyntheticSourceRoot(targetSourceRoot) {
  * Realiza una petición HTTP cruda preservando exactamente `rawPath` en la línea
  * de solicitud (sin normalización previa del cliente URL).
  */
-function rawHttpRequest({ host = "127.0.0.1", port, method = "GET", rawPath = "/" }) {
+function rawHttpRequest({ host = "127.0.0.1", port, method = "GET", rawPath = "/", headers = {} }) {
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -68,7 +68,7 @@ function rawHttpRequest({ host = "127.0.0.1", port, method = "GET", rawPath = "/
         port,
         method,
         path: rawPath,
-        headers: { Connection: "close" }
+        headers: { Connection: "close", ...headers }
       },
       (res) => {
         const chunks = [];
@@ -238,7 +238,37 @@ console.log("\n--- SUITE 2: Public Build Allowlist, Build Confinement & NP-002 D
         resBundle.bodyBuffer.byteLength,
         fs.statSync(path.join(REPO_ROOT, "js", "bundle.js")).size
       );
-      pass("2.3 GET /css/style.css, /js/public-config.js y /js/bundle.js responden 200 con MIME correcto y bytes exactos");
+      assert.ok(resIndex.headers["etag"], "GET /index.html debe incluir cabecera ETag");
+      assert.ok(resCss.headers["etag"], "GET /css/style.css debe incluir cabecera ETag");
+      assert.ok(resBundle.headers["etag"], "GET /js/bundle.js debe incluir cabecera ETag");
+      assert.equal(resIndex.headers["cache-control"], "no-cache");
+      assert.equal(resIndex.headers["x-frame-options"], "DENY", "GET /index.html debe incluir X-Frame-Options: DENY");
+      assert.equal(resIndex.headers["referrer-policy"], "strict-origin-when-cross-origin", "GET /index.html debe incluir Referrer-Policy");
+      assert.equal(resIndex.headers["permissions-policy"], "camera=(), microphone=(), geolocation=()", "GET /index.html debe incluir Permissions-Policy");
+
+      // Revalidación condicional 304 Not Modified y fallo de caché
+      const etagIndex = resIndex.headers["etag"];
+      const res304 = await rawHttpRequest({
+        port,
+        method: "GET",
+        rawPath: "/index.html",
+        headers: { "If-None-Match": etagIndex }
+      });
+      assert.equal(res304.statusCode, 304, "If-None-Match coincidente debe retornar 304 Not Modified");
+      assert.equal(res304.bodyBuffer.byteLength, 0, "Respuesta 304 debe tener cuerpo de 0 bytes");
+      assert.equal(res304.headers["etag"], etagIndex, "Respuesta 304 debe conservar cabecera ETag");
+      assert.equal(res304.headers["cache-control"], "no-cache");
+
+      const res200Miss = await rawHttpRequest({
+        port,
+        method: "GET",
+        rawPath: "/index.html",
+        headers: { "If-None-Match": 'W/"different-etag"' }
+      });
+      assert.equal(res200Miss.statusCode, 200, "If-None-Match no coincidente debe retornar 200 con cuerpo");
+      assert.equal(res200Miss.bodyBuffer.byteLength, resIndex.bodyBuffer.byteLength);
+
+      pass("2.3 GET /css/style.css, /js/public-config.js y /js/bundle.js responden 200 con MIME correcto, ETag y revalidación 304");
 
       // HEAD para HTML, CSS y JS
       const headHtml = await rawHttpRequest({ port, method: "HEAD", rawPath: "/index.html" });
@@ -248,6 +278,7 @@ console.log("\n--- SUITE 2: Public Build Allowlist, Build Confinement & NP-002 D
       assert.equal(headHtml.statusCode, 200);
       assert.equal(headHtml.headers["content-type"], MIME_TYPES[".html"]);
       assert.equal(Number(headHtml.headers["content-length"]), resIndex.bodyBuffer.byteLength);
+      assert.equal(headHtml.headers["etag"], etagIndex);
       assert.equal(headHtml.bodyBuffer.byteLength, 0);
 
       assert.equal(headCss.statusCode, 200);
@@ -257,7 +288,7 @@ console.log("\n--- SUITE 2: Public Build Allowlist, Build Confinement & NP-002 D
       assert.equal(headJs.statusCode, 200);
       assert.equal(headJs.headers["content-type"], MIME_TYPES[".js"]);
       assert.equal(headJs.bodyBuffer.byteLength, 0);
-      pass("2.4 HEAD devuelve código 200, MIME y Content-Length exactos sin cuerpo");
+      pass("2.4 HEAD devuelve código 200, MIME, ETag y Content-Length exactos sin cuerpo");
 
       // Reproducir la demo NP-002 evaluando los activos servidos por HTTP en un sandbox VM
       const makeEl = (id = "") => ({

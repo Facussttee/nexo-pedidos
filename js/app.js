@@ -225,6 +225,12 @@ class App {
         if (store.verifyStaffPin(input.value)) {
           this.navigate(targetView);
         } else {
+          if (store.isPinLockedOut()) {
+            const secs = store.getPinLockoutRemainingSeconds();
+            errorEl.textContent = `Demasiados intentos fallidos. Bloqueado por ${secs}s.`;
+          } else {
+            errorEl.textContent = "PIN incorrecto. Intentá nuevamente.";
+          }
           errorEl.classList.remove("hidden");
           input.value = "";
           input.focus();

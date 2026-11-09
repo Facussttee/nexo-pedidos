@@ -79,6 +79,8 @@ d:\Escritorio\miHuerta\
 
 ## 5. Reglas de Diseño y Principios Obligatorios
 
+> **CONOCIMIENTO Y CONTEXTO DEL REPOSITORIO (OBLIGATORIO):** Antes de planificar cambios arquitectónicos o de código, todo agente o IA DEBE consultar el grafo de conocimiento generado en graphify-out/GRAPH_REPORT.md, el dataset estructurado en graphify-out/graph.json y la visualización interactiva en graphify-out/graph.html.
+
 Cualquier IA o desarrollador que modifique el código debe respetar estrictamente:
 
 1. **Touch-friendly y Mobile-First:** El empleado de la verdulería opera con el teléfono en el mostrador. Los botones deben tener al menos $44\times 44\text{ px}$, inputs numéricos grandes (`16px` mínimo para evitar auto-zoom en iOS) y contrastes altos.

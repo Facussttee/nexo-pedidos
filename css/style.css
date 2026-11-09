@@ -1,5 +1,5 @@
 /* ========================================================
-   Mi Huerta - Estilos Base Mobile-First
+   Nexo Pedidos - Estilos Base Mobile-First
    Enfoque: Minimalista, sobrio, tipográfico y táctil.
    ======================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
@@ -70,65 +70,6 @@
 
   /* Touch Ergonomics Standard */
   --touch-target-min: 44px;
-}
-
-/* Fallback de tema oscuro para preferencia del sistema operativo */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]),
-  html:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    /* Surfaces & Canvas */
-    --bg-canvas: #020617;           /* Slate 950 */
-    --bg-surface: #0f172a;          /* Slate 900 */
-    --bg-surface-elevated: #1e293b; /* Slate 800 */
-    --bg-muted: #1e293b;            /* Slate 800 */
-    --bg-subtle: #334155;           /* Slate 700 */
-
-    /* Typography Colors */
-    --text-primary: #f8fafc;        /* Slate 50 - Contrast 16:1 */
-    --text-secondary: #94a3b8;      /* Slate 400 - Contrast 6.5:1 */
-    --text-muted: #64748b;          /* Slate 500 - Contrast 4.5:1 */
-    --text-inverse: #020617;
-
-    /* Borders */
-    --border-subtle: #1e293b;       /* Slate 800 */
-    --border-default: #334155;      /* Slate 700 */
-    --border-strong: #475569;       /* Slate 600 */
-
-    /* Brand Palette */
-    --brand-primary: #10b981;       /* Emerald 500 */
-    --brand-hover: #34d399;         /* Emerald 400 */
-    --brand-active: #059669;        /* Emerald 600 */
-    --brand-subtle: rgba(6, 78, 59, 0.45);
-    --brand-contrast: #020617;
-
-    /* Verdulería Kanban & Order Status Tokens */
-    --status-pending-bg: rgba(69, 26, 3, 0.7);
-    --status-pending-border: #92400e;
-    --status-pending-text: #fde68a;
-    --status-pending-accent: #f59e0b;
-
-    --status-scale-bg: rgba(23, 37, 84, 0.7);
-    --status-scale-border: #1e40af;
-    --status-scale-text: #bfdbfe;
-    --status-scale-accent: #3b82f6;
-
-    --status-ready-bg: rgba(6, 78, 59, 0.7);
-    --status-ready-border: #065f46;
-    --status-ready-text: #a7f3d0;
-    --status-ready-accent: #10b981;
-
-    --status-paid-bg: #1e293b;
-    --status-paid-border: #334155;
-    --status-paid-text: #cbd5e1;
-    --status-paid-accent: #94a3b8;
-
-    --status-cancel-bg: rgba(76, 5, 25, 0.7);
-    --status-cancel-border: #9f1239;
-    --status-cancel-text: #fecdd3;
-    --status-cancel-accent: #f43f5e;
-  }
 }
 
 /* Activación explícita por clase o atributo data-theme */
@@ -205,9 +146,6 @@ body {
   overflow-x: clip;
   overflow-y: visible;
   position: relative;
-}
-
-body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   background-color: var(--bg-canvas, #f8fafc);
@@ -235,6 +173,9 @@ html.dark textarea,
 }
 
 /* Prevenir auto-zoom intrusivo en iOS Safari (requiere font-size >= 16px en inputs) */
+input, select, textarea {
+  font-size: 16px;
+}
 @media screen and (max-width: 768px) {
   input, select, textarea {
     font-size: 16px !important;
@@ -262,39 +203,12 @@ html.dark textarea,
   to { transform: translateY(0); }
 }
 
-@keyframes pulseSubtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes flashSuccess {
-  0% { border-color: #059669; background-color: #ecfdf5; }
-  100% { border-color: #cbd5e1; background-color: #ffffff; }
-}
-
-@keyframes flashSuccessDark {
-  0% { border-color: #10b981; background-color: #064e3b; }
-  100% { border-color: #334155; background-color: #0f172a; }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-slide-up {
   animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-pulse-subtle {
-  animation: pulseSubtle 2s ease-in-out infinite;
-}
-
-.flash-saved {
-  animation: flashSuccess 1.2s ease forwards;
-}
-
-html.dark .flash-saved {
-  animation: flashSuccessDark 1.2s ease forwards;
 }
 
 /* Deshabilitar zoom accidental de doble toque */
@@ -333,10 +247,6 @@ button, input, select, a {
 .safe-floating-bottom {
   bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
 }
-.safe-mb {
-  margin-bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
-}
-
 /* Píldoras de categorías con desplazamiento horizontal sin aplastamiento */
 .category-pill,
 .admin-cat-pill {

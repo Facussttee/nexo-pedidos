@@ -45,24 +45,186 @@ CREATE TABLE IF NOT EXISTS public.pedidos (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Permisos
-grant usage on schema public to anon, authenticated, service_role;
-grant all on all tables in schema public to anon, authenticated, service_role;
-grant all on all sequences in schema public to anon, authenticated, service_role;
+-- =============================================================================
+-- 5. PERMISOS, TABLA DE SECRETOS Y SEGURIDAD DE FILAS (RLS) PARA PRODUCCION
+-- =============================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE ON public.clientes TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.productos TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.pedidos TO anon, authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 
-alter table public.productos enable row level security;
-alter table public.clientes enable row level security;
-alter table public.pedidos enable row level security;
+-- Permisos completos de servidor para service_role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
 
-drop policy if exists "Permitir acceso publico a clientes" on public.clientes;
-create policy "Permitir acceso publico a clientes" on public.clientes for all to anon, authenticated using (true) with check (true);
+-- 5.1 Tabla de Secretos del Comercio (Inaccesible desde API pública anon/authenticated)
+CREATE TABLE IF NOT EXISTS public.nexo_secrets (
+    key VARCHAR(50) PRIMARY KEY,
+    value TEXT NOT NULL
+);
+REVOKE ALL ON TABLE public.nexo_secrets FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.nexo_secrets TO service_role;
 
-drop policy if exists "Permitir acceso publico a productos" on public.productos;
-drop policy if exists "catalogo_disponible" on public.productos;
-create policy "Permitir acceso publico a productos" on public.productos for all to anon, authenticated using (true) with check (true);
+INSERT INTO public.nexo_secrets (key, value)
+VALUES ('staff_pin', '1234')
+ON CONFLICT (key) DO NOTHING;
 
-drop policy if exists "Permitir acceso publico a pedidos" on public.pedidos;
-create policy "Permitir acceso publico a pedidos" on public.pedidos for all to anon, authenticated using (true) with check (true);
+-- 5.2 Función para verificar el PIN de Staff enviado en la cabecera x-nexo-staff-pin
+CREATE OR REPLACE FUNCTION public.verify_staff_pin_header()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    req_headers TEXT;
+    req_pin TEXT;
+    expected_pin TEXT;
+BEGIN
+    req_headers := current_setting('request.headers', true);
+    IF req_headers IS NULL OR req_headers = '' THEN
+        RETURN FALSE;
+    END IF;
+    req_pin := COALESCE((req_headers::json ->> 'x-nexo-staff-pin'), '');
+    IF req_pin = '' THEN
+        RETURN FALSE;
+    END IF;
+    SELECT value INTO expected_pin FROM public.nexo_secrets WHERE key = 'staff_pin';
+    RETURN expected_pin IS NOT NULL AND req_pin = expected_pin;
+EXCEPTION WHEN OTHERS THEN
+    RETURN FALSE;
+END;
+$$;
+
+-- 5.3 Control de Inundación de Pedidos (Rate Limiting en Base de Datos)
+CREATE OR REPLACE FUNCTION public.enforce_order_rate_limit()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    recent_customer_count INT;
+    recent_global_count INT;
+BEGIN
+    -- Máximo 3 pedidos cada 5 minutos para un mismo teléfono
+    IF NEW.cliente_telefono IS NOT NULL AND NEW.cliente_telefono <> '' THEN
+        SELECT COUNT(*) INTO recent_customer_count
+        FROM public.pedidos
+        WHERE cliente_telefono = NEW.cliente_telefono
+          AND fecha >= (NOW() - INTERVAL '5 minutes');
+        IF recent_customer_count >= 3 THEN
+            RAISE EXCEPTION 'Demasiados pedidos recientes para este teléfono. Por favor esperá unos minutos.';
+        END IF;
+    END IF;
+
+    -- Máximo 30 pedidos por minuto en todo el local
+    SELECT COUNT(*) INTO recent_global_count
+    FROM public.pedidos
+    WHERE fecha >= (NOW() - INTERVAL '1 minute');
+    IF recent_global_count >= 30 THEN
+        RAISE EXCEPTION 'Alta demanda en el comercio. Por favor intentá nuevamente en un momento.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_pedidos_rate_limit ON public.pedidos;
+CREATE TRIGGER trigger_pedidos_rate_limit
+    BEFORE INSERT ON public.pedidos
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_order_rate_limit();
+
+-- 5.4 Políticas RLS Granulares
+ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.productos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pedidos ENABLE ROW LEVEL SECURITY;
+
+-- PRODUCTOS: Lectura pública; edición y alta sólo con PIN de Staff verificado; borrado prohibido
+DROP POLICY IF EXISTS "Permitir acceso publico a productos" ON public.productos;
+DROP POLICY IF EXISTS "Permitir acceso publico a productos MVP" ON public.productos;
+DROP POLICY IF EXISTS "catalogo_disponible" ON public.productos;
+DROP POLICY IF EXISTS "productos_read_public" ON public.productos;
+DROP POLICY IF EXISTS "productos_write_staff" ON public.productos;
+
+CREATE POLICY "productos_read_public"
+    ON public.productos FOR SELECT
+    TO anon, authenticated
+    USING (true);
+
+CREATE POLICY "productos_write_staff"
+    ON public.productos FOR ALL
+    TO anon, authenticated
+    USING (public.verify_staff_pin_header())
+    WITH CHECK (public.verify_staff_pin_header());
+
+-- CLIENTES: Teléfono numérico válido, longitudes acotadas, borrado prohibido
+DROP POLICY IF EXISTS "Permitir acceso publico a clientes" ON public.clientes;
+DROP POLICY IF EXISTS "Permitir acceso publico a clientes MVP" ON public.clientes;
+DROP POLICY IF EXISTS "clientes_read_public" ON public.clientes;
+DROP POLICY IF EXISTS "clientes_insert_valid" ON public.clientes;
+DROP POLICY IF EXISTS "clientes_update_valid" ON public.clientes;
+
+CREATE POLICY "clientes_read_public"
+    ON public.clientes FOR SELECT
+    TO anon, authenticated
+    USING (true);
+
+CREATE POLICY "clientes_insert_valid"
+    ON public.clientes FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (
+        telefono ~ '^[0-9]{8,15}$'
+        AND char_length(nombre) >= 2 AND char_length(nombre) <= 120
+        AND char_length(COALESCE(direccion, '')) <= 250
+    );
+
+CREATE POLICY "clientes_update_valid"
+    ON public.clientes FOR UPDATE
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (
+        telefono ~ '^[0-9]{8,15}$'
+        AND char_length(nombre) >= 2 AND char_length(nombre) <= 120
+        AND char_length(COALESCE(direccion, '')) <= 250
+    );
+
+-- PEDIDOS: Creación y actualización protegidas, importes válidos, items JSONB acotados, borrado prohibido
+DROP POLICY IF EXISTS "Permitir acceso publico a pedidos" ON public.pedidos;
+DROP POLICY IF EXISTS "Permitir acceso publico a pedidos MVP" ON public.pedidos;
+DROP POLICY IF EXISTS "pedidos_read_public" ON public.pedidos;
+DROP POLICY IF EXISTS "pedidos_insert_valid" ON public.pedidos;
+DROP POLICY IF EXISTS "pedidos_update_valid" ON public.pedidos;
+
+CREATE POLICY "pedidos_read_public"
+    ON public.pedidos FOR SELECT
+    TO anon, authenticated
+    USING (true);
+
+CREATE POLICY "pedidos_insert_valid"
+    ON public.pedidos FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (
+        total_estimado >= 0
+        AND (total_real IS NULL OR total_real >= 0)
+        AND jsonb_typeof(items) = 'array'
+        AND jsonb_array_length(items) >= 1
+        AND jsonb_array_length(items) <= 100
+        AND octet_length(items::text) <= 65536
+    );
+
+CREATE POLICY "pedidos_update_valid"
+    ON public.pedidos FOR UPDATE
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (
+        total_estimado >= 0
+        AND (total_real IS NULL OR total_real >= 0)
+        AND jsonb_typeof(items) = 'array'
+        AND octet_length(items::text) <= 65536
+    );
 
 -- Realtime
 alter table public.pedidos replica identity full;

@@ -98,6 +98,9 @@ export function startDemoServer({
     };
     const onListening = () => {
       server.removeListener("error", onError);
+      server.on("error", (err) => {
+        console.error("[serve-demo] Error en el servidor demo:", err && err.message ? err.message : err);
+      });
       const addr = server.address();
       const actualPort = typeof addr === "object" && addr ? addr.port : port;
       resolve({

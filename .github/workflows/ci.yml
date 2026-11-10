@@ -1,0 +1,44 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Lint, Test & Build Confinement
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: ''
+
+      - name: 1. Syntax & Hygiene Check
+        run: |
+          node --check js/bundle.js
+          node --check scripts/build-public.mjs
+
+      - name: 2. Run Isolation & Security Test Suites
+        run: |
+          node tests/test-production-supabase-sync.test.mjs
+          node tests/test-demo-isolation.test.mjs
+          node tests/test-static-server.test.mjs
+          node tests/test-delivery-store.mjs
+          node tests/test-phone-numeric-validation.test.mjs
+          node bot/test-store-state.js
+          node tests/test-html-escaping.test.mjs
+          node tests/test-preparation-input.test.mjs
+
+      - name: 3. Verify Public Build & Artifacts
+        run: |
+          node scripts/build-public.mjs
+          test -f dist/public/index.html
+          test -f dist/public/js/bundle.js
+          test -f dist/public/css/style.css

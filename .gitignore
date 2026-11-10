@@ -27,3 +27,6 @@ bot/.cooldowns.json
 
 # Raíz pública generada por allowlist
 dist/
+
+# Respaldos locales
+respaldo-local-*.zip

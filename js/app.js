@@ -181,6 +181,7 @@ class App {
             <input
               type="password"
               id="pin-input"
+              aria-label="PIN del comercio"
               inputmode="numeric"
               maxlength="8"
               placeholder="••••"
@@ -301,7 +302,8 @@ class App {
         break;
     }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   }
 }
 

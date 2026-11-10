@@ -1,0 +1,10 @@
+node_modules
+.git
+.agents
+coordination
+tests
+graphify-out
+respaldo-local-*
+dist
+*.log
+.env*

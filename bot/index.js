@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * MI HUERTA - SERVICIO CONECTOR DE WHATSAPP (BAILEYS + SUPABASE REALTIME)
+ * NEXO PEDIDOS - SERVICIO CONECTOR DE WHATSAPP (BAILEYS + SUPABASE REALTIME)
  * ============================================================================
  * Responsabilidades:
  * 1. Conectar al WhatsApp de la verdulería mediante código QR local.
@@ -190,15 +190,6 @@ async function resolveWhatsAppJid(sock, rawPhone) {
   }
 
   return candidates[0];
-}
-
-// Formatear teléfono local a JID de WhatsApp Argentina (fallback sincrónico)
-function toWhatsAppJid(phone) {
-  const digits = String(phone).replace(/\D/g, "");
-  if (digits.startsWith("549")) {
-    return `${digits}@s.whatsapp.net`;
-  }
-  return `549${digits}@s.whatsapp.net`;
 }
 
 // Construir el mensaje final con el pesaje real de balanza

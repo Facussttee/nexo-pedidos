@@ -1,4 +1,4 @@
-﻿import { store } from "../store.js";
+import { store } from "../store.js";
 import { escapeHtml } from "../html.js";
 
 function parseOperatorWeight(rawInput, isWeight = true) {
@@ -69,7 +69,7 @@ export function renderOperatorView(container) {
               }"
             >
               <span>Entrantes</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded-full mt-0.5 ${
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5 ${
                 activeTab === "PENDIENTE" ? "bg-amber-600/30 text-slate-950 font-black" : "bg-slate-700 text-slate-300"
               }">${counts.PENDIENTE}</span>
             </button>
@@ -81,7 +81,7 @@ export function renderOperatorView(container) {
               }"
             >
               <span>Preparación</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded-full mt-0.5 ${
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5 ${
                 activeTab === "EN_PREPARACION" ? "bg-blue-800 text-white font-black" : "bg-slate-700 text-slate-300"
               }">${counts.EN_PREPARACION}</span>
             </button>
@@ -93,7 +93,7 @@ export function renderOperatorView(container) {
               }"
             >
               <span>Listos</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded-full mt-0.5 ${
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5 ${
                 activeTab === "LISTO" ? "bg-emerald-800 text-white font-black" : "bg-slate-700 text-slate-300"
               }">${counts.LISTO}</span>
             </button>
@@ -105,9 +105,9 @@ export function renderOperatorView(container) {
               }"
             >
               <span>Cobrados</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded-full mt-0.5 bg-slate-700 text-slate-300">${counts.ENTREGADO}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5 bg-slate-700 text-slate-300">${counts.ENTREGADO}</span>
             </button>
-            <button data-tab="CANCELADO" class="tab-btn min-h-[48px] px-1 py-1.5 rounded-xl text-[10px] font-bold tap-feedback ${activeTab === "CANCELADO" ? "bg-rose-950 text-rose-200" : "text-slate-400"}">
+            <button data-tab="CANCELADO" class="tab-btn min-h-[48px] px-1 py-1.5 rounded-xl text-[10px] font-bold tap-feedback touch-target ${activeTab === "CANCELADO" ? "bg-rose-950 text-rose-200" : "text-slate-400"}">
               Cancelados <span class="block">${counts.CANCELADO}</span>
             </button>
           </div>
@@ -422,7 +422,7 @@ export function renderOperatorView(container) {
 
           <form id="edit-order-form" class="space-y-3 text-left">
             <div>
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Nombre del cliente</label>
+              <label for="edit-name" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Nombre del cliente</label>
               <input
                 type="text"
                 id="edit-name"
@@ -433,7 +433,7 @@ export function renderOperatorView(container) {
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Teléfono / WhatsApp</label>
+              <label for="edit-phone" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Teléfono / WhatsApp</label>
               <input
                 type="tel"
                 id="edit-phone"
@@ -461,7 +461,7 @@ export function renderOperatorView(container) {
             </div>
 
             <div id="edit-address-container" class="${order.tipo_entrega === "DELIVERY" ? "" : "hidden"}">
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Dirección de entrega</label>
+              <label for="edit-address" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Dirección de entrega</label>
               <input
                 type="text"
                 id="edit-address"

@@ -54,12 +54,15 @@ function safeRemove(key) {
 }
 
 class Store {
-  constructor(config = NEXO_CONFIG) {
+  constructor(config = NEXO_CONFIG, options = {}) {
     this.config = config;
     this.storageKeys = config.storageKeys || STORAGE_KEYS;
+    if (!this.storageKeys.BUSINESS_CONFIG) {
+      this.storageKeys.BUSINESS_CONFIG = `${this.storageKeys.PREFIX || (this.isDemo() ? "nexo_demo_v1_" : "nexo_prod_v1_")}business_config`;
+    }
     this.listeners = new Set();
     this.blockedNetwork = [];
-    this.supabase = null;
+    this.supabase = options?.supabaseClient || null;
     this.realtimeChannel = null;
     this.cloudError = null;
 
@@ -116,7 +119,133 @@ class Store {
   }
 
   getBusinessProfile() {
-    return { ...this.config.business };
+    const config = this.getComercioConfigSync();
+    return {
+      name: config.nombre || this.config.business?.name || "",
+      alias: config.alias || this.config.business?.alias || "",
+      whatsapp: config.whatsapp || this.config.business?.whatsapp || "",
+      whatsappDisplay: this.config.business?.whatsappDisplay || config.whatsapp || "",
+      ...config
+    };
+  }
+
+  getDefaultComercioConfig() {
+    const business = this.config.business || {};
+    return {
+      nombre: business.name || "Mi Huerta",
+      alias: business.alias || "mihuerta",
+      whatsapp: business.whatsapp || "5491100000000",
+      costo_envio: 0,
+      compra_minima: 0,
+      horarios: "Lunes a Sábado de 8:00 a 20:00"
+    };
+  }
+
+  getComercioConfigSync() {
+    const storageKey = this.storageKeys.BUSINESS_CONFIG;
+    const cached = safeGet(storageKey, null);
+    if (cached && typeof cached === "object") {
+      return {
+        ...this.getDefaultComercioConfig(),
+        ...cached,
+        costo_envio: Number(cached.costo_envio != null ? cached.costo_envio : 0),
+        compra_minima: Number(cached.compra_minima != null ? cached.compra_minima : 0),
+        horarios: typeof cached.horarios === "string" ? cached.horarios : "Lunes a Sábado de 8:00 a 20:00"
+      };
+    }
+    return this.getDefaultComercioConfig();
+  }
+
+  async getComercioConfig() {
+    if (this.isDemo() || !this.supabase) {
+      return this.getComercioConfigSync();
+    }
+    try {
+      const { data, error } = await this.supabase
+        .from("comercio_config")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
+
+      if (!error && data) {
+        const config = {
+          nombre: data.nombre || "Mi Huerta",
+          alias: data.alias || "mihuerta",
+          whatsapp: data.whatsapp || "",
+          costo_envio: Number(data.costo_envio != null ? data.costo_envio : 0),
+          compra_minima: Number(data.compra_minima != null ? data.compra_minima : 0),
+          horarios: data.horarios || ""
+        };
+        safeSet(this.storageKeys.BUSINESS_CONFIG, config);
+        return config;
+      }
+    } catch (err) {
+      console.warn("Error consultando comercio_config:", err);
+    }
+    return this.getComercioConfigSync();
+  }
+
+  async saveComercioConfig(draft = {}, options = {}) {
+    const current = this.getComercioConfigSync();
+    if (draft.costo_envio !== undefined && Number(draft.costo_envio) < 0) {
+      throw new Error("El costo de envío no puede ser negativo.");
+    }
+    if (draft.compra_minima !== undefined && Number(draft.compra_minima) < 0) {
+      throw new Error("La compra mínima no puede ser negativa.");
+    }
+
+    const cleanDraft = {
+      nombre: typeof draft.nombre === "string" && draft.nombre.trim() ? draft.nombre.trim().slice(0, 120) : current.nombre,
+      alias: typeof draft.alias === "string" && draft.alias.trim() ? draft.alias.trim().slice(0, 60) : current.alias,
+      whatsapp: typeof draft.whatsapp === "string" ? draft.whatsapp.replace(/\D/g, "").slice(0, 25) : current.whatsapp,
+      costo_envio: Math.max(0, Number(draft.costo_envio != null ? draft.costo_envio : current.costo_envio) || 0),
+      compra_minima: Math.max(0, Number(draft.compra_minima != null ? draft.compra_minima : current.compra_minima) || 0),
+      horarios: typeof draft.horarios === "string" ? draft.horarios.trim().slice(0, 250) : current.horarios
+    };
+
+    const storageKey = this.storageKeys.BUSINESS_CONFIG;
+
+    if (this.isDemo()) {
+      safeSet(storageKey, cleanDraft);
+      this.notify("config_changed", cleanDraft);
+      return { ok: true, data: cleanDraft, ...cleanDraft };
+    }
+
+    if (!this.supabase) {
+      throw new Error("No se puede guardar la configuración del comercio en producción sin conexión a Supabase.");
+    }
+
+    const explicitPin = (options && typeof options.staffPin === "string" && options.staffPin.trim())
+      || (typeof draft.staffPin === "string" && draft.staffPin.trim());
+    const unlockedPin = this.isStaffUnlocked() ? this.getLocalSettings().staffPin : "";
+    const pin = explicitPin || unlockedPin;
+
+    if (!pin) {
+      throw new Error("Se requiere el PIN de administración para guardar la configuración del comercio.");
+    }
+
+    const payload = {
+      id: 1,
+      ...cleanDraft,
+      updated_at: new Date().toISOString()
+    };
+
+    const query = this.supabase
+      .from("comercio_config")
+      .upsert(payload);
+
+    if (typeof query.setHeader === "function") {
+      query.setHeader("x-nexo-staff-pin", pin);
+    }
+
+    const { data, error } = typeof query.select === "function" ? await query.select() : await query;
+    if (error) {
+      throw new Error(error.message || "Error al actualizar la configuración del comercio en Supabase.");
+    }
+
+    safeSet(storageKey, cleanDraft);
+    this.notify("config_changed", cleanDraft);
+    return { ok: true, data: cleanDraft, ...cleanDraft };
   }
 
   init() {
@@ -129,6 +258,9 @@ class Store {
     }
 
     if (this.isDemo()) {
+      if (!safeGet(this.storageKeys.BUSINESS_CONFIG, null)) {
+        safeSet(this.storageKeys.BUSINESS_CONFIG, this.getDefaultComercioConfig());
+      }
       // 1. Catálogo sintético
       try {
         if (localStorage.getItem(this.storageKeys.PRODUCTS) === null) writeCritical(this.storageKeys.PRODUCTS, INITIAL_PRODUCTS);
@@ -301,11 +433,13 @@ class Store {
     }
     const { supabaseUrl, supabaseAnonKey } = this.config;
     try {
-      const lib = await this.loadSupabaseLibrary();
-      if (!lib || typeof lib.createClient !== "function") {
-        throw new Error("Librería de Supabase no disponible.");
+      if (!this.supabase) {
+        const lib = await this.loadSupabaseLibrary();
+        if (!lib || typeof lib.createClient !== "function") {
+          throw new Error("Librería de Supabase no disponible.");
+        }
+        this.supabase = lib.createClient(supabaseUrl, supabaseAnonKey);
       }
-      this.supabase = lib.createClient(supabaseUrl, supabaseAnonKey);
       this.cloudError = null;
       await this.pullFromSupabase();
       this.subscribeToSupabaseRealtime();
@@ -380,7 +514,8 @@ class Store {
           codigo: p.codigo || "",
           detalle: p.detalle || "",
           archivado: Boolean(p.archivado),
-          imagen_id: p.imagen_id || null
+          imagen_id: p.imagen_id || p.imagen_url || null,
+          imagen_url: p.imagen_url || (p.imagen_id && (p.imagen_id.startsWith("https://") || p.imagen_id.startsWith("http://")) ? p.imagen_id : null)
         }));
         safeSet(this.storageKeys.PRODUCTS, mappedProducts);
         this.notify("products_changed");
@@ -421,6 +556,24 @@ class Store {
         this.notify("orders_changed");
       }
 
+      try {
+        if (typeof this.supabase?.from === "function") {
+          const confRes = await this.supabase.from("comercio_config").select("*").eq("id", 1).maybeSingle();
+          if (confRes && confRes.data) {
+            const config = {
+              nombre: confRes.data.nombre || "Mi Huerta",
+              alias: confRes.data.alias || "mihuerta",
+              whatsapp: confRes.data.whatsapp || "",
+              costo_envio: Number(confRes.data.costo_envio != null ? confRes.data.costo_envio : 0),
+              compra_minima: Number(confRes.data.compra_minima != null ? confRes.data.compra_minima : 0),
+              horarios: confRes.data.horarios || ""
+            };
+            safeSet(this.storageKeys.BUSINESS_CONFIG, config);
+            this.notify("config_changed", config);
+          }
+        }
+      } catch {}
+
       this.notify("storage_sync");
     } catch (err) {
       console.warn("Error sincronizando datos desde Supabase:", err);
@@ -442,6 +595,9 @@ class Store {
         this.pullFromSupabase();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "productos" }, () => {
+        this.pullFromSupabase();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "comercio_config" }, () => {
         this.pullFromSupabase();
       })
       .subscribe();
@@ -613,6 +769,7 @@ class Store {
         detalle: product.detalle ? String(product.detalle).trim() : "",
         archivado: Boolean(product.archivado),
         imagen_id: product.imagen_id || null,
+        imagen_url: product.imagen_url || (product.imagen_id && (product.imagen_id.startsWith("https://") || product.imagen_id.startsWith("http://")) ? product.imagen_id : null),
         updated_at: new Date().toISOString()
       };
       const query = this.supabase.from("productos").upsert(payload);
@@ -793,6 +950,13 @@ class Store {
       saved.imagen_id = draft.imagen_id;
     } else if (previous?.imagen_id !== undefined) {
       saved.imagen_id = previous.imagen_id;
+    }
+    if (Object.hasOwn(draft, "imagen_url")) {
+      saved.imagen_url = draft.imagen_url;
+    } else if (draft.imagen_id && (draft.imagen_id.startsWith("https://") || draft.imagen_id.startsWith("http://"))) {
+      saved.imagen_url = draft.imagen_id;
+    } else if (previous?.imagen_url !== undefined) {
+      saved.imagen_url = previous.imagen_url;
     }
     this.validateProduct(saved);
     if (saved.codigo && products.some((p) => p.id !== id && String(p.codigo || "").trim().toUpperCase() === saved.codigo)) throw new Error("El código SKU ya existe, incluso si el producto está archivado.");
@@ -978,12 +1142,27 @@ class Store {
     this.notify("cart_changed");
   }
 
-  getCartSummary() {
+  getCartSummary(options = {}) {
     const cart = this.getCart();
     const items = Object.values(cart);
-    const totalEstimado = items.reduce((sum, item) => sum + item.subtotal_estimado, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.subtotal_estimado, 0);
+    const config = this.getComercioConfigSync();
+    const tipoEntrega = typeof options === "string" ? options : (options && options.tipo_entrega);
+    const isDelivery = tipoEntrega === "DELIVERY";
+    const costoEnvio = isDelivery ? Number(config.costo_envio || 0) : 0;
+    const totalEstimado = subtotal + costoEnvio;
     const totalItems = items.length;
-    return { items, totalEstimado, totalItems };
+    const compraMinima = Number(config.compra_minima || 0);
+    const cumpleMinimo = subtotal >= compraMinima;
+    return {
+      items,
+      subtotal,
+      costo_envio: costoEnvio,
+      totalEstimado,
+      totalItems,
+      compraMinima,
+      cumpleMinimo
+    };
   }
 
   // --- Pedidos ---
@@ -1081,13 +1260,20 @@ class Store {
 
   createOrder({ cliente, tipo_entrega, direccion_entrega }) {
     if (!this.config.ok) return null;
-    const { items, totalEstimado } = this.getCartSummary();
+    const config = this.getComercioConfigSync();
+    const { items, subtotal } = this.getCartSummary({ tipo_entrega });
     const orders = this.getOrders();
     const cartKey = this.checkoutCartKey();
     const accepted = orders.find((order) => order.checkout_cart_key && this.isSameCustomer(order.cliente?.telefono, cliente.telefono)
       && (order.checkout_cart_key === cartKey || items.length === 0));
     if (accepted) return this.finishCheckout(accepted);
     if (items.length === 0) return null;
+
+    const compraMinima = Number(config.compra_minima || 0);
+    if (compraMinima > 0 && subtotal < compraMinima) {
+      throw new Error(`La compra mínima es de $${compraMinima.toLocaleString("es-AR")}. Tu pedido actual suma $${subtotal.toLocaleString("es-AR")}.`);
+    }
+
     const products = this.getAdminProducts();
     if (this.catalogError) throw new Error(this.catalogError);
     for (const item of items) {
@@ -1097,6 +1283,10 @@ class Store {
       const steps = item.cantidad / product.paso;
       if (!Number.isFinite(item.cantidad) || item.cantidad <= 0 || Math.abs(steps - Math.round(steps)) > 1e-7 || (product.unidad_medida === "UNIDAD" && !Number.isInteger(item.cantidad))) throw new Error(`Revisá la cantidad de ${item.nombre}: no coincide con el paso permitido.`);
     }
+
+    const costoEnvio = tipo_entrega === "DELIVERY" ? Number(config.costo_envio || 0) : 0;
+    const totalEstimado = subtotal + costoEnvio;
+
     const newId = orders.length > 0 ? Math.max(...orders.map((o) => o.id)) + 1 : 101;
     const newOrder = {
       id: newId, cliente, tipo_entrega,

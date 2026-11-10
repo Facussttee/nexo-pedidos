@@ -14,7 +14,7 @@ globalThis.localStorage = {
 
 test("V2-01 Adversarial Verification Suite — Empirical Challenger", async (t) => {
   const schemaPath = path.resolve("supabase/schema.sql");
-  const schemaSql = fs.readFileSync(schemaPath, "utf-8");
+  const schemaSql = fs.readFileSync(schemaPath, "utf-8").replace(/\r\n/g, "\n");
 
   // ===========================================================================
   // SUITE 1: SQL Schema & Security Invariants

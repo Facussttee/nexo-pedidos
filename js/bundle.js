@@ -954,6 +954,381 @@ function createScopedImageLoader() {
 
   // ==========================================
 
+  // 1e. PARSER CSV/TSV DE CATALOGO
+
+  // ==========================================
+
+/**
+ * Nexo Pedidos - Parser RFC 4180 de CSV/TSV para importación de catálogo.
+ * Pure JS sin dependencias externas.
+ */
+
+const HEADER_ALIASES = {
+  sku: ["sku", "codigo", "código", "cod", "cód", "id"],
+  nombre: ["nombre", "producto", "descripcion_corta", "descripción_corta", "item", "title", "titulo", "título"],
+  categoria: ["categoria", "categoría", "rubro", "seccion", "sección"],
+  precio: ["precio", "precio_unitario", "valor", "costo", "price"],
+  unidad: ["unidad", "tipo_venta", "medida", "unidad_medida", "unit"],
+  disponible: ["disponible", "activo", "habilitado", "available", "enabled"],
+  descripcion: ["descripcion", "descripción", "detalle", "description"],
+  imagen_url: ["imagen_url", "imagen", "foto", "image", "image_url"]
+};
+
+/**
+ * Normaliza una cadena de texto eliminando acentos básicos y convirtiendo a minúsculas.
+ */
+function normalizeHeaderString(str) {
+  if (typeof str !== "string") return "";
+  return str
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+/**
+ * Mapea el encabezado en crudo al nombre canónico reconocido.
+ */
+function normalizeHeader(rawHeader) {
+  if (typeof rawHeader !== "string") return null;
+  const rawClean = rawHeader.trim().toLowerCase();
+  const normalized = normalizeHeaderString(rawHeader);
+
+  for (const [canonical, aliases] of Object.entries(HEADER_ALIASES)) {
+    for (const alias of aliases) {
+      if (rawClean === alias || normalized === normalizeHeaderString(alias)) {
+        return canonical;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Detecta el delimitador (, ; o \t) analizando la primera línea del archivo respetando comillas.
+ */
+function detectDelimiter(text) {
+  if (typeof text !== "string" || !text) return ",";
+
+  let inQuotes = false;
+  const counts = { ",": 0, ";": 0, "\t": 0 };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        i++; // escapar comilla doble
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (!inQuotes) {
+      if (ch === "\r" || ch === "\n") {
+        break; // fin del primer registro/encabezado
+      }
+      if (ch === "," || ch === ";" || ch === "\t") {
+        counts[ch]++;
+      }
+    }
+  }
+
+  let bestDelimiter = ",";
+  let maxCount = 0;
+  for (const d of [",", ";", "\t"]) {
+    if (counts[d] > maxCount) {
+      maxCount = counts[d];
+      bestDelimiter = d;
+    }
+  }
+
+  return bestDelimiter;
+}
+
+/**
+ * Parsea un texto CSV/TSV conforme a RFC 4180 en una lista de registros y campos.
+ */
+function parseCsvRecords(text, delimiter = ",") {
+  if (typeof text !== "string") return [];
+
+  const records = [];
+  let currentRecord = [];
+  let field = "";
+  let inQuotes = false;
+  const len = text.length;
+
+  for (let i = 0; i < len; i++) {
+    const ch = text[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < len && text[i + 1] === '"') {
+          field += '"';
+          i++; // comilla escapada dentro de campo entrecomillado
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        currentRecord.push(field);
+        field = "";
+      } else if (ch === "\r") {
+        if (i + 1 < len && text[i + 1] === "\n") {
+          i++; // consumir CRLF como único salto de línea
+        }
+        currentRecord.push(field);
+        records.push(currentRecord);
+        currentRecord = [];
+        field = "";
+      } else if (ch === "\n") {
+        currentRecord.push(field);
+        records.push(currentRecord);
+        currentRecord = [];
+        field = "";
+      } else {
+        field += ch;
+      }
+    }
+  }
+
+  // Si quedó un último registro o campo pendiente al final del archivo
+  if (field.length > 0 || currentRecord.length > 0) {
+    currentRecord.push(field);
+    records.push(currentRecord);
+  }
+
+  // Filtrar fila vacía al final si el archivo terminaba con salto de línea
+  if (records.length > 0) {
+    const last = records[records.length - 1];
+    if (last.length === 1 && last[0].trim() === "") {
+      records.pop();
+    }
+  }
+
+  return records;
+}
+
+/**
+ * Parsea un valor numérico de precio tolerando $, separadores de miles y coma decimal.
+ */
+function parsePrice(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+  if (typeof value !== "string") return null;
+
+  let str = value.trim();
+  if (!str) return null;
+
+  // Quitar símbolos monetarios comunes y espacios
+  str = str.replace(/[$€\s]/g, "");
+  if (!str) return null;
+
+  const hasComma = str.includes(",");
+  const hasDot = str.includes(".");
+
+  if (hasComma && hasDot) {
+    const lastComma = str.lastIndexOf(",");
+    const lastDot = str.lastIndexOf(".");
+    if (lastDot > lastComma) {
+      // Formato US 1,500.50 -> quitar coma
+      str = str.replace(/,/g, "");
+    } else {
+      // Formato AR/EU 1.500,50 -> quitar punto y cambiar coma por punto
+      str = str.replace(/\./g, "").replace(",", ".");
+    }
+  } else if (hasComma) {
+    // Formato decimal con coma: 1500,50 -> cambiar coma por punto
+    str = str.replace(",", ".");
+  } else if (hasDot) {
+    // Si tiene sólo punto y tiene formato de miles argentino/europeo (ej: 2.300, 15.000 o 1.500.000)
+    if (/^\d{1,3}(\.\d{3})+$/.test(str)) {
+      str = str.replace(/\./g, "");
+    }
+  }
+
+  const num = Number(str);
+  return Number.isFinite(num) && num >= 0 ? num : null;
+}
+
+/**
+ * Parsea la modalidad de venta ('UNIDAD' o 'KG').
+ */
+function parseUnit(value) {
+  if (typeof value !== "string") return "UNIDAD";
+  const str = value.trim().toUpperCase();
+  if (str === "KG" || str.startsWith("KILO") || str === "K") {
+    return "KG";
+  }
+  return "UNIDAD";
+}
+
+/**
+ * Parsea el valor booleano de disponibilidad.
+ */
+function parseDisponible(value) {
+  if (value === undefined || value === null || value === "") return true;
+  if (typeof value === "boolean") return value;
+  const str = String(value).trim().toLowerCase();
+  if (["si", "sí", "s", "true", "1", "activo", "habilitado", "yes", "y"].includes(str)) {
+    return true;
+  }
+  if (["no", "n", "false", "0", "inactivo", "pausado", "deshabilitado"].includes(str)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Parsea un archivo de catálogo completo (CSV/TSV/TXT) y devuelve registros normalizados y errores.
+ *
+ * @param {string} text Contenido del archivo en texto plano.
+ * @returns {{ rows: Array<object>, errors: Array<object>, headers: Array<string> }}
+ */
+function parseCatalogFile(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    return {
+      rows: [],
+      errors: [{ row: 1, raw: "", error: "El archivo está vacío." }],
+      headers: []
+    };
+  }
+
+  const delimiter = detectDelimiter(text);
+  const records = parseCsvRecords(text, delimiter);
+
+  if (records.length === 0) {
+    return {
+      rows: [],
+      errors: [{ row: 1, raw: "", error: "No se encontraron registros en el archivo." }],
+      headers: []
+    };
+  }
+
+  const rawHeaders = records[0];
+  const headerMap = {};
+  rawHeaders.forEach((h, index) => {
+    const canonical = normalizeHeader(h);
+    if (canonical && !(canonical in headerMap)) {
+      headerMap[canonical] = index;
+    }
+  });
+
+  // El campo nombre es obligatorio en el encabezado
+  if (!("nombre" in headerMap)) {
+    return {
+      rows: [],
+      errors: [
+        {
+          row: 1,
+          raw: rawHeaders.join(delimiter),
+          error: "Falta la columna obligatoria de nombre ('nombre', 'producto', 'item', 'title')."
+        }
+      ],
+      headers: rawHeaders
+    };
+  }
+
+  const rows = [];
+  const errors = [];
+
+  for (let i = 1; i < records.length; i++) {
+    const record = records[i];
+    const rowNum = i + 1; // 1-indexed, fila 2 es la primera de datos
+
+    // Omitir filas completamente vacías
+    if (record.length === 0 || (record.length === 1 && record[0].trim() === "")) {
+      continue;
+    }
+
+    const rawRow = record.join(delimiter);
+
+    const getField = (canonical) => {
+      const idx = headerMap[canonical];
+      return idx !== undefined && idx < record.length ? record[idx] : "";
+    };
+
+    const rawSku = getField("sku");
+    const rawNombre = getField("nombre");
+    const rawCategoria = getField("categoria");
+    const rawPrecio = getField("precio");
+    const rawUnidad = getField("unidad");
+    const rawDisponible = getField("disponible");
+    const rawDescripcion = getField("descripcion");
+    const rawImagen = getField("imagen_url");
+
+    // SKU: conservar como string recortado sin transformar a número (mantiene ceros iniciales)
+    const sku = typeof rawSku === "string" ? rawSku.trim() : (rawSku != null ? String(rawSku).trim() : "");
+
+    // Nombre: obligatorio
+    const nombre = typeof rawNombre === "string" ? rawNombre.trim() : "";
+    if (!nombre) {
+      errors.push({
+        row: rowNum,
+        raw: rawRow,
+        error: "El nombre del producto es obligatorio."
+      });
+      continue;
+    }
+
+    // Precio: obligatorio y no negativo
+    const precio = parsePrice(rawPrecio);
+    if (precio === null) {
+      errors.push({
+        row: rowNum,
+        raw: rawRow,
+        error: `Precio inválido: '${rawPrecio}'. Debe ser un número mayor o igual a cero.`
+      });
+      continue;
+    }
+
+    // Categoría: por defecto "General"
+    const categoria = (typeof rawCategoria === "string" && rawCategoria.trim()) ? rawCategoria.trim() : "General";
+
+    // Unidad: 'UNIDAD' o 'KG'
+    const unidad_medida = parseUnit(rawUnidad);
+
+    // Disponible: booleano
+    const disponible = parseDisponible(rawDisponible);
+
+    // Descripción: opcional
+    const detalle = typeof rawDescripcion === "string" ? rawDescripcion.trim() : "";
+
+    // Imagen: opcional
+    const imagen_url = typeof rawImagen === "string" && rawImagen.trim() ? rawImagen.trim() : null;
+
+    rows.push({
+      sku,
+      codigo: sku,
+      nombre,
+      categoria,
+      precio,
+      unidad_medida,
+      disponible,
+      detalle,
+      descripcion: detalle,
+      imagen_url
+    });
+  }
+
+  return {
+    rows,
+    errors,
+    headers: rawHeaders
+  };
+}
+
+// Alias para compatibilidad
+const parseCatalogCsv = parseCatalogFile;
+
+  // ==========================================
+
   // 2. STORE Y PERSISTENCIA LOCAL + SUPABASE
 
   // ==========================================
@@ -1845,7 +2220,9 @@ class Store {
 
   validateProduct(product) {
     if (!product || typeof product !== "object" || Array.isArray(product)) throw new Error("Producto incompleto.");
-    for (const [key, max] of [["id", 100], ["nombre", 120], ["categoria", 50]]) {
+    const idVal = product.id !== undefined && product.id !== null ? String(product.id).trim() : "";
+    if (!idVal || idVal.length > 100) throw new Error("Revisá id: es obligatorio (máximo 100 caracteres).");
+    for (const [key, max] of [["nombre", 120], ["categoria", 50]]) {
       if (typeof product[key] !== "string" || !product[key].trim() || product[key].length > max) throw new Error(`Revisá ${key}: es obligatorio (máximo ${max} caracteres).`);
     }
     if (!["KG", "UNIDAD"].includes(product.unidad_medida)) throw new Error("La modalidad debe ser KG o UNIDAD.");
@@ -1962,6 +2339,169 @@ class Store {
     const product = this.getAdminProducts().find((p) => p.id === productId);
     if (!product) throw new Error(this.catalogError || "No se encontró el producto.");
     return this.saveProduct({ ...product, disponible: !product.disponible }, productId);
+  }
+
+  async importCatalogBatch(items, { createBackup = true } = {}) {
+    if (!Array.isArray(items)) {
+      throw new Error("La lista de productos para importar debe ser un arreglo.");
+    }
+    if (!this.config.ok) {
+      throw new Error("Configuración inválida.");
+    }
+
+    const currentProducts = this.getAdminProducts();
+    if (this.catalogError) {
+      throw new Error(this.catalogError);
+    }
+
+    // 1. Respaldo local previo a la importación
+    const timestamp = Date.now();
+    const backupKey = `products_backup_${timestamp}`;
+    if (createBackup) {
+      try {
+        const rawCatalog = localStorage.getItem(this.storageKeys.PRODUCTS);
+        localStorage.setItem(backupKey, rawCatalog !== null ? rawCatalog : JSON.stringify(currentProducts));
+      } catch (err) {
+        console.warn("No se pudo crear el respaldo en localStorage:", err);
+      }
+    }
+
+    // 2. Determinar el siguiente ID numérico único para nuevas altas
+    let highestNumericId = 0;
+    for (const p of currentProducts) {
+      if (typeof p.id === "number" && Number.isFinite(p.id)) {
+        if (p.id > highestNumericId) highestNumericId = p.id;
+      } else if (typeof p.id === "string") {
+        const num = parseInt(p.id.replace(/\D/g, ""), 10);
+        if (Number.isFinite(num) && num > highestNumericId) {
+          highestNumericId = num;
+        }
+      }
+    }
+
+    const productList = currentProducts.map((p) => ({ ...p }));
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const item of items) {
+      const itemSku = String(item.sku ?? item.codigo ?? "").trim().toUpperCase();
+      const itemName = String(item.nombre ?? "").trim().toLowerCase();
+
+      // Coincidencia: primero por SKU si está presente, o por nombre exacto si no tiene SKU
+      let existingIndex = -1;
+      if (itemSku) {
+        existingIndex = productList.findIndex(
+          (p) => String(p.codigo || "").trim().toUpperCase() === itemSku
+        );
+      }
+      if (existingIndex === -1 && itemName) {
+        existingIndex = productList.findIndex(
+          (p) => String(p.nombre || "").trim().toLowerCase() === itemName
+        );
+      }
+
+      const rawUnit = (item.unidad_medida || item.unidad || "").toString().toUpperCase();
+      const unidad_medida = rawUnit === "KG" || rawUnit.startsWith("KILO") ? "KG" : "UNIDAD";
+      const precio = Number(item.precio != null ? item.precio : 0);
+      const paso = unidad_medida === "UNIDAD" ? 1 : 0.5;
+      const disponible = item.disponible !== undefined ? Boolean(item.disponible) : true;
+      const categoria = typeof item.categoria === "string" && item.categoria.trim() ? item.categoria.trim() : "General";
+      const detalle = typeof item.detalle === "string" ? item.detalle.trim() : typeof item.descripcion === "string" ? item.descripcion.trim() : "";
+      const imagen_url = item.imagen_url || item.imagen || null;
+      const imagen_id = item.imagen_id || (imagen_url ? imagen_url : null);
+
+      if (existingIndex >= 0) {
+        const prev = productList[existingIndex];
+        const updated = {
+          ...prev,
+          nombre: typeof item.nombre === "string" && item.nombre.trim() ? item.nombre.trim() : prev.nombre,
+          categoria,
+          precio,
+          disponible,
+          unidad_medida,
+          paso: unidad_medida === "UNIDAD" ? 1 : prev.unidad_medida === "KG" && prev.paso ? prev.paso : paso,
+          codigo: itemSku ? String(item.sku ?? item.codigo).trim() : (prev.codigo || ""),
+          detalle: detalle !== "" ? detalle : prev.detalle,
+          imagen_url: imagen_url !== null ? imagen_url : prev.imagen_url,
+          imagen_id: imagen_id !== null ? imagen_id : prev.imagen_id,
+          archivado: prev.archivado || false
+        };
+        this.validateProduct(updated);
+        productList[existingIndex] = updated;
+        updatedCount++;
+      } else {
+        const newId = ++highestNumericId;
+        const newProduct = {
+          id: newId,
+          nombre: String(item.nombre || "").trim(),
+          categoria,
+          precio,
+          unidad_medida,
+          paso,
+          disponible,
+          codigo: item.sku ? String(item.sku).trim() : item.codigo ? String(item.codigo).trim() : "",
+          detalle,
+          archivado: false,
+          imagen_url,
+          imagen_id
+        };
+        this.validateProduct(newProduct);
+        productList.push(newProduct);
+        createdCount++;
+      }
+    }
+
+    // 3. Producción: upsert a Supabase public.productos con x-nexo-staff-pin (fail-closed)
+    if (!this.isDemo()) {
+      if (!this.supabase) {
+        throw new Error("No se puede importar el catálogo en producción sin conexión a Supabase.");
+      }
+
+      const staffPinHeaders = this.getStaffPinHeaders();
+      const staffPin = staffPinHeaders["x-nexo-staff-pin"];
+      if (!staffPin) {
+        throw new Error("Se requiere PIN de administración para importar el catálogo en producción.");
+      }
+
+      const supabasePayload = productList.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        unidad_medida: p.unidad_medida,
+        precio: Number(p.precio),
+        disponible: Boolean(p.disponible),
+        paso: Number(p.paso || (p.unidad_medida === "UNIDAD" ? 1 : 0.5)),
+        codigo: p.codigo ? String(p.codigo).trim().toUpperCase() : "",
+        detalle: p.detalle ? String(p.detalle).trim() : "",
+        archivado: Boolean(p.archivado),
+        imagen_id: p.imagen_id || null,
+        imagen_url: p.imagen_url || null,
+        updated_at: new Date().toISOString()
+      }));
+
+      const query = this.supabase.from("productos").upsert(supabasePayload);
+      if (typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-staff-pin", staffPin);
+      }
+      const res = typeof query.select === "function" ? await query.select() : await query;
+      if (res && res.error) {
+        throw new Error(res.error.message || "Error al actualizar catálogo en Supabase.");
+      }
+    }
+
+    // 4. Guardar catálogo localmente y notificar
+    writeCritical(this.storageKeys.PRODUCTS, productList);
+    this.products = productList;
+    this.catalogError = null;
+    this.notify("products_changed");
+
+    return {
+      ok: true,
+      createdCount,
+      updatedCount,
+      totalCount: items.length,
+      backupKey
+    };
   }
 
   // --- Clientes ---
@@ -5630,7 +6170,8 @@ function renderAdminView(container) {
   let selectedCategory = "Todos", selectedStatus = "Todos", searchQuery = "";
   let showCloudSettings = false, configSavedToast = false, pinError = "";
   let comercioSavedToast = false, comercioError = "";
-  let productDraft = null, editingProductId = null, formError = "", notice = "";
+  let productDraft = null, editingProductId = null, formError = "", notice = "", noticeIsSuccess = false;
+  let importPreviewData = null;
 
   let stagedImageBlob = null;
   let stagedPreviewUrl = null;
@@ -5754,10 +6295,12 @@ function renderAdminView(container) {
         </header>
 
         <div class="sticky sticky-header-offset z-20 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 -mx-4 px-4 py-2.5 mb-4 space-y-2 shadow-xs">
-          <div class="flex gap-2 items-center">
+          <div class="flex flex-wrap gap-2 items-center">
             <label for="admin-search-input" class="sr-only">Buscar por nombre o SKU</label>
             <input id="admin-search-input" type="search" value="${escapeHtml(searchQuery)}" placeholder="Buscar por nombre o SKU..." class="${inputClass} min-w-0 flex-1" />
             <button id="btn-new-product" class="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shrink-0 transition tap-feedback touch-target">Nuevo producto</button>
+            <button id="btn-import-catalog" class="${buttonClass} shrink-0" type="button">Importar catálogo</button>
+            <input id="file-import-catalog" type="file" accept=".csv, .tsv, .txt" class="hidden" />
           </div>
           <div class="flex gap-1.5 overflow-x-auto no-scrollbar py-1" aria-label="Estado de productos">
             ${["Todos", "Activos", "Pausados", "Archivados"].map(status => `
@@ -5776,11 +6319,12 @@ function renderAdminView(container) {
           </div>
         </div>
 
-        <p id="admin-notice" role="alert" class="mb-3 p-3 rounded-xl text-sm bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 ${notice ? "" : "hidden"}">${escapeHtml(notice)}</p>
+        <p id="admin-notice" role="alert" class="mb-3 p-3 rounded-xl text-sm ${noticeIsSuccess ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200'} ${notice ? "" : "hidden"}">${escapeHtml(notice)}</p>
         ${catalogError ? `<div role="alert" class="p-4 mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-sm"><p>${escapeHtml(catalogError)}</p>${store.isDemo() ? `<button id="btn-recover-catalog" class="${buttonClass} mt-2">Recuperar catálogo demo</button>` : ""}</div>` : ""}
 
         <div id="admin-products-list" class="admin-products-grid">${renderProducts(filteredProducts())}</div>
         ${productDraft ? renderProductModal() : ""}
+        ${importPreviewData ? renderImportPreviewModal() : ""}
       </div>`;
 
     attachAdminListeners();
@@ -5998,12 +6542,105 @@ function renderAdminView(container) {
     `;
   }
 
-  function showNotice(message) {
+  function renderImportPreviewModal() {
+    if (!importPreviewData) return "";
+    const { summary, previewRows, validItems } = importPreviewData;
+
+    return `
+      <div id="import-preview-modal-backdrop" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <section role="dialog" aria-modal="true" aria-labelledby="import-modal-title" class="w-full max-w-2xl max-h-[90dvh] flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+          <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center gap-3">
+            <div>
+              <h2 id="import-modal-title" class="text-base sm:text-lg font-black text-slate-900 dark:text-white">Previsualización de Importación</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Revisá los productos y cambios antes de confirmar. Nada se guardará hasta presionar Confirmar.</p>
+            </div>
+            <button id="btn-close-import-preview" class="${buttonClass} min-h-[44px]" type="button" aria-label="Cerrar previsualización">Cerrar</button>
+          </div>
+
+          <div class="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-100 dark:border-slate-800">
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-slate-400">Total Filas</span>
+              <span class="text-base font-black text-slate-800 dark:text-slate-200">${summary.total}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Altas</span>
+              <span class="text-base font-black text-emerald-700 dark:text-emerald-300">+${summary.altas}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-sky-600 dark:text-sky-400">Actualizar</span>
+              <span class="text-base font-black text-sky-700 dark:text-sky-300">${summary.actualizaciones}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">Errores</span>
+              <span class="text-base font-black text-rose-700 dark:text-rose-300">${summary.errores}</span>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2">
+            ${previewRows.map((row) => {
+              if (row.status === "ERROR") {
+                return `
+                  <div class="p-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 flex items-start gap-2.5 text-xs">
+                    <span class="px-2 py-0.5 rounded font-black text-[10px] bg-rose-600 text-white shrink-0">ERROR</span>
+                    <div class="flex-1 min-w-0">
+                      <span class="font-bold text-rose-800 dark:text-rose-200">Fila ${row.row}:</span>
+                      <span class="text-rose-700 dark:text-rose-300 ml-1">${escapeHtml(row.error)}</span>
+                      <div class="text-[11px] font-mono text-slate-400 truncate mt-0.5">${escapeHtml(row.raw)}</div>
+                    </div>
+                  </div>`;
+              }
+
+              const isUpdate = row.status === "ACTUALIZAR";
+              const badgeColor = isUpdate
+                ? "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border-sky-200 dark:border-sky-800"
+                : "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800";
+              const badgeText = isUpdate ? "ACTUALIZAR" : "NUEVO";
+
+              return `
+                <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 text-xs">
+                  <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span class="px-2 py-0.5 rounded font-bold text-[10px] border ${badgeColor} shrink-0">${badgeText}</span>
+                    <div class="min-w-0">
+                      <div class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(row.item.nombre)}</div>
+                      <div class="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                        <span>SKU: ${escapeHtml(row.item.sku || "Sin SKU")}</span>
+                        <span>·</span>
+                        <span>${escapeHtml(row.item.categoria)}</span>
+                        <span>·</span>
+                        <span>${row.item.unidad_medida === "KG" ? "kg" : "u."}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    ${row.priceChanged ? `
+                      <div class="text-[10px] text-slate-400 line-through">$${row.oldPrice}</div>
+                      <div class="font-black text-sm text-emerald-600 dark:text-emerald-400">$${row.newPrice}</div>
+                    ` : `
+                      <div class="font-bold text-sm text-slate-800 dark:text-slate-200">$${row.newPrice}</div>
+                    `}
+                  </div>
+                </div>`;
+            }).join("")}
+          </div>
+
+          <div class="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50/50 dark:bg-slate-950/30">
+            <button id="btn-cancel-import" class="${buttonClass} min-h-[44px] px-4 font-bold" type="button">Cancelar</button>
+            <button id="btn-confirm-import" class="${buttonClass} min-h-[44px] px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black" type="button" ${validItems.length === 0 ? "disabled" : ""}>
+              Confirmar Importación (${validItems.length})
+            </button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  function showNotice(message, isSuccess = false) {
     notice = message || "";
+    noticeIsSuccess = Boolean(isSuccess);
     const el = container.querySelector("#admin-notice");
     if (el) {
       el.textContent = notice;
-      el.classList.toggle("hidden", !notice);
+      el.className = `mb-3 p-3 rounded-xl text-sm ${noticeIsSuccess ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200'} ${notice ? "" : "hidden"}`;
     }
   }
 
@@ -6459,6 +7096,129 @@ function renderAdminView(container) {
       }
     });
 
+    const fileImportInput = container.querySelector("#file-import-catalog");
+    const btnImportCatalog = container.querySelector("#btn-import-catalog");
+
+    btnImportCatalog?.addEventListener("click", () => {
+      fileImportInput?.click();
+    });
+
+    fileImportInput?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const handleContent = (text) => {
+        try {
+          const parsed = parseCatalogFile(text);
+          const currentProducts = store.getAdminProducts();
+
+          let altas = 0;
+          let actualizaciones = 0;
+          const previewItems = [];
+
+          for (const item of parsed.rows) {
+            const itemSku = String(item.sku ?? item.codigo ?? "").trim().toUpperCase();
+            const itemName = String(item.nombre ?? "").trim().toLowerCase();
+
+            let matched = null;
+            if (itemSku) {
+              matched = currentProducts.find((p) => String(p.codigo || "").trim().toUpperCase() === itemSku);
+            }
+            if (!matched && itemName) {
+              matched = currentProducts.find((p) => String(p.nombre || "").trim().toLowerCase() === itemName);
+            }
+
+            if (matched) {
+              actualizaciones++;
+              const priceChanged = Number(matched.precio) !== Number(item.precio);
+              previewItems.push({
+                status: "ACTUALIZAR",
+                item,
+                matchedProduct: matched,
+                priceChanged,
+                oldPrice: matched.precio,
+                newPrice: item.precio
+              });
+            } else {
+              altas++;
+              previewItems.push({
+                status: "NUEVO",
+                item,
+                matchedProduct: null,
+                priceChanged: false,
+                oldPrice: null,
+                newPrice: item.precio
+              });
+            }
+          }
+
+          const errorItems = parsed.errors.map((err) => ({
+            status: "ERROR",
+            row: err.row,
+            error: err.error,
+            raw: err.raw
+          }));
+
+          importPreviewData = {
+            summary: {
+              total: parsed.rows.length + parsed.errors.length,
+              altas,
+              actualizaciones,
+              errores: parsed.errors.length
+            },
+            validItems: parsed.rows,
+            previewRows: [...previewItems, ...errorItems]
+          };
+
+          update();
+        } catch (err) {
+          showNotice(`Error al leer archivo: ${err.message || err}`);
+        } finally {
+          fileImportInput.value = "";
+        }
+      };
+
+      if (typeof file.text === "function") {
+        file.text().then(handleContent).catch((err) => {
+          showNotice(`Error al leer archivo: ${err.message || err}`);
+          fileImportInput.value = "";
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => handleContent(event.target?.result || "");
+        reader.onerror = () => {
+          showNotice("Error al leer el archivo seleccionado.");
+          fileImportInput.value = "";
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    container.querySelector("#btn-close-import-preview")?.addEventListener("click", () => {
+      importPreviewData = null;
+      update();
+    });
+
+    container.querySelector("#btn-cancel-import")?.addEventListener("click", () => {
+      importPreviewData = null;
+      update();
+    });
+
+    container.querySelector("#btn-confirm-import")?.addEventListener("click", async () => {
+      if (!importPreviewData || !importPreviewData.validItems.length) return;
+      const validItems = importPreviewData.validItems;
+      const altas = importPreviewData.summary.altas;
+      const actualizaciones = importPreviewData.summary.actualizaciones;
+      try {
+        await store.importCatalogBatch(validItems);
+        importPreviewData = null;
+        showNotice(`Importación exitosa: ${altas} altas, ${actualizaciones} actualizaciones.`, true);
+        update();
+      } catch (err) {
+        showNotice(`Error al confirmar importación: ${err.message || err}`);
+      }
+    });
+
     attachProductListeners();
   }
 
@@ -6482,7 +7242,7 @@ function renderAdminView(container) {
 
   const unsubscribe = store.subscribe(event => {
     const typing = container.contains(document.activeElement) && ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
-    if (["products_changed", "storage_sync", "cloud_connected", "catalog_error"].includes(event) && !typing && !productDraft) {
+    if (["products_changed", "storage_sync", "cloud_connected", "catalog_error"].includes(event) && !typing && !productDraft && !importPreviewData) {
       update();
     }
   });

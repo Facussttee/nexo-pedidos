@@ -20,6 +20,7 @@ $sourceFiles = @(
   (Join-Path $jsDir "demo-data.js"),
   (Join-Path $jsDir "html.js"),
   (Join-Path $jsDir "images.js"),
+  (Join-Path $jsDir "csv-parser.js"),
   (Join-Path $jsDir "store.js"),
   (Join-Path $viewsDir "client.js"),
   (Join-Path $viewsDir "operator.js"),
@@ -62,6 +63,13 @@ $images = $images -replace '(?m)^\s*export\s+const\s+', 'const '
 $images = $images -replace '(?m)^\s*export\s+async\s+function\s+', 'async function '
 $images = $images -replace '(?m)^\s*export\s+function\s+', 'function '
 $images = $images -replace '(?m)^\s*export\s*\{[^}\r\n]*\};?\s*$', ''
+
+# 3.1f csv-parser.js (parser RFC 4180 de CSV/TSV)
+$csvParser = Get-Content (Join-Path $jsDir "csv-parser.js") -Raw -Encoding UTF8
+$csvParser = $csvParser -replace '(?m)^\s*import\s+.*?;?\s*$', ''
+$csvParser = $csvParser -replace '(?m)^\s*export\s+const\s+', 'const '
+$csvParser = $csvParser -replace '(?m)^\s*export\s+function\s+', 'function '
+$csvParser = $csvParser -replace '(?s)\bexport\s*\{[^}]*\};?', ''
 
 # 3.2 store.js
 $store = Get-Content (Join-Path $jsDir "store.js") -Raw -Encoding UTF8
@@ -115,6 +123,10 @@ $parts = @(
   "  // 1d. MODULO DE IMAGENES INDEXEDDB",
   "  // ==========================================",
   $images.Trim(),
+  "  // ==========================================",
+  "  // 1e. PARSER CSV/TSV DE CATALOGO",
+  "  // ==========================================",
+  $csvParser.Trim(),
   "  // ==========================================",
   "  // 2. STORE Y PERSISTENCIA LOCAL + SUPABASE",
   "  // ==========================================",

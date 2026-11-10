@@ -203,27 +203,22 @@ class Store {
       return { ok: true, message: "PIN actualizado con éxito" };
     }
 
-    if (this.supabase && typeof this.supabase.rpc === "function") {
-      const { data, error } = await this.supabase.rpc("update_staff_pin", {
-        old_pin: cleanOld,
-        new_pin: cleanNew
-      });
-      if (error) {
-        throw new Error(error.message || "Error al actualizar el PIN.");
-      }
-      if (data && data.ok === false) {
-        throw new Error(data.message || "Error al actualizar el PIN.");
-      }
-      this.saveLocalSettings({ staffPin: cleanNew });
-      return data || { ok: true, message: "PIN actualizado con éxito" };
-    } else {
-      const { staffPin } = this.getLocalSettings();
-      if (cleanOld !== staffPin) {
-        throw new Error("PIN actual incorrecto");
-      }
-      this.saveLocalSettings({ staffPin: cleanNew });
-      return { ok: true, message: "PIN actualizado con éxito" };
+    if (!this.supabase || typeof this.supabase.rpc !== "function") {
+      throw new Error("No se puede actualizar el PIN en producción sin conexión a Supabase.");
     }
+
+    const { data, error } = await this.supabase.rpc("update_staff_pin", {
+      old_pin: cleanOld,
+      new_pin: cleanNew
+    });
+    if (error) {
+      throw new Error(error.message || "Error al actualizar el PIN.");
+    }
+    if (data && data.ok === false) {
+      throw new Error(data.message || "Error al actualizar el PIN.");
+    }
+    this.saveLocalSettings({ staffPin: cleanNew });
+    return data || { ok: true, message: "PIN actualizado con éxito" };
   }
 
   isCloudConnected() {

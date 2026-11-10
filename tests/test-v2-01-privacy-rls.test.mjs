@@ -57,6 +57,10 @@ test("Task V2-01: Order Privacy, RLS & Staff PIN Suite", async (t) => {
       "Must define update_staff_pin(old_pin TEXT, new_pin TEXT)"
     );
     assert.ok(
+      schemaSql.includes("SELECT value INTO current_pin FROM public.nexo_secrets WHERE key = 'staff_pin' FOR UPDATE;"),
+      "Must lock staff_pin row with FOR UPDATE to prevent race conditions during rotation"
+    );
+    assert.ok(
       schemaSql.includes("clean_old <> current_pin"),
       "Must validate old_pin against current staff_pin"
     );
@@ -95,6 +99,14 @@ test("Task V2-01: Order Privacy, RLS & Staff PIN Suite", async (t) => {
     assert.ok(
       schemaSql.includes('CREATE POLICY "clientes_update_restricted"'),
       "Must have clientes_update_restricted policy"
+    );
+    const clientesUpdateBlock = schemaSql.slice(schemaSql.indexOf('CREATE POLICY "clientes_update_restricted"'));
+    const clientesUpdateCheck = clientesUpdateBlock.slice(0, clientesUpdateBlock.indexOf(";"));
+    assert.ok(
+      clientesUpdateCheck.includes("WITH CHECK") &&
+      clientesUpdateCheck.includes("public.verify_staff_pin_header()") &&
+      clientesUpdateCheck.includes("telefono = public.get_request_header('x-nexo-client-phone')"),
+      "clientes_update_restricted WITH CHECK must enforce staff PIN or caller phone invariance"
     );
     assert.ok(
       !schemaSql.includes('CREATE POLICY "clientes_read_public"\n    ON public.clientes FOR SELECT\n    TO anon, authenticated\n    USING (true);'),

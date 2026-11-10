@@ -541,4 +541,18 @@ test("Production Supabase Sync Suite", async (t) => {
     assert.equal(demoStore.getLocalSettings().staffPin, "8888");
     assert.equal(rpcCalls.length, 0, "Demo mode must not call cloud RPC");
   });
+
+  await t.test("15. updateStaffPin in production throws explicit Error when Supabase is uninitialized (no silent fallback)", async () => {
+    const uninitializedStore = new Store(prodConfig);
+    uninitializedStore.supabase = null;
+    uninitializedStore.saveLocalSettings({ staffPin: "1234" });
+
+    await assert.rejects(
+      async () => await uninitializedStore.updateStaffPin("1234", "9999"),
+      /No se puede actualizar el PIN en producción sin conexión a Supabase/
+    );
+
+    // Verify local storage is not modified
+    assert.equal(uninitializedStore.getLocalSettings().staffPin, "1234");
+  });
 });

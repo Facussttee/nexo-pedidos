@@ -211,8 +211,8 @@ BEGIN
     clean_old := TRIM(COALESCE(old_pin, ''));
     clean_new := TRIM(COALESCE(new_pin, ''));
 
-    -- 1. Validar PIN actual contra nexo_secrets
-    SELECT value INTO current_pin FROM public.nexo_secrets WHERE key = 'staff_pin';
+    -- 1. Validar PIN actual contra nexo_secrets (con bloqueo exclusivo de fila para prevenir carreras)
+    SELECT value INTO current_pin FROM public.nexo_secrets WHERE key = 'staff_pin' FOR UPDATE;
     IF current_pin IS NULL OR clean_old <> current_pin THEN
         RAISE EXCEPTION 'PIN actual incorrecto';
     END IF;
@@ -342,7 +342,14 @@ CREATE POLICY "clientes_update_restricted"
         )
     )
     WITH CHECK (
-        telefono ~ '^[0-9]{8,15}$'
+        (
+            public.verify_staff_pin_header()
+            OR (
+                public.get_request_header('x-nexo-client-phone') IS NOT NULL
+                AND telefono = public.get_request_header('x-nexo-client-phone')
+            )
+        )
+        AND telefono ~ '^[0-9]{8,15}$'
         AND char_length(nombre) >= 2 AND char_length(nombre) <= 120
         AND char_length(COALESCE(direccion, '')) <= 250
     );

@@ -1,12 +1,14 @@
 import { store } from "../store.js";
 import { escapeHtml } from "../html.js";
 import { putImage, getImage, deleteImage, processProductImageFile, saveProductImage, isDirectImageUrl, createScopedImageLoader } from "../images.js";
+import { parseCatalogFile } from "../csv-parser.js";
 
 export function renderAdminView(container) {
   let selectedCategory = "Todos", selectedStatus = "Todos", searchQuery = "";
   let showCloudSettings = false, configSavedToast = false, pinError = "";
   let comercioSavedToast = false, comercioError = "";
-  let productDraft = null, editingProductId = null, formError = "", notice = "";
+  let productDraft = null, editingProductId = null, formError = "", notice = "", noticeIsSuccess = false;
+  let importPreviewData = null;
 
   let stagedImageBlob = null;
   let stagedPreviewUrl = null;
@@ -130,10 +132,12 @@ export function renderAdminView(container) {
         </header>
 
         <div class="sticky sticky-header-offset z-20 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 -mx-4 px-4 py-2.5 mb-4 space-y-2 shadow-xs">
-          <div class="flex gap-2 items-center">
+          <div class="flex flex-wrap gap-2 items-center">
             <label for="admin-search-input" class="sr-only">Buscar por nombre o SKU</label>
             <input id="admin-search-input" type="search" value="${escapeHtml(searchQuery)}" placeholder="Buscar por nombre o SKU..." class="${inputClass} min-w-0 flex-1" />
             <button id="btn-new-product" class="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shrink-0 transition tap-feedback touch-target">Nuevo producto</button>
+            <button id="btn-import-catalog" class="${buttonClass} shrink-0" type="button">Importar catálogo</button>
+            <input id="file-import-catalog" type="file" accept=".csv, .tsv, .txt" class="hidden" />
           </div>
           <div class="flex gap-1.5 overflow-x-auto no-scrollbar py-1" aria-label="Estado de productos">
             ${["Todos", "Activos", "Pausados", "Archivados"].map(status => `
@@ -152,11 +156,12 @@ export function renderAdminView(container) {
           </div>
         </div>
 
-        <p id="admin-notice" role="alert" class="mb-3 p-3 rounded-xl text-sm bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 ${notice ? "" : "hidden"}">${escapeHtml(notice)}</p>
+        <p id="admin-notice" role="alert" class="mb-3 p-3 rounded-xl text-sm ${noticeIsSuccess ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200'} ${notice ? "" : "hidden"}">${escapeHtml(notice)}</p>
         ${catalogError ? `<div role="alert" class="p-4 mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-sm"><p>${escapeHtml(catalogError)}</p>${store.isDemo() ? `<button id="btn-recover-catalog" class="${buttonClass} mt-2">Recuperar catálogo demo</button>` : ""}</div>` : ""}
 
         <div id="admin-products-list" class="admin-products-grid">${renderProducts(filteredProducts())}</div>
         ${productDraft ? renderProductModal() : ""}
+        ${importPreviewData ? renderImportPreviewModal() : ""}
       </div>`;
 
     attachAdminListeners();
@@ -374,12 +379,105 @@ export function renderAdminView(container) {
     `;
   }
 
-  function showNotice(message) {
+  function renderImportPreviewModal() {
+    if (!importPreviewData) return "";
+    const { summary, previewRows, validItems } = importPreviewData;
+
+    return `
+      <div id="import-preview-modal-backdrop" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <section role="dialog" aria-modal="true" aria-labelledby="import-modal-title" class="w-full max-w-2xl max-h-[90dvh] flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+          <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center gap-3">
+            <div>
+              <h2 id="import-modal-title" class="text-base sm:text-lg font-black text-slate-900 dark:text-white">Previsualización de Importación</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Revisá los productos y cambios antes de confirmar. Nada se guardará hasta presionar Confirmar.</p>
+            </div>
+            <button id="btn-close-import-preview" class="${buttonClass} min-h-[44px]" type="button" aria-label="Cerrar previsualización">Cerrar</button>
+          </div>
+
+          <div class="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-100 dark:border-slate-800">
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-slate-400">Total Filas</span>
+              <span class="text-base font-black text-slate-800 dark:text-slate-200">${summary.total}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Altas</span>
+              <span class="text-base font-black text-emerald-700 dark:text-emerald-300">+${summary.altas}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-sky-600 dark:text-sky-400">Actualizar</span>
+              <span class="text-base font-black text-sky-700 dark:text-sky-300">${summary.actualizaciones}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-center">
+              <span class="block text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">Errores</span>
+              <span class="text-base font-black text-rose-700 dark:text-rose-300">${summary.errores}</span>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2">
+            ${previewRows.map((row) => {
+              if (row.status === "ERROR") {
+                return `
+                  <div class="p-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 flex items-start gap-2.5 text-xs">
+                    <span class="px-2 py-0.5 rounded font-black text-[10px] bg-rose-600 text-white shrink-0">ERROR</span>
+                    <div class="flex-1 min-w-0">
+                      <span class="font-bold text-rose-800 dark:text-rose-200">Fila ${row.row}:</span>
+                      <span class="text-rose-700 dark:text-rose-300 ml-1">${escapeHtml(row.error)}</span>
+                      <div class="text-[11px] font-mono text-slate-400 truncate mt-0.5">${escapeHtml(row.raw)}</div>
+                    </div>
+                  </div>`;
+              }
+
+              const isUpdate = row.status === "ACTUALIZAR";
+              const badgeColor = isUpdate
+                ? "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border-sky-200 dark:border-sky-800"
+                : "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800";
+              const badgeText = isUpdate ? "ACTUALIZAR" : "NUEVO";
+
+              return `
+                <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 text-xs">
+                  <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span class="px-2 py-0.5 rounded font-bold text-[10px] border ${badgeColor} shrink-0">${badgeText}</span>
+                    <div class="min-w-0">
+                      <div class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(row.item.nombre)}</div>
+                      <div class="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                        <span>SKU: ${escapeHtml(row.item.sku || "Sin SKU")}</span>
+                        <span>·</span>
+                        <span>${escapeHtml(row.item.categoria)}</span>
+                        <span>·</span>
+                        <span>${row.item.unidad_medida === "KG" ? "kg" : "u."}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    ${row.priceChanged ? `
+                      <div class="text-[10px] text-slate-400 line-through">$${row.oldPrice}</div>
+                      <div class="font-black text-sm text-emerald-600 dark:text-emerald-400">$${row.newPrice}</div>
+                    ` : `
+                      <div class="font-bold text-sm text-slate-800 dark:text-slate-200">$${row.newPrice}</div>
+                    `}
+                  </div>
+                </div>`;
+            }).join("")}
+          </div>
+
+          <div class="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50/50 dark:bg-slate-950/30">
+            <button id="btn-cancel-import" class="${buttonClass} min-h-[44px] px-4 font-bold" type="button">Cancelar</button>
+            <button id="btn-confirm-import" class="${buttonClass} min-h-[44px] px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black" type="button" ${validItems.length === 0 ? "disabled" : ""}>
+              Confirmar Importación (${validItems.length})
+            </button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  function showNotice(message, isSuccess = false) {
     notice = message || "";
+    noticeIsSuccess = Boolean(isSuccess);
     const el = container.querySelector("#admin-notice");
     if (el) {
       el.textContent = notice;
-      el.classList.toggle("hidden", !notice);
+      el.className = `mb-3 p-3 rounded-xl text-sm ${noticeIsSuccess ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200'} ${notice ? "" : "hidden"}`;
     }
   }
 
@@ -835,6 +933,129 @@ export function renderAdminView(container) {
       }
     });
 
+    const fileImportInput = container.querySelector("#file-import-catalog");
+    const btnImportCatalog = container.querySelector("#btn-import-catalog");
+
+    btnImportCatalog?.addEventListener("click", () => {
+      fileImportInput?.click();
+    });
+
+    fileImportInput?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const handleContent = (text) => {
+        try {
+          const parsed = parseCatalogFile(text);
+          const currentProducts = store.getAdminProducts();
+
+          let altas = 0;
+          let actualizaciones = 0;
+          const previewItems = [];
+
+          for (const item of parsed.rows) {
+            const itemSku = String(item.sku ?? item.codigo ?? "").trim().toUpperCase();
+            const itemName = String(item.nombre ?? "").trim().toLowerCase();
+
+            let matched = null;
+            if (itemSku) {
+              matched = currentProducts.find((p) => String(p.codigo || "").trim().toUpperCase() === itemSku);
+            }
+            if (!matched && itemName) {
+              matched = currentProducts.find((p) => String(p.nombre || "").trim().toLowerCase() === itemName);
+            }
+
+            if (matched) {
+              actualizaciones++;
+              const priceChanged = Number(matched.precio) !== Number(item.precio);
+              previewItems.push({
+                status: "ACTUALIZAR",
+                item,
+                matchedProduct: matched,
+                priceChanged,
+                oldPrice: matched.precio,
+                newPrice: item.precio
+              });
+            } else {
+              altas++;
+              previewItems.push({
+                status: "NUEVO",
+                item,
+                matchedProduct: null,
+                priceChanged: false,
+                oldPrice: null,
+                newPrice: item.precio
+              });
+            }
+          }
+
+          const errorItems = parsed.errors.map((err) => ({
+            status: "ERROR",
+            row: err.row,
+            error: err.error,
+            raw: err.raw
+          }));
+
+          importPreviewData = {
+            summary: {
+              total: parsed.rows.length + parsed.errors.length,
+              altas,
+              actualizaciones,
+              errores: parsed.errors.length
+            },
+            validItems: parsed.rows,
+            previewRows: [...previewItems, ...errorItems]
+          };
+
+          update();
+        } catch (err) {
+          showNotice(`Error al leer archivo: ${err.message || err}`);
+        } finally {
+          fileImportInput.value = "";
+        }
+      };
+
+      if (typeof file.text === "function") {
+        file.text().then(handleContent).catch((err) => {
+          showNotice(`Error al leer archivo: ${err.message || err}`);
+          fileImportInput.value = "";
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => handleContent(event.target?.result || "");
+        reader.onerror = () => {
+          showNotice("Error al leer el archivo seleccionado.");
+          fileImportInput.value = "";
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    container.querySelector("#btn-close-import-preview")?.addEventListener("click", () => {
+      importPreviewData = null;
+      update();
+    });
+
+    container.querySelector("#btn-cancel-import")?.addEventListener("click", () => {
+      importPreviewData = null;
+      update();
+    });
+
+    container.querySelector("#btn-confirm-import")?.addEventListener("click", async () => {
+      if (!importPreviewData || !importPreviewData.validItems.length) return;
+      const validItems = importPreviewData.validItems;
+      const altas = importPreviewData.summary.altas;
+      const actualizaciones = importPreviewData.summary.actualizaciones;
+      try {
+        await store.importCatalogBatch(validItems);
+        importPreviewData = null;
+        showNotice(`Importación exitosa: ${altas} altas, ${actualizaciones} actualizaciones.`, true);
+        update();
+      } catch (err) {
+        showNotice(`Error al confirmar importación: ${err.message || err}`);
+      }
+    });
+
     attachProductListeners();
   }
 
@@ -858,7 +1079,7 @@ export function renderAdminView(container) {
 
   const unsubscribe = store.subscribe(event => {
     const typing = container.contains(document.activeElement) && ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
-    if (["products_changed", "storage_sync", "cloud_connected", "catalog_error"].includes(event) && !typing && !productDraft) {
+    if (["products_changed", "storage_sync", "cloud_connected", "catalog_error"].includes(event) && !typing && !productDraft && !importPreviewData) {
       update();
     }
   });

@@ -889,7 +889,9 @@ class Store {
 
   validateProduct(product) {
     if (!product || typeof product !== "object" || Array.isArray(product)) throw new Error("Producto incompleto.");
-    for (const [key, max] of [["id", 100], ["nombre", 120], ["categoria", 50]]) {
+    const idVal = product.id !== undefined && product.id !== null ? String(product.id).trim() : "";
+    if (!idVal || idVal.length > 100) throw new Error("Revisá id: es obligatorio (máximo 100 caracteres).");
+    for (const [key, max] of [["nombre", 120], ["categoria", 50]]) {
       if (typeof product[key] !== "string" || !product[key].trim() || product[key].length > max) throw new Error(`Revisá ${key}: es obligatorio (máximo ${max} caracteres).`);
     }
     if (!["KG", "UNIDAD"].includes(product.unidad_medida)) throw new Error("La modalidad debe ser KG o UNIDAD.");
@@ -1006,6 +1008,169 @@ class Store {
     const product = this.getAdminProducts().find((p) => p.id === productId);
     if (!product) throw new Error(this.catalogError || "No se encontró el producto.");
     return this.saveProduct({ ...product, disponible: !product.disponible }, productId);
+  }
+
+  async importCatalogBatch(items, { createBackup = true } = {}) {
+    if (!Array.isArray(items)) {
+      throw new Error("La lista de productos para importar debe ser un arreglo.");
+    }
+    if (!this.config.ok) {
+      throw new Error("Configuración inválida.");
+    }
+
+    const currentProducts = this.getAdminProducts();
+    if (this.catalogError) {
+      throw new Error(this.catalogError);
+    }
+
+    // 1. Respaldo local previo a la importación
+    const timestamp = Date.now();
+    const backupKey = `products_backup_${timestamp}`;
+    if (createBackup) {
+      try {
+        const rawCatalog = localStorage.getItem(this.storageKeys.PRODUCTS);
+        localStorage.setItem(backupKey, rawCatalog !== null ? rawCatalog : JSON.stringify(currentProducts));
+      } catch (err) {
+        console.warn("No se pudo crear el respaldo en localStorage:", err);
+      }
+    }
+
+    // 2. Determinar el siguiente ID numérico único para nuevas altas
+    let highestNumericId = 0;
+    for (const p of currentProducts) {
+      if (typeof p.id === "number" && Number.isFinite(p.id)) {
+        if (p.id > highestNumericId) highestNumericId = p.id;
+      } else if (typeof p.id === "string") {
+        const num = parseInt(p.id.replace(/\D/g, ""), 10);
+        if (Number.isFinite(num) && num > highestNumericId) {
+          highestNumericId = num;
+        }
+      }
+    }
+
+    const productList = currentProducts.map((p) => ({ ...p }));
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const item of items) {
+      const itemSku = String(item.sku ?? item.codigo ?? "").trim().toUpperCase();
+      const itemName = String(item.nombre ?? "").trim().toLowerCase();
+
+      // Coincidencia: primero por SKU si está presente, o por nombre exacto si no tiene SKU
+      let existingIndex = -1;
+      if (itemSku) {
+        existingIndex = productList.findIndex(
+          (p) => String(p.codigo || "").trim().toUpperCase() === itemSku
+        );
+      }
+      if (existingIndex === -1 && itemName) {
+        existingIndex = productList.findIndex(
+          (p) => String(p.nombre || "").trim().toLowerCase() === itemName
+        );
+      }
+
+      const rawUnit = (item.unidad_medida || item.unidad || "").toString().toUpperCase();
+      const unidad_medida = rawUnit === "KG" || rawUnit.startsWith("KILO") ? "KG" : "UNIDAD";
+      const precio = Number(item.precio != null ? item.precio : 0);
+      const paso = unidad_medida === "UNIDAD" ? 1 : 0.5;
+      const disponible = item.disponible !== undefined ? Boolean(item.disponible) : true;
+      const categoria = typeof item.categoria === "string" && item.categoria.trim() ? item.categoria.trim() : "General";
+      const detalle = typeof item.detalle === "string" ? item.detalle.trim() : typeof item.descripcion === "string" ? item.descripcion.trim() : "";
+      const imagen_url = item.imagen_url || item.imagen || null;
+      const imagen_id = item.imagen_id || (imagen_url ? imagen_url : null);
+
+      if (existingIndex >= 0) {
+        const prev = productList[existingIndex];
+        const updated = {
+          ...prev,
+          nombre: typeof item.nombre === "string" && item.nombre.trim() ? item.nombre.trim() : prev.nombre,
+          categoria,
+          precio,
+          disponible,
+          unidad_medida,
+          paso: unidad_medida === "UNIDAD" ? 1 : prev.unidad_medida === "KG" && prev.paso ? prev.paso : paso,
+          codigo: itemSku ? String(item.sku ?? item.codigo).trim() : (prev.codigo || ""),
+          detalle: detalle !== "" ? detalle : prev.detalle,
+          imagen_url: imagen_url !== null ? imagen_url : prev.imagen_url,
+          imagen_id: imagen_id !== null ? imagen_id : prev.imagen_id,
+          archivado: prev.archivado || false
+        };
+        this.validateProduct(updated);
+        productList[existingIndex] = updated;
+        updatedCount++;
+      } else {
+        const newId = ++highestNumericId;
+        const newProduct = {
+          id: newId,
+          nombre: String(item.nombre || "").trim(),
+          categoria,
+          precio,
+          unidad_medida,
+          paso,
+          disponible,
+          codigo: item.sku ? String(item.sku).trim() : item.codigo ? String(item.codigo).trim() : "",
+          detalle,
+          archivado: false,
+          imagen_url,
+          imagen_id
+        };
+        this.validateProduct(newProduct);
+        productList.push(newProduct);
+        createdCount++;
+      }
+    }
+
+    // 3. Producción: upsert a Supabase public.productos con x-nexo-staff-pin (fail-closed)
+    if (!this.isDemo()) {
+      if (!this.supabase) {
+        throw new Error("No se puede importar el catálogo en producción sin conexión a Supabase.");
+      }
+
+      const staffPinHeaders = this.getStaffPinHeaders();
+      const staffPin = staffPinHeaders["x-nexo-staff-pin"];
+      if (!staffPin) {
+        throw new Error("Se requiere PIN de administración para importar el catálogo en producción.");
+      }
+
+      const supabasePayload = productList.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        unidad_medida: p.unidad_medida,
+        precio: Number(p.precio),
+        disponible: Boolean(p.disponible),
+        paso: Number(p.paso || (p.unidad_medida === "UNIDAD" ? 1 : 0.5)),
+        codigo: p.codigo ? String(p.codigo).trim().toUpperCase() : "",
+        detalle: p.detalle ? String(p.detalle).trim() : "",
+        archivado: Boolean(p.archivado),
+        imagen_id: p.imagen_id || null,
+        imagen_url: p.imagen_url || null,
+        updated_at: new Date().toISOString()
+      }));
+
+      const query = this.supabase.from("productos").upsert(supabasePayload);
+      if (typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-staff-pin", staffPin);
+      }
+      const res = typeof query.select === "function" ? await query.select() : await query;
+      if (res && res.error) {
+        throw new Error(res.error.message || "Error al actualizar catálogo en Supabase.");
+      }
+    }
+
+    // 4. Guardar catálogo localmente y notificar
+    writeCritical(this.storageKeys.PRODUCTS, productList);
+    this.products = productList;
+    this.catalogError = null;
+    this.notify("products_changed");
+
+    return {
+      ok: true,
+      createdCount,
+      updatedCount,
+      totalCount: items.length,
+      backupKey
+    };
   }
 
   // --- Clientes ---

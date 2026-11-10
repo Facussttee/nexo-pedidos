@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS public.pedidos (
     total_real NUMERIC(10, 2),
     items JSONB NOT NULL DEFAULT '[]'::jsonb,
     checkout_cart_key VARCHAR(100),
+    version INT NOT NULL DEFAULT 1,
+    tomado_por VARCHAR(60) DEFAULT NULL,
     notificado_whatsapp BOOLEAN DEFAULT FALSE,
     notificado_at TIMESTAMPTZ,
     cancelado_at TIMESTAMPTZ,
@@ -84,7 +86,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'pedidos' AND column_name = 'cancelado_at') THEN
         ALTER TABLE public.pedidos ADD COLUMN cancelado_at TIMESTAMPTZ;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'pedidos' AND column_name = 'version') THEN
+        ALTER TABLE public.pedidos ADD COLUMN version INT NOT NULL DEFAULT 1;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'pedidos' AND column_name = 'tomado_por') THEN
+        ALTER TABLE public.pedidos ADD COLUMN tomado_por VARCHAR(60) DEFAULT NULL;
+    END IF;
 END $$;
+
+ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS tomado_por VARCHAR(60) DEFAULT NULL;
 
 -- Iniciar secuencia de pedidos en 101 si está en valor inferior
 SELECT setval(
@@ -239,6 +250,202 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_request_header(TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.verify_staff_pin_header() TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.update_staff_pin(TEXT, TEXT) TO anon, authenticated, service_role;
+
+-- 5.3 Checkout Autoritativo en Servidor y Creación Atómica de Pedidos (V2-02)
+CREATE OR REPLACE FUNCTION public.create_order_atomic(
+    p_cliente_telefono TEXT,
+    p_cliente_nombre TEXT,
+    p_cliente_direccion TEXT,
+    p_tipo_entrega TEXT,
+    p_direccion_entrega TEXT,
+    p_items JSONB,
+    p_checkout_cart_key TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_cliente_telefono TEXT;
+    v_cliente_nombre TEXT;
+    v_cliente_direccion TEXT;
+    v_tipo_entrega TEXT;
+    v_direccion_entrega TEXT;
+    v_clean_cart_key TEXT;
+    v_existing_pedido RECORD;
+    v_item JSONB;
+    v_product RECORD;
+    v_item_id TEXT;
+    v_item_cantidad NUMERIC;
+    v_item_precio NUMERIC;
+    v_item_subtotal NUMERIC;
+    v_total_estimado NUMERIC := 0;
+    v_verified_items JSONB := '[]'::jsonb;
+    v_new_item JSONB;
+    v_new_pedido RECORD;
+BEGIN
+    -- 1. Sanitización de entradas
+    v_cliente_telefono := NULLIF(REGEXP_REPLACE(COALESCE(p_cliente_telefono, ''), '\D', '', 'g'), '');
+    IF v_cliente_telefono IS NULL OR length(v_cliente_telefono) < 8 THEN
+        RAISE EXCEPTION 'Teléfono del cliente es requerido (mínimo 8 dígitos)';
+    END IF;
+
+    v_cliente_nombre := TRIM(COALESCE(p_cliente_nombre, ''));
+    IF v_cliente_nombre = '' THEN
+        RAISE EXCEPTION 'Nombre del cliente es requerido';
+    END IF;
+
+    v_tipo_entrega := UPPER(TRIM(COALESCE(p_tipo_entrega, 'RETIRO')));
+    IF v_tipo_entrega NOT IN ('RETIRO', 'DELIVERY') THEN
+        RAISE EXCEPTION 'Tipo de entrega no válido: %', v_tipo_entrega;
+    END IF;
+
+    v_direccion_entrega := TRIM(COALESCE(p_direccion_entrega, ''));
+    IF v_tipo_entrega = 'DELIVERY' AND v_direccion_entrega = '' THEN
+        RAISE EXCEPTION 'Dirección de entrega requerida para delivery';
+    END IF;
+    IF v_tipo_entrega = 'RETIRO' AND v_direccion_entrega = '' THEN
+        v_direccion_entrega := 'Retiro en Mostrador';
+    END IF;
+
+    IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
+        RAISE EXCEPTION 'El pedido debe contener al menos un producto';
+    END IF;
+
+    IF jsonb_array_length(p_items) > 100 THEN
+        RAISE EXCEPTION 'El pedido no puede exceder 100 ítems';
+    END IF;
+
+    v_clean_cart_key := NULLIF(TRIM(COALESCE(p_checkout_cart_key, '')), '');
+
+    -- 2. Idempotencia: Si p_checkout_cart_key existe para este p_cliente_telefono, retornar fila existente
+    IF v_clean_cart_key IS NOT NULL THEN
+        SELECT * INTO v_existing_pedido
+        FROM public.pedidos
+        WHERE checkout_cart_key = v_clean_cart_key
+          AND cliente_telefono = v_cliente_telefono
+        ORDER BY id DESC
+        LIMIT 1;
+
+        IF FOUND THEN
+            RETURN jsonb_build_object(
+                'ok', true,
+                'replayed', true,
+                'pedido', row_to_json(v_existing_pedido)
+            );
+        END IF;
+    END IF;
+
+    -- 3. Upsert del cliente
+    v_cliente_direccion := NULLIF(TRIM(COALESCE(p_cliente_direccion, '')), '');
+    INSERT INTO public.clientes (telefono, nombre, direccion, updated_at)
+    VALUES (
+        v_cliente_telefono,
+        v_cliente_nombre,
+        COALESCE(v_cliente_direccion, 'No especificada'),
+        NOW()
+    )
+    ON CONFLICT (telefono) DO UPDATE SET
+        nombre = EXCLUDED.nombre,
+        direccion = COALESCE(EXCLUDED.direccion, public.clientes.direccion),
+        updated_at = NOW();
+
+    -- 4. Bucle de Precios y Disponibilidad (Authoritative Pricing & Availability)
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+    LOOP
+        v_item_id := NULLIF(TRIM(COALESCE(v_item ->> 'id', v_item ->> 'producto_id', '')), '');
+        IF v_item_id IS NULL THEN
+            RAISE EXCEPTION 'ID de producto inválido';
+        END IF;
+
+        v_item_cantidad := (COALESCE(v_item ->> 'cantidad', v_item ->> 'cantidad_solicitada'))::numeric;
+        IF v_item_cantidad IS NULL OR v_item_cantidad <= 0 THEN
+            RAISE EXCEPTION 'Cantidad debe ser mayor a 0 para el producto: %', v_item_id;
+        END IF;
+
+        -- Bloqueo FOR SHARE del producto en catálogo para evitar carreras de modificación concurrente
+        SELECT * INTO v_product
+        FROM public.productos
+        WHERE id = v_item_id
+        FOR SHARE;
+
+        IF NOT FOUND OR v_product.archivado IS TRUE OR v_product.disponible IS FALSE THEN
+            RAISE EXCEPTION 'Producto no disponible: %', v_item_id;
+        END IF;
+
+        -- Validación de cantidades enteras para unidades y conformidad de paso
+        IF v_product.unidad_medida = 'UNIDAD' AND v_item_cantidad <> floor(v_item_cantidad) THEN
+            RAISE EXCEPTION 'Los productos unitarios requieren cantidades enteras: %', v_item_id;
+        END IF;
+
+        IF v_product.paso IS NOT NULL AND v_product.paso > 0 THEN
+            IF round(v_item_cantidad / v_product.paso, 6) <> round(v_item_cantidad / v_product.paso, 0) THEN
+                RAISE EXCEPTION 'La cantidad % no respeta el paso % para el producto: %', v_item_cantidad, v_product.paso, v_item_id;
+            END IF;
+        END IF;
+
+        -- Precio autoritativo ignorando el precio enviado por el cliente
+        v_item_precio := v_product.precio;
+        v_item_subtotal := round(v_item_cantidad * v_item_precio);
+        v_total_estimado := v_total_estimado + v_item_subtotal;
+
+        -- Construcción del ítem validado
+        v_new_item := jsonb_build_object(
+            'id', v_product.id,
+            'producto_id', v_product.id,
+            'nombre', v_product.nombre,
+            'categoria', v_product.categoria,
+            'unidad_medida', v_product.unidad_medida,
+            'precio', v_item_precio,
+            'precio_unitario', v_item_precio,
+            'cantidad', v_item_cantidad,
+            'cantidad_solicitada', v_item_cantidad,
+            'paso', v_product.paso,
+            'codigo', v_product.codigo,
+            'peso_real', CASE WHEN v_product.unidad_medida = 'UNIDAD' THEN v_item_cantidad ELSE NULL END,
+            'subtotal', v_item_subtotal,
+            'subtotal_estimado', v_item_subtotal,
+            'sin_stock', false,
+            'confirmado_preparacion', false
+        );
+        v_verified_items := v_verified_items || jsonb_build_array(v_new_item);
+    END LOOP;
+
+    -- 5. Inserción del pedido con estado PENDIENTE y version = 1
+    INSERT INTO public.pedidos (
+        cliente_telefono,
+        cliente_nombre,
+        tipo_entrega,
+        direccion_entrega,
+        estado,
+        total_estimado,
+        items,
+        checkout_cart_key,
+        version
+    ) VALUES (
+        v_cliente_telefono,
+        v_cliente_nombre,
+        v_tipo_entrega,
+        v_direccion_entrega,
+        'PENDIENTE',
+        v_total_estimado,
+        v_verified_items,
+        v_clean_cart_key,
+        1
+    )
+    RETURNING * INTO v_new_pedido;
+
+    -- 6. Respuesta atómica
+    RETURN jsonb_build_object(
+        'ok', true,
+        'replayed', false,
+        'pedido', row_to_json(v_new_pedido)
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT) TO anon, authenticated, service_role;
 
 -- 5.3 Control de Inundación de Pedidos (Rate Limiting en Base de Datos)
 CREATE OR REPLACE FUNCTION public.enforce_order_rate_limit()

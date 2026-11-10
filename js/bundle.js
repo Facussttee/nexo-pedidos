@@ -1312,7 +1312,10 @@ class Store {
           fecha: o.fecha || o.created_at || new Date().toISOString(),
           total_estimado: Number(o.total_estimado),
           total_real: o.total_real !== null ? Number(o.total_real) : null,
-          items: Array.isArray(o.items) ? o.items : []
+          items: Array.isArray(o.items) ? o.items : [],
+          checkout_cart_key: o.checkout_cart_key || null,
+          version: o.version != null ? Number(o.version) : 1,
+          tomado_por: o.tomado_por || null
         }));
         this.persistOrders(mappedOrders);
         this.notify("orders_changed");
@@ -1371,6 +1374,70 @@ class Store {
         await clientQuery;
       }
 
+      // En producción, creación atómica de pedido vía RPC 'create_order_atomic'
+      if (order._isNew && typeof this.supabase.rpc === "function") {
+        const rpcPayload = {
+          p_cliente_telefono: cleanPhone || null,
+          p_cliente_nombre: order.cliente?.nombre || currentUser?.nombre || "Cliente",
+          p_cliente_direccion: order.cliente?.direccion || currentUser?.direccion || "",
+          p_tipo_entrega: order.tipo_entrega || "RETIRO",
+          p_direccion_entrega: order.direccion_entrega || (order.tipo_entrega === "DELIVERY" ? "" : "Retiro en Mostrador"),
+          p_items: (order.items || []).map((i) => ({
+            id: i.producto_id || i.id,
+            producto_id: i.producto_id || i.id,
+            cantidad: i.cantidad_solicitada ?? i.cantidad ?? 1,
+            precio: i.precio_unitario ?? i.precio
+          })),
+          p_checkout_cart_key: order.checkout_cart_key || null
+        };
+
+        const rpcCall = this.supabase.rpc("create_order_atomic", rpcPayload);
+        if (isStaff && staffPin && typeof rpcCall.setHeader === "function") {
+          rpcCall.setHeader("x-nexo-staff-pin", staffPin);
+        } else if (cleanPhone && typeof rpcCall.setHeader === "function") {
+          rpcCall.setHeader("x-nexo-client-phone", cleanPhone);
+        }
+
+        const rpcRes = await rpcCall;
+        if (rpcRes.error) {
+          console.warn("Error creando pedido vía create_order_atomic:", rpcRes.error);
+          this.notify("cloud_error", rpcRes.error.message);
+          return;
+        }
+
+        if (rpcRes.data && rpcRes.data.pedido && rpcRes.data.pedido.id) {
+          order._isNew = false;
+          const dbOrder = rpcRes.data.pedido;
+          const dbId = dbOrder.id;
+          const oldId = order.id;
+          order.id = dbId;
+          order.version = dbOrder.version != null ? Number(dbOrder.version) : 1;
+          if (dbOrder.total_estimado != null) order.total_estimado = Number(dbOrder.total_estimado);
+          if (Array.isArray(dbOrder.items) && dbOrder.items.length) order.items = dbOrder.items;
+
+          const currentOrders = this.getOrders();
+          this.persistOrders(
+            currentOrders.map((o) =>
+              o.id === oldId || o.id === dbId
+                ? {
+                    ...o,
+                    id: dbId,
+                    version: order.version,
+                    total_estimado: order.total_estimado,
+                    items: order.items,
+                    _isNew: false
+                  }
+                : o
+            )
+          );
+          if (this.getActiveOrderId() === oldId) {
+            this.setActiveOrderId(dbId);
+          }
+          this.notify("orders_changed");
+          return;
+        }
+      }
+
       const orderPayload = {
         cliente_telefono: cleanPhone || null,
         cliente_nombre: order.cliente?.nombre || currentUser?.nombre || "Cliente",
@@ -1380,6 +1447,9 @@ class Store {
         total_estimado: Number(order.total_estimado || 0),
         total_real: order.total_real !== null && order.total_real !== undefined ? Number(order.total_real) : null,
         items: Array.isArray(order.items) ? order.items : [],
+        checkout_cart_key: order.checkout_cart_key || null,
+        version: order.version != null ? Number(order.version) : 1,
+        tomado_por: order.tomado_por || null,
         fecha: order.fecha || new Date().toISOString()
       };
 
@@ -1933,6 +2003,8 @@ class Store {
       direccion_entrega: tipo_entrega === "DELIVERY" ? direccion_entrega : "Retiro en Mostrador",
       estado: "PENDIENTE", fecha: new Date().toISOString(),
       total_estimado: totalEstimado, total_real: null, checkout_cart_key: cartKey,
+      version: 1,
+      tomado_por: null,
       _isNew: true,
       items: items.map((item) => ({
         producto_id: item.producto_id, nombre: item.nombre, categoria: item.categoria,
@@ -1966,6 +2038,85 @@ class Store {
     this.persistOrders(orders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
+  }
+
+  async takeOrder(orderId, operatorName, expectedVersion) {
+    const id = Number(orderId);
+    if (!Number.isFinite(id)) throw new Error("ID de pedido no válido.");
+    const operator = String(operatorName || "Operador").trim() || "Operador";
+    const expected = expectedVersion != null ? Number(expectedVersion) : 1;
+
+    if (this.isDemo()) {
+      const orders = this.getOrders();
+      const order = orders.find((o) => o.id === id);
+      if (!order) throw new Error("Pedido no encontrado.");
+      const currentVersion = Number(order.version ?? 1);
+      if (currentVersion !== expected) {
+        throw new Error("El pedido ya fue tomado por otro operario o fue modificado.");
+      }
+      if (order.estado !== "PENDIENTE" && order.estado !== "EN_PREPARACION") {
+        throw new Error("El pedido ya fue finalizado o cancelado.");
+      }
+
+      const updatedOrder = {
+        ...order,
+        estado: "EN_PREPARACION",
+        tomado_por: operator,
+        version: currentVersion + 1,
+        updated_at: new Date().toISOString()
+      };
+      this.persistOrders(orders.map((o) => (o.id === id ? updatedOrder : o)));
+      this.notify("orders_changed");
+      return updatedOrder;
+    }
+
+    if (!this.supabase) {
+      throw new Error("No hay conexión con Supabase en modo producción.");
+    }
+
+    const { staffPin } = this.getLocalSettings();
+    const query = this.supabase
+      .from("pedidos")
+      .update({
+        estado: "EN_PREPARACION",
+        tomado_por: operator,
+        version: expected + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id)
+      .eq("version", expected);
+
+    if (staffPin && typeof query.setHeader === "function") {
+      query.setHeader("x-nexo-staff-pin", staffPin);
+    }
+
+    const res = typeof query.select === "function" ? await query.select() : await query;
+    if (res.error) {
+      throw new Error(res.error.message || "Error al tomar el pedido.");
+    }
+
+    const updatedRows = Array.isArray(res.data) ? res.data : [];
+    if (updatedRows.length === 0) {
+      throw new Error("El pedido ya fue tomado por otro operario o fue modificado.");
+    }
+
+    const updatedDbOrder = updatedRows[0];
+    const currentOrders = this.getOrders();
+    const updatedLocalOrders = currentOrders.map((o) => {
+      if (o.id === id) {
+        return {
+          ...o,
+          estado: "EN_PREPARACION",
+          tomado_por: operator,
+          version: expected + 1,
+          updated_at: updatedDbOrder.updated_at || new Date().toISOString()
+        };
+      }
+      return o;
+    });
+    this.persistOrders(updatedLocalOrders);
+    this.notify("orders_changed");
+    return updatedDbOrder;
   }
 
   preparationItemResolved(item) {
@@ -4104,6 +4255,7 @@ function renderOperatorView(container) {
                 <div class="mt-3 space-y-2">
                   <button
                     data-start-id="${order.id}"
+                    data-order-version="${order.version ?? 1}"
                     class="btn-start-prep w-full min-h-[48px] bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-xs transition tap-feedback touch-target flex items-center justify-center gap-2"
                   >
                     <span>Comenzar preparación</span>
@@ -4419,17 +4571,27 @@ Alias para transferir: ${businessAlias}
 
   // --- Attach Event Listeners ---
   function attachActions(orders) {
-    // Tomar y pesar
+    // Tomar y pesar con control de concurrencia optimista (V2-02)
     container.querySelectorAll(".btn-start-prep").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
         const id = Number(btn.dataset.startId);
+        const order = orders.find((o) => o.id === id);
+        const expectedVersion = Number(btn.dataset.orderVersion || order?.version || 1);
+        const business = store.getBusinessProfile();
+        const operatorName = store.getStaffAlias?.() || store.getLocalSettings()?.operatorName || business.alias || "Operador";
         try {
-          store.updateOrderStatus(id, "EN_PREPARACION");
+          await store.takeOrder(id, operatorName, expectedVersion);
           actionError = "";
           activeTab = "EN_PREPARACION";
           update();
-        } catch (error) { showError(error.message); }
+        } catch (error) {
+          if (typeof alert === "function") {
+            try { alert(error.message); } catch {}
+          }
+          showError(error.message);
+          update();
+        }
       });
     });
 

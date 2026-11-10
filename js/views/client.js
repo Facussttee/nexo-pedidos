@@ -570,6 +570,13 @@ export function renderClientView(container) {
       const itemSubtotal = inCart ? Math.round(currentQty * product.precio) : 0;
       const hasImage = Boolean(product.imagen_id || product.imagen_url);
 
+      const controlarStock = Boolean(product.controlar_stock);
+      const availableStock = controlarStock
+        ? Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)))
+        : Infinity;
+      const isOutOfStock = controlarStock && availableStock <= 0;
+      const canIncrease = !controlarStock || (currentQty + 0.0001 < availableStock);
+
       return `
         <div class="relative bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border transition flex flex-col justify-between ${
           inCart ? "border-emerald-500/60 bg-emerald-50/15 dark:bg-emerald-950/20 shadow-xs" : "border-slate-200/80 dark:border-slate-800 shadow-xs"
@@ -627,14 +634,23 @@ export function renderClientView(container) {
               ` : ""}
             </div>
 
-            ${!product.disponible ? `
+            ${isOutOfStock ? `
+              <span class="inline-block text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mt-1">Sin Stock</span>
+            ` : !product.disponible ? `
               <span class="inline-block text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mt-1">Pausado</span>
             ` : ""}
           </div>
 
           <!-- Selector de Cantidad / Botón Táctil (Mínimo 44px) -->
           <div class="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-            ${product.disponible ? (!inCart ? `
+            ${isOutOfStock ? `
+              <button
+                disabled
+                class="btn-out-of-stock w-full min-h-[44px] bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold px-3 py-2 rounded-xl text-xs cursor-not-allowed flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <span>Sin Stock</span>
+              </button>
+            ` : product.disponible ? (!inCart ? `
               <button
                 data-add-id="${escapeHtml(product.id)}"
                 data-step="${step}"
@@ -662,8 +678,9 @@ export function renderClientView(container) {
                   type="button"
                   data-inc-id="${escapeHtml(product.id)}"
                   data-step="${step}"
-                  class="btn-qty-inc min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-lg hover:bg-emerald-700 active:scale-90 text-base font-black transition tap-feedback touch-target"
-                  title="Sumar"
+                  ${!canIncrease ? "disabled" : ""}
+                  class="btn-qty-inc min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-lg hover:bg-emerald-700 active:scale-90 text-base font-black transition tap-feedback touch-target ${!canIncrease ? "opacity-40 cursor-not-allowed" : ""}"
+                  title="${!canIncrease ? "Stock máximo alcanzado" : "Sumar"}"
                   aria-label="Sumar cantidad"
                 >
                   +
@@ -752,6 +769,12 @@ export function renderClientView(container) {
         if (navigator.vibrate) { try { navigator.vibrate(12); } catch {} }
         const id = btn.dataset.addId || btn.dataset.incId;
         const step = Number(btn.dataset.step) || 0.5;
+        const product = store.getProducts().find((p) => p.id === id);
+        if (product && product.controlar_stock) {
+          const avail = Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)));
+          const current = store.getCart()[id]?.cantidad || 0;
+          if (current + step > avail + 0.0001) return;
+        }
         performCartAction(() => store.addToCart(id, step));
       });
     });
@@ -838,7 +861,13 @@ export function renderClientView(container) {
                   Volver al Catálogo
                 </button>
               </div>
-            ` : items.map(item => `
+            ` : items.map(item => {
+              const prod = store.getProducts().find((p) => p.id === item.producto_id);
+              const availableStock = prod && prod.controlar_stock
+                ? Math.max(0, Number((Number(prod.stock_actual || 0) - Number(prod.stock_reservado || 0)).toFixed(3)))
+                : Infinity;
+              const canInc = !prod || !prod.controlar_stock || (item.cantidad + 0.0001 < availableStock);
+              return `
               <div class="p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-3">
                 <div class="flex-1 min-w-0 pr-1">
                   <span class="text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
@@ -868,8 +897,9 @@ export function renderClientView(container) {
                     <button
                       type="button"
                       data-drawer-inc="${escapeHtml(item.producto_id)}"
-                      class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 rounded-lg font-black text-base tap-feedback touch-target"
-                      title="Sumar cantidad"
+                      ${!canInc ? "disabled" : ""}
+                      class="min-h-[44px] min-w-[44px] w-11 h-11 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 rounded-lg font-black text-base tap-feedback touch-target ${!canInc ? "opacity-40 cursor-not-allowed" : ""}"
+                      title="${!canInc ? "Stock máximo alcanzado" : "Sumar cantidad"}"
                       aria-label="Sumar cantidad de ${escapeHtml(item.nombre)}"
                     >
                       +
@@ -887,7 +917,8 @@ export function renderClientView(container) {
                   </button>
                 </div>
               </div>
-            `).join("")}
+            `;
+            }).join("")}
 
             ${!isEmpty ? `
               <!-- Selector de Forma de Entrega Segmentado -->
@@ -1240,6 +1271,11 @@ export function renderClientView(container) {
         const id = btn.dataset.drawerInc;
         const product = store.getProducts().find((p) => p.id === id);
         const step = product?.paso || (product?.unidad_medida === "KG" ? 0.5 : 1);
+        if (product && product.controlar_stock) {
+          const avail = Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)));
+          const current = store.getCart()[id]?.cantidad || 0;
+          if (current + step > avail + 0.0001) return;
+        }
         performCartAction(() => store.addToCart(id, step));
       });
     });

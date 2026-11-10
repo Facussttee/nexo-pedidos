@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS public.productos (
     archivado BOOLEAN DEFAULT FALSE,
     imagen_id VARCHAR(100) DEFAULT NULL,
     imagen_url TEXT DEFAULT NULL,
+    controlar_stock BOOLEAN NOT NULL DEFAULT FALSE,
+    stock_actual NUMERIC(10, 3) NOT NULL DEFAULT 0.000 CHECK (stock_actual >= 0),
+    stock_reservado NUMERIC(10, 3) NOT NULL DEFAULT 0.000 CHECK (stock_reservado >= 0),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -54,11 +57,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'imagen_url') THEN
         ALTER TABLE public.productos ADD COLUMN imagen_url TEXT DEFAULT NULL;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'controlar_stock') THEN
+        ALTER TABLE public.productos ADD COLUMN controlar_stock BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'stock_actual') THEN
+        ALTER TABLE public.productos ADD COLUMN stock_actual NUMERIC(10, 3) NOT NULL DEFAULT 0.000;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'stock_reservado') THEN
+        ALTER TABLE public.productos ADD COLUMN stock_reservado NUMERIC(10, 3) NOT NULL DEFAULT 0.000;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'created_at') THEN
         ALTER TABLE public.productos ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
     END IF;
 END $$;
 ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS imagen_url TEXT DEFAULT NULL;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS controlar_stock BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS stock_actual NUMERIC(10,3) NOT NULL DEFAULT 0.000;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS stock_reservado NUMERIC(10,3) NOT NULL DEFAULT 0.000;
 
 -- 3. TABLA DE PEDIDOS (CABECERA, DETALLE JSONB Y KANBAN DE MOSTRADOR)
 CREATE TABLE IF NOT EXISTS public.pedidos (
@@ -410,6 +425,17 @@ BEGIN
             END IF;
         END IF;
 
+        -- Validación de stock y reserva cuantitativa atómica (V2-06)
+        IF v_product.controlar_stock IS TRUE THEN
+            IF (v_product.stock_actual - v_product.stock_reservado) < v_item_cantidad THEN
+                RAISE EXCEPTION 'Stock insuficiente para producto %', v_product.nombre;
+            END IF;
+
+            UPDATE public.productos
+            SET stock_reservado = stock_reservado + v_item_cantidad
+            WHERE id = v_product.id;
+        END IF;
+
         -- Precio autoritativo ignorando el precio enviado por el cliente
         v_item_precio := v_product.precio;
         v_item_subtotal := round(v_item_cantidad * v_item_precio);
@@ -475,6 +501,118 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT) TO anon, authenticated, service_role;
+
+-- 5.2.b Funciones y RPCs de Ajuste de Stock e Inventario (V2-06)
+CREATE OR REPLACE FUNCTION public.release_order_stock_rpc(p_order_id INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_order RECORD;
+    v_item JSONB;
+    v_item_id VARCHAR(50);
+    v_item_cantidad NUMERIC;
+    v_product RECORD;
+BEGIN
+    SELECT * INTO v_order FROM public.pedidos WHERE id = p_order_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Pedido no encontrado');
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_array_elements(v_order.items)
+    LOOP
+        v_item_id := NULLIF(TRIM(COALESCE(v_item ->> 'id', v_item ->> 'producto_id', '')), '');
+        v_item_cantidad := (COALESCE(v_item ->> 'cantidad_solicitada', v_item ->> 'cantidad', '0'))::numeric;
+        IF v_item_id IS NOT NULL AND v_item_cantidad > 0 THEN
+            SELECT * INTO v_product FROM public.productos WHERE id = v_item_id FOR UPDATE;
+            IF FOUND AND v_product.controlar_stock IS TRUE THEN
+                UPDATE public.productos
+                SET stock_reservado = GREATEST(0.000, stock_reservado - v_item_cantidad)
+                WHERE id = v_product.id;
+            END IF;
+        END IF;
+    END LOOP;
+
+    RETURN jsonb_build_object('ok', true, 'released_order_id', p_order_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.release_order_stock_rpc(INT) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.finalize_order_stock_rpc(p_order_id INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_order RECORD;
+    v_item JSONB;
+    v_item_id VARCHAR(50);
+    v_reserved_qty NUMERIC;
+    v_final_qty NUMERIC;
+    v_is_sin_stock BOOLEAN;
+    v_product RECORD;
+BEGIN
+    SELECT * INTO v_order FROM public.pedidos WHERE id = p_order_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Pedido no encontrado');
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_array_elements(v_order.items)
+    LOOP
+        v_item_id := NULLIF(TRIM(COALESCE(v_item ->> 'id', v_item ->> 'producto_id', '')), '');
+        v_reserved_qty := (COALESCE(v_item ->> 'cantidad_solicitada', v_item ->> 'cantidad', '0'))::numeric;
+        v_is_sin_stock := COALESCE((v_item ->> 'sin_stock')::boolean, false);
+        v_final_qty := CASE WHEN v_is_sin_stock THEN 0.000 ELSE (COALESCE(v_item ->> 'peso_real', v_item ->> 'cantidad', '0'))::numeric END;
+
+        IF v_item_id IS NOT NULL THEN
+            SELECT * INTO v_product FROM public.productos WHERE id = v_item_id FOR UPDATE;
+            IF FOUND AND v_product.controlar_stock IS TRUE THEN
+                UPDATE public.productos
+                SET stock_reservado = GREATEST(0.000, stock_reservado - v_reserved_qty),
+                    stock_actual = GREATEST(0.000, stock_actual - v_final_qty)
+                WHERE id = v_product.id;
+            END IF;
+        END IF;
+    END LOOP;
+
+    RETURN jsonb_build_object('ok', true, 'finalized_order_id', p_order_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.finalize_order_stock_rpc(INT) TO anon, authenticated, service_role;
+
+-- Trigger para ajustar inventario ante cambios de estado de pedidos (V2-06)
+CREATE OR REPLACE FUNCTION public.handle_order_stock_status_change()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Cancelación: si estaba reservado y pasa a CANCELADO, liberar reserva
+    IF OLD.estado IN ('PENDIENTE', 'EN_PREPARACION') AND NEW.estado = 'CANCELADO' THEN
+        PERFORM public.release_order_stock_rpc(NEW.id);
+    END IF;
+
+    -- Finalización: si pasa a LISTO o ENTREGADO desde preparación, ajustar reserva y descontar stock actual
+    IF OLD.estado IN ('PENDIENTE', 'EN_PREPARACION') AND NEW.estado IN ('LISTO', 'ENTREGADO') THEN
+        PERFORM public.finalize_order_stock_rpc(NEW.id);
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_order_stock_status_change ON public.pedidos;
+CREATE TRIGGER trigger_order_stock_status_change
+    AFTER UPDATE OF estado ON public.pedidos
+    FOR EACH ROW
+    WHEN (OLD.estado IS DISTINCT FROM NEW.estado)
+    EXECUTE FUNCTION public.handle_order_stock_status_change();
 
 -- 5.3 Control de Inundación de Pedidos (Rate Limiting en Base de Datos)
 CREATE OR REPLACE FUNCTION public.enforce_order_rate_limit()

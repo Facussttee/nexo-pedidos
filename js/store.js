@@ -520,9 +520,13 @@ class Store {
           detalle: p.detalle || "",
           archivado: Boolean(p.archivado),
           imagen_id: p.imagen_id || p.imagen_url || null,
-          imagen_url: p.imagen_url || (p.imagen_id && (p.imagen_id.startsWith("https://") || p.imagen_id.startsWith("http://")) ? p.imagen_id : null)
+          imagen_url: p.imagen_url || (p.imagen_id && (p.imagen_id.startsWith("https://") || p.imagen_id.startsWith("http://")) ? p.imagen_id : null),
+          controlar_stock: Boolean(p.controlar_stock || false),
+          stock_actual: Number(p.stock_actual || 0),
+          stock_reservado: Number(p.stock_reservado || 0)
         }));
         safeSet(this.storageKeys.PRODUCTS, mappedProducts);
+        this.products = mappedProducts;
         this.notify("products_changed");
       }
 
@@ -784,6 +788,9 @@ class Store {
         archivado: Boolean(product.archivado),
         imagen_id: product.imagen_id || null,
         imagen_url: product.imagen_url || (product.imagen_id && (product.imagen_id.startsWith("https://") || product.imagen_id.startsWith("http://")) ? product.imagen_id : null),
+        controlar_stock: Boolean(product.controlar_stock || false),
+        stock_actual: Number(product.stock_actual || 0),
+        stock_reservado: Number(product.stock_reservado || 0),
         updated_at: new Date().toISOString()
       };
       const query = this.supabase.from("productos").upsert(payload);
@@ -851,6 +858,14 @@ class Store {
   }
 
   // --- Productos ---
+  get products() {
+    return this._products || this.getAdminProducts();
+  }
+
+  set products(val) {
+    this._products = val;
+  }
+
   getProducts({ includeArchived = false } = {}) {
     if (!this.config.ok) return [];
     try {
@@ -864,6 +879,9 @@ class Store {
       const ids = new Set();
       const codes = new Set();
       for (const product of products) {
+        product.controlar_stock = Boolean(product.controlar_stock || false);
+        product.stock_actual = Number(product.stock_actual || 0);
+        product.stock_reservado = Number(product.stock_reservado || 0);
         this.validateProduct(product);
         if (ids.has(product.id)) throw new Error("Hay identificadores de producto repetidos.");
         ids.add(product.id);
@@ -901,6 +919,9 @@ class Store {
     if (typeof product.disponible !== "boolean" || (product.archivado !== undefined && typeof product.archivado !== "boolean")) throw new Error("El estado del producto no es válido.");
     if (product.codigo !== undefined && (typeof product.codigo !== "string" || product.codigo.length > 50)) throw new Error("El SKU admite hasta 50 caracteres.");
     if (product.detalle !== undefined && (typeof product.detalle !== "string" || product.detalle.length > 500)) throw new Error("El detalle admite hasta 500 caracteres.");
+    if (product.controlar_stock !== undefined && typeof product.controlar_stock !== "boolean") throw new Error("El control de stock debe ser booleano.");
+    if (product.stock_actual !== undefined && (!Number.isFinite(product.stock_actual) || product.stock_actual < 0)) throw new Error("El stock actual debe ser mayor o igual a cero.");
+    if (product.stock_reservado !== undefined && (!Number.isFinite(product.stock_reservado) || product.stock_reservado < 0)) throw new Error("El stock reservado debe ser mayor o igual a cero.");
     if (product.imagen_id !== undefined && product.imagen_id !== null) {
       if (typeof product.imagen_id !== "string" || !product.imagen_id.trim() || product.imagen_id.length > 500) throw new Error("El identificador de imagen no es válido.");
       if (product.imagen_id.startsWith("data:")) throw new Error("Las imágenes no deben guardarse en el producto como base64 o blob.");
@@ -960,6 +981,13 @@ class Store {
       ...(previous || {}), id, nombre: text("nombre"), categoria: text("categoria"), codigo: text("codigo").toUpperCase(),
       detalle: text("detalle"), unidad_medida: draft.unidad_medida, precio: number(draft.precio), paso: number(draft.paso),
       disponible: draft.disponible ?? previous?.disponible ?? true,
+      controlar_stock: typeof draft.controlar_stock === "boolean" ? draft.controlar_stock : Boolean(previous?.controlar_stock || false),
+      stock_actual: draft.stock_actual !== undefined && draft.stock_actual !== null && draft.stock_actual !== ""
+        ? Math.max(0, number(draft.stock_actual))
+        : Number(previous?.stock_actual || 0),
+      stock_reservado: draft.stock_reservado !== undefined && draft.stock_reservado !== null && draft.stock_reservado !== ""
+        ? Math.max(0, number(draft.stock_reservado))
+        : Number(previous?.stock_reservado || 0),
       archivado: typeof draft.archivado === "boolean" ? draft.archivado : (previous?.archivado || false)
     };
     if (Object.hasOwn(draft, "imagen_id")) {
@@ -979,7 +1007,9 @@ class Store {
     if (previous && previous.unidad_medida !== saved.unidad_medida && (this.getCart()[id] || this.getOrders().some((order) => order.items.some((item) => item.producto_id === id)))) {
       throw new Error("No se puede cambiar la unidad: hay referencias en pedidos o carrito. Creá otro producto y archivá el anterior.");
     }
-    writeCritical(this.storageKeys.PRODUCTS, previous ? products.map((p) => p.id === id ? saved : p) : [...products, saved]);
+    const updatedProducts = previous ? products.map((p) => p.id === id ? saved : p) : [...products, saved];
+    writeCritical(this.storageKeys.PRODUCTS, updatedProducts);
+    this.products = updatedProducts;
     this.notify("products_changed");
     this.syncProductToSupabase(saved);
     return saved;
@@ -1093,6 +1123,9 @@ class Store {
           detalle: detalle !== "" ? detalle : prev.detalle,
           imagen_url: imagen_url !== null ? imagen_url : prev.imagen_url,
           imagen_id: imagen_id !== null ? imagen_id : prev.imagen_id,
+          controlar_stock: item.controlar_stock !== undefined ? Boolean(item.controlar_stock) : Boolean(prev.controlar_stock || false),
+          stock_actual: item.stock_actual !== undefined ? Number(item.stock_actual) : Number(prev.stock_actual || 0),
+          stock_reservado: item.stock_reservado !== undefined ? Number(item.stock_reservado) : Number(prev.stock_reservado || 0),
           archivado: prev.archivado || false
         };
         this.validateProduct(updated);
@@ -1110,6 +1143,9 @@ class Store {
           disponible,
           codigo: item.sku ? String(item.sku).trim() : item.codigo ? String(item.codigo).trim() : "",
           detalle,
+          controlar_stock: Boolean(item.controlar_stock || false),
+          stock_actual: Number(item.stock_actual || 0),
+          stock_reservado: Number(item.stock_reservado || 0),
           archivado: false,
           imagen_url,
           imagen_id
@@ -1145,6 +1181,9 @@ class Store {
         archivado: Boolean(p.archivado),
         imagen_id: p.imagen_id || null,
         imagen_url: p.imagen_url || null,
+        controlar_stock: Boolean(p.controlar_stock || false),
+        stock_actual: Number(p.stock_actual || 0),
+        stock_reservado: Number(p.stock_reservado || 0),
         updated_at: new Date().toISOString()
       }));
 
@@ -1255,6 +1294,16 @@ class Store {
     const currentQty = cart[productId]?.cantidad || 0;
     const newQty = Math.max(0, Number((currentQty + quantityDelta).toFixed(2)));
 
+    if (quantityDelta > 0 && product.controlar_stock) {
+      const availableStock = Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)));
+      if (availableStock <= 0) {
+        throw new Error(`Stock insuficiente para ${product.nombre}`);
+      }
+      if (newQty > availableStock) {
+        throw new Error(`Stock insuficiente para ${product.nombre}. Disponible: ${availableStock}`);
+      }
+    }
+
     if (newQty <= 0) {
       delete cart[productId];
     } else {
@@ -1295,6 +1344,14 @@ class Store {
     const cart = this.getCart();
     const product = this.getProducts().find((p) => p.id === productId);
     if (!product || !product.disponible) return;
+
+    if (product.controlar_stock) {
+      const availableStock = Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)));
+      if (cleanQty > availableStock) {
+        throw new Error(`Stock insuficiente para ${product.nombre}. Disponible: ${availableStock}`);
+      }
+    }
+
     this.assertCurrentCartProduct(product, cart[productId]);
     if (product.unidad_medida === "UNIDAD" && !Number.isInteger(cleanQty)) throw new Error("Los productos unitarios requieren cantidades enteras.");
     if (!Number.isFinite(cleanQty * product.precio)) throw new Error("La cantidad o el importe excede el rango permitido.");
@@ -1461,6 +1518,36 @@ class Store {
       this.assertCurrentCartProduct(product, item);
       const steps = item.cantidad / product.paso;
       if (!Number.isFinite(item.cantidad) || item.cantidad <= 0 || Math.abs(steps - Math.round(steps)) > 1e-7 || (product.unidad_medida === "UNIDAD" && !Number.isInteger(item.cantidad))) throw new Error(`Revisá la cantidad de ${item.nombre}: no coincide con el paso permitido.`);
+
+      if (product.controlar_stock) {
+        const availableStock = Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)));
+        if (availableStock < item.cantidad) {
+          throw new Error(`Stock insuficiente para producto ${product.nombre}`);
+        }
+      }
+    }
+
+    let hasStockChanges = false;
+    const updatedProducts = products.map((p) => {
+      const orderItem = items.find((i) => i.producto_id === p.id);
+      if (orderItem && p.controlar_stock) {
+        hasStockChanges = true;
+        const newReserved = Number((Number(p.stock_reservado || 0) + Number(orderItem.cantidad)).toFixed(3));
+        return { ...p, stock_reservado: newReserved };
+      }
+      return p;
+    });
+
+    if (hasStockChanges) {
+      writeCritical(this.storageKeys.PRODUCTS, updatedProducts);
+      this.products = updatedProducts;
+      this.notify("products_changed");
+      if (!this.isDemo()) {
+        if (!this.supabase) throw new Error("Sin conexión a base de datos en modo producción.");
+        updatedProducts.filter((p) => items.some((i) => i.producto_id === p.id && p.controlar_stock)).forEach((p) => {
+          this.syncProductToSupabase(p);
+        });
+      }
     }
 
     const costoEnvio = tipo_entrega === "DELIVERY" ? Number(config.costo_envio || 0) : 0;
@@ -1481,11 +1568,14 @@ class Store {
       total_estimado: totalEstimado, total_real: null, checkout_cart_key: cartKey,
       version: 1,
       tomado_por: null,
+      stock_reserved: true,
+      stock_deducted: false,
       _isNew: true,
       items: items.map((item) => ({
         producto_id: item.producto_id, nombre: item.nombre, categoria: item.categoria,
         unidad_medida: item.unidad_medida, precio_unitario: item.precio_unitario,
         cantidad_solicitada: item.cantidad,
+        cantidad: item.cantidad,
         peso_real: item.unidad_medida === "UNIDAD" ? item.cantidad : null,
         subtotal: item.subtotal_estimado, sin_stock: false,
         ...(item.unidad_medida === "UNIDAD" ? { confirmado_preparacion: false } : {})
@@ -1510,6 +1600,45 @@ class Store {
     const cleanEstadoPago = orderData.estado_pago && ["PENDIENTE", "INFORMADO", "COBRADO"].includes(String(orderData.estado_pago).toUpperCase())
       ? String(orderData.estado_pago).toUpperCase()
       : "PENDIENTE";
+
+    const products = this.getAdminProducts();
+    const orderItems = Array.isArray(orderData.items) ? orderData.items : [];
+    for (const item of orderItems) {
+      const pId = item.producto_id || item.id;
+      const product = products.find((p) => p.id === pId);
+      const qty = Number(item.cantidad ?? item.cantidad_solicitada ?? 0);
+      if (product && product.controlar_stock) {
+        const availableStock = Math.max(0, Number((Number(product.stock_actual || 0) - Number(product.stock_reservado || 0)).toFixed(3)));
+        if (availableStock < qty) {
+          throw new Error(`Stock insuficiente para producto ${product.nombre}`);
+        }
+      }
+    }
+
+    let hasStockChanges = false;
+    const updatedProducts = products.map((p) => {
+      const orderItem = orderItems.find((i) => (i.producto_id || i.id) === p.id);
+      if (orderItem && p.controlar_stock) {
+        hasStockChanges = true;
+        const qty = Number(orderItem.cantidad ?? orderItem.cantidad_solicitada ?? 0);
+        const newReserved = Number((Number(p.stock_reservado || 0) + qty).toFixed(3));
+        return { ...p, stock_reservado: newReserved };
+      }
+      return p;
+    });
+
+    if (hasStockChanges) {
+      writeCritical(this.storageKeys.PRODUCTS, updatedProducts);
+      this.products = updatedProducts;
+      this.notify("products_changed");
+      if (!this.isDemo()) {
+        if (!this.supabase) throw new Error("Sin conexión a base de datos en modo producción.");
+        updatedProducts.filter((p) => orderItems.some((i) => (i.producto_id || i.id) === p.id && p.controlar_stock)).forEach((p) => {
+          this.syncProductToSupabase(p);
+        });
+      }
+    }
+
     const newOrder = {
       id: newId,
       cliente: orderData.cliente,
@@ -1524,8 +1653,10 @@ class Store {
       checkout_cart_key: orderData.checkout_cart_key || null,
       version: orderData.version != null ? Number(orderData.version) : 1,
       tomado_por: orderData.tomado_por || null,
+      stock_reserved: true,
+      stock_deducted: false,
       _isNew: true,
-      items: Array.isArray(orderData.items) ? orderData.items : []
+      items: orderItems
     };
     this.persistOrders([newOrder, ...orders]);
     this.syncOrderToSupabase(newOrder);
@@ -1618,6 +1749,7 @@ class Store {
 
   updateOrderStatus(orderId, newStatus) {
     if (newStatus === "LISTO") return this.finalizeOrderWeighing(orderId);
+    if (newStatus === "CANCELADO") return this.cancelOrder(orderId);
     const previous = this.getOrders().find((o) => o.id === orderId);
     if (previous && ["LISTO", "ENTREGADO"].includes(previous.estado) && ["PENDIENTE", "EN_PREPARACION"].includes(newStatus)) throw new Error("Un pedido finalizado no se puede reabrir desde preparación.");
     let targetOrder = null;
@@ -1786,7 +1918,46 @@ class Store {
       if (!Number.isFinite(subtotal)) throw new Error("El importe final no es válido.");
       return { ...prepared, subtotal };
     });
-    const target = { ...order, items, total_real: items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0), estado: "LISTO", finalizado_at: new Date().toISOString() };
+
+    // Ajuste cuantitativo de inventario (V2-06): liberar reserva y descontar stock actual
+    if (!order.stock_deducted) {
+      const products = this.getAdminProducts();
+      let hasStockChanges = false;
+      const updatedProducts = products.map((p) => {
+        const orderItem = items.find((i) => (i.producto_id || i.id) === p.id);
+        if (orderItem && p.controlar_stock) {
+          hasStockChanges = true;
+          const reservedQty = Number(orderItem.reservedQuantity ?? orderItem.cantidadOriginal ?? orderItem.cantidad_solicitada ?? orderItem.cantidad ?? 0);
+          const finalQty = orderItem.sin_stock ? 0 : Number(orderItem.peso_real ?? orderItem.cantidad ?? orderItem.cantidad_solicitada ?? 0);
+          const newReserved = Math.max(0, Number((Number(p.stock_reservado || 0) - reservedQty).toFixed(3)));
+          const newActual = Math.max(0, Number((Number(p.stock_actual || 0) - finalQty).toFixed(3)));
+          return { ...p, stock_reservado: newReserved, stock_actual: newActual };
+        }
+        return p;
+      });
+
+      if (hasStockChanges) {
+        writeCritical(this.storageKeys.PRODUCTS, updatedProducts);
+        this.products = updatedProducts;
+        this.notify("products_changed");
+        if (!this.isDemo()) {
+          if (!this.supabase) throw new Error("Sin conexión a base de datos en modo producción.");
+          updatedProducts.filter((p) => items.some((i) => (i.producto_id || i.id) === p.id && p.controlar_stock)).forEach((p) => {
+            this.syncProductToSupabase(p);
+          });
+        }
+      }
+    }
+
+    const target = {
+      ...order,
+      items,
+      total_real: items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0),
+      estado: "LISTO",
+      stock_reserved: false,
+      stock_deducted: true,
+      finalizado_at: new Date().toISOString()
+    };
     this.persistOrders(orders.map((o) => o.id === orderId ? target : o));
     this.syncOrderToSupabase(target);
     this.notify("orders_changed");
@@ -1796,8 +1967,31 @@ class Store {
 
   // Eliminar o cancelar completamente un pedido
   deleteOrder(orderId) {
-    const orders = this.getOrders().filter((o) => o.id !== orderId);
-    this.persistOrders(orders);
+    const orders = this.getOrders();
+    const current = orders.find((o) => o.id === orderId);
+    if (current && ["PENDIENTE", "CONFIRMADO", "EN_PREPARACION", "LISTO"].includes(current.estado) && !current.stock_deducted && current.stock_reserved !== false) {
+      const products = this.getAdminProducts();
+      let hasStockChanges = false;
+      const updatedProducts = products.map((p) => {
+        const orderItem = current.items?.find((i) => (i.producto_id || i.id) === p.id);
+        if (orderItem && p.controlar_stock) {
+          hasStockChanges = true;
+          const reservedQty = Number(orderItem.reservedQuantity ?? orderItem.cantidadOriginal ?? orderItem.cantidad_solicitada ?? orderItem.cantidad ?? 0);
+          const newReserved = Math.max(0, Number((Number(p.stock_reservado || 0) - reservedQty).toFixed(3)));
+          return { ...p, stock_reservado: newReserved };
+        }
+        return p;
+      });
+
+      if (hasStockChanges) {
+        writeCritical(this.storageKeys.PRODUCTS, updatedProducts);
+        this.products = updatedProducts;
+        this.notify("products_changed");
+      }
+    }
+
+    const filtered = orders.filter((o) => o.id !== orderId);
+    this.persistOrders(filtered);
     if (this.supabase) {
       const query = this.supabase.from("pedidos").update({
         estado: "CANCELADO",
@@ -1826,18 +2020,50 @@ class Store {
   // Cancelar un pedido de forma lógica (soft cancellation)
   cancelOrder(orderId) {
     let targetOrder = null;
-    const orders = this.getOrders().map((order) => {
+    const orders = this.getOrders();
+    const current = orders.find((o) => o.id === orderId);
+    if (!current) return;
+
+    if (["PENDIENTE", "CONFIRMADO", "EN_PREPARACION", "LISTO"].includes(current.estado) && !current.stock_deducted && current.stock_reserved !== false) {
+      const products = this.getAdminProducts();
+      let hasStockChanges = false;
+      const updatedProducts = products.map((p) => {
+        const orderItem = current.items?.find((i) => (i.producto_id || i.id) === p.id);
+        if (orderItem && p.controlar_stock) {
+          hasStockChanges = true;
+          const reservedQty = Number(orderItem.reservedQuantity ?? orderItem.cantidadOriginal ?? orderItem.cantidad_solicitada ?? orderItem.cantidad ?? 0);
+          const newReserved = Math.max(0, Number((Number(p.stock_reservado || 0) - reservedQty).toFixed(3)));
+          return { ...p, stock_reservado: newReserved };
+        }
+        return p;
+      });
+
+      if (hasStockChanges) {
+        writeCritical(this.storageKeys.PRODUCTS, updatedProducts);
+        this.products = updatedProducts;
+        this.notify("products_changed");
+        if (!this.isDemo()) {
+          if (!this.supabase) throw new Error("Sin conexión a base de datos en modo producción.");
+          updatedProducts.filter((p) => current.items?.some((i) => (i.producto_id || i.id) === p.id && p.controlar_stock)).forEach((p) => {
+            this.syncProductToSupabase(p);
+          });
+        }
+      }
+    }
+
+    const updatedOrders = orders.map((order) => {
       if (order.id === orderId) {
         targetOrder = {
           ...order,
           estado: "CANCELADO",
+          stock_reserved: false,
           cancelado_at: new Date().toISOString()
         };
         return targetOrder;
       }
       return order;
     });
-    this.persistOrders(orders);
+    this.persistOrders(updatedOrders);
     if (targetOrder) this.syncOrderToSupabase(targetOrder);
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);

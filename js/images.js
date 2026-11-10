@@ -222,6 +222,12 @@ export async function processProductImageFile(file) {
   }
 }
 
+export function isDirectImageUrl(id) {
+  if (typeof id !== "string") return false;
+  const trimmed = id.trim();
+  return trimmed.startsWith("https://");
+}
+
 export function createScopedImageLoader() {
   const activeUrls = new Set();
   let generation = 0;
@@ -230,6 +236,26 @@ export function createScopedImageLoader() {
     async hydrate(element, imageId) {
       if (!element || !imageId) return;
       const currentGen = generation;
+      const trimmedId = imageId.trim();
+
+      // Carga directa de URL pública HTTP/HTTPS (Supabase Storage, CDN, Unsplash, etc.)
+      if (isDirectImageUrl(trimmedId)) {
+        const wrapper = element.closest(".product-photo-wrapper") || element.closest(".aspect-square");
+        element.src = trimmedId;
+        element.alt = "";
+        element.loading = "lazy";
+        element.decoding = "async";
+        element.classList.remove("hidden");
+        if (wrapper) wrapper.classList.remove("hidden");
+
+        element.onerror = () => {
+          element.classList.add("hidden");
+          if (wrapper) wrapper.classList.add("hidden");
+        };
+        return;
+      }
+
+      // Carga local desde IndexedDB
       const blob = await getImage(imageId);
       if (currentGen !== generation || !element.isConnected) return;
 
@@ -249,6 +275,8 @@ export function createScopedImageLoader() {
         activeUrls.add(url);
         element.src = url;
         element.alt = "";
+        element.loading = "lazy";
+        element.decoding = "async";
         element.classList.remove("hidden");
         if (wrapper) wrapper.classList.remove("hidden");
 

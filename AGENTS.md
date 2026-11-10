@@ -2,6 +2,8 @@
 
 Producto derivado de Facussttee/MiHuerta. Leer docs/PRODUCT.md y coordination/tasks/<ID>.md.
 - **Contexto de repositorio y Grafo de Conocimiento obligatorio:** Cualquier agente o IA que opere en este repositorio DEBE consultar graphify-out/GRAPH_REPORT.md (resumen global, clusters arquitectónicos y dependencias cruzadas) y graphify-out/graph.json antes de planificar o modificar flujos en el código. La visualización interactiva navegable está disponible en graphify-out/graph.html.
+- **Detección y Ubicación de Raíz Canónica:** Antes de iniciar auditorías, tareas de orquestación o invocaciones multi-agente, verificar si la raíz de trabajo es el repositorio principal (`D:\Escritorio\nexo-pedidos`) o un worktree secundario.
+- **Filosofía Ponytail & Backend Patterns:** Aplicar la solución más simple y directa sin sobre-ingeniería (ponytail), manteniendo patrones limpios de backend (ETag, validación estricta y separación de servicios).
 - Nunca modificar D:\Escritorio\miHuerta ni sus servicios, DB o WhatsApp. Datos sintéticos; cero mensajes reales, push o deploy.
 - Un escritor por worktree. Antigravity implementa paquetes; Codex coordina, revisa y prueba independientemente. No editar BOARD desde el ejecutor.
 - Mantener UX móvil (controles 44 px, inputs >=16 px), pesables estimados/finales y flexibilidad operativa: cancelar, quitar/sumar ítems y corregir entrega.

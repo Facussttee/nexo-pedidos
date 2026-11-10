@@ -13,7 +13,10 @@ test("Production Supabase Sync Suite", async (t) => {
   const upsertedProducts = [];
   const upsertedOrders = [];
   const insertedOrders = [];
+  const updatedOrders = [];
   const upsertedCustomers = [];
+  const orderSelectLogs = [];
+  const capturedProductHeaders = {};
 
   const mockSupabase = {
     from(table) {
@@ -43,8 +46,12 @@ test("Production Supabase Sync Suite", async (t) => {
             };
           },
           upsert(payload) {
+            const queryPromise = Promise.resolve({ error: null });
+            queryPromise.setHeader = (name, val) => {
+              capturedProductHeaders[name] = val;
+            };
             upsertedProducts.push(payload);
-            return Promise.resolve({ error: null });
+            return queryPromise;
           }
         };
       }
@@ -71,8 +78,21 @@ test("Production Supabase Sync Suite", async (t) => {
             return {
               order() {
                 return {
-                  limit() {
+                  limit(n) {
+                    orderSelectLogs.push({ isGlobal: true, limit: n });
                     return Promise.resolve({ data: [] });
+                  }
+                };
+              },
+              eq(col, val) {
+                return {
+                  order() {
+                    return {
+                      limit(n) {
+                        orderSelectLogs.push({ isGlobal: false, col, val, limit: n });
+                        return Promise.resolve({ data: [] });
+                      }
+                    };
                   }
                 };
               }
@@ -97,6 +117,18 @@ test("Production Supabase Sync Suite", async (t) => {
                   data: [{ ...payload, id: payload.id || 501 }],
                   error: null
                 });
+              }
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                updatedOrders.push({ payload, col, val });
+                return {
+                  then(resolve) {
+                    resolve({ data: null, error: null });
+                  }
+                };
               }
             };
           }
@@ -171,7 +203,7 @@ test("Production Supabase Sync Suite", async (t) => {
     assert.equal(products[0].codigo, "MANZ-01");
   });
 
-  await t.test("2. Admin adds a product and it syncs to Supabase productos table", async () => {
+  await t.test("2. Admin adds a product and it syncs with x-nexo-staff-pin header", async () => {
     const draft = {
       nombre: "Pera Williams",
       categoria: "Frutas",
@@ -194,6 +226,7 @@ test("Production Supabase Sync Suite", async (t) => {
     assert.equal(upsertedProducts[0].precio, 3000);
     assert.equal(upsertedProducts[0].codigo, "PERA-01");
     assert.equal(upsertedProducts[0].archivado, false);
+    assert.equal(capturedProductHeaders["x-nexo-staff-pin"], "1234", "Must include staff PIN header");
   });
 
   await t.test("3. Admin archives a product and it syncs to Supabase", async () => {
@@ -259,5 +292,66 @@ test("Production Supabase Sync Suite", async (t) => {
     const lastUpsert = upsertedOrders[upsertedOrders.length - 1];
     assert.equal(lastUpsert.id, 501);
     assert.equal(lastUpsert.estado, "EN_PREPARACION");
+  });
+
+  await t.test("6. Client pullFromSupabase queries only their own phone without staff unlock", async () => {
+    orderSelectLogs.length = 0;
+    store.lockStaff();
+    assert.equal(store.isStaffUnlocked(), false);
+
+    store.setCurrentUser({ telefono: "1155667788", nombre: "Carlos Gómez" });
+    await store.pullFromSupabase();
+
+    assert.equal(orderSelectLogs.length, 1);
+    assert.equal(orderSelectLogs[0].isGlobal, false, "Client without staff unlock must not query global orders");
+    assert.equal(orderSelectLogs[0].col, "cliente_telefono");
+    assert.equal(orderSelectLogs[0].val, "1155667788");
+  });
+
+  await t.test("7. Staff unlock queries all orders globally for Kanban", async () => {
+    orderSelectLogs.length = 0;
+    assert.ok(store.verifyStaffPin("1234"));
+    assert.equal(store.isStaffUnlocked(), true);
+
+    await store.pullFromSupabase();
+
+    assert.equal(orderSelectLogs.length, 1);
+    assert.equal(orderSelectLogs[0].isGlobal, true, "Staff unlocked must query all 50 global orders");
+    assert.equal(orderSelectLogs[0].limit, 50);
+
+    store.lockStaff();
+  });
+
+  await t.test("8. PIN anti-bruteforce lockout triggers after 5 failed attempts", async () => {
+    store.lockStaff();
+    assert.equal(store.isPinLockedOut(), false);
+
+    for (let i = 0; i < 4; i++) {
+      assert.equal(store.verifyStaffPin("0000"), false);
+      assert.equal(store.isPinLockedOut(), false);
+    }
+    // 5th failed attempt triggers 30s lockout
+    assert.equal(store.verifyStaffPin("0000"), false);
+    assert.equal(store.isPinLockedOut(), true);
+    assert.ok(store.getPinLockoutRemainingSeconds() > 0);
+
+    // Even with correct PIN, verification fails while locked out
+    assert.equal(store.verifyStaffPin("1234"), false);
+
+    // Reset lockout for further test cleanliness
+    store.pinLockoutUntil = 0;
+    store.pinFailedAttempts = 0;
+    assert.equal(store.isPinLockedOut(), false);
+    assert.equal(store.verifyStaffPin("1234"), true);
+    store.lockStaff();
+  });
+
+  await t.test("9. deleteOrder performs soft cancellation (CANCELADO) in cloud", async () => {
+    updatedOrders.length = 0;
+    store.deleteOrder(501);
+
+    assert.equal(updatedOrders.length, 1);
+    assert.equal(updatedOrders[0].payload.estado, "CANCELADO");
+    assert.equal(updatedOrders[0].val, 501);
   });
 });

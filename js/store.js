@@ -193,12 +193,32 @@ class Store {
   }
 
   verifyStaffPin(inputPin) {
+    if (this.isPinLockedOut()) {
+      return false;
+    }
     const { staffPin } = this.getLocalSettings();
     const ok = String(inputPin).trim() === String(staffPin).trim();
     if (ok) {
+      this.pinFailedAttempts = 0;
+      this.pinLockoutUntil = 0;
       safeSet(this.storageKeys.PIN_UNLOCKED, true);
+    } else {
+      this.pinFailedAttempts = (this.pinFailedAttempts || 0) + 1;
+      if (this.pinFailedAttempts >= 5) {
+        this.pinLockoutUntil = Date.now() + 30000;
+        this.pinFailedAttempts = 0;
+      }
     }
     return ok;
+  }
+
+  isPinLockedOut() {
+    return Date.now() < (this.pinLockoutUntil || 0);
+  }
+
+  getPinLockoutRemainingSeconds() {
+    if (!this.isPinLockedOut()) return 0;
+    return Math.ceil((this.pinLockoutUntil - Date.now()) / 1000);
   }
 
   isStaffUnlocked() {
@@ -207,6 +227,9 @@ class Store {
 
   lockStaff() {
     safeRemove(this.storageKeys.PIN_UNLOCKED);
+    if (this.config.mode === "production" && this.supabase) {
+      this.pullFromSupabase();
+    }
     this.notify("staff_locked");
   }
 
@@ -257,15 +280,28 @@ class Store {
   async pullFromSupabase() {
     if (!this.supabase) return;
     try {
+      const isStaff = this.isStaffUnlocked();
       const currentUser = this.getCurrentUser();
-      const clientQuery = currentUser?.telefono
-        ? this.supabase.from("clientes").select("*").eq("telefono", String(currentUser.telefono).replace(/\D/g, ""))
+      const cleanPhone = currentUser?.telefono
+        ? String(currentUser.telefono).replace(/\D/g, "")
+        : "";
+
+      const clientQuery = isStaff
+        ? null
+        : cleanPhone
+        ? this.supabase.from("clientes").select("*").eq("telefono", cleanPhone)
         : null;
+
+      const orderQuery = isStaff
+        ? this.supabase.from("pedidos").select("*").order("id", { ascending: false }).limit(50)
+        : cleanPhone
+        ? this.supabase.from("pedidos").select("*").eq("cliente_telefono", cleanPhone).order("id", { ascending: false }).limit(20)
+        : Promise.resolve({ data: [] });
 
       const [prodRes, cliRes, ordRes] = await Promise.all([
         this.supabase.from("productos").select("*").order("id"),
         clientQuery ? clientQuery : Promise.resolve({ data: [] }),
-        this.supabase.from("pedidos").select("*").order("id", { ascending: false }).limit(50)
+        orderQuery
       ]);
 
       if (prodRes.data && prodRes.data.length > 0) {
@@ -333,7 +369,7 @@ class Store {
     this.realtimeChannel = this.supabase
       .channel("nexo-pedidos-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
-        if (payload.eventType === "INSERT") {
+        if (payload.eventType === "INSERT" && this.isStaffUnlocked()) {
           this.playAudioAlert();
         }
         this.pullFromSupabase();
@@ -421,7 +457,12 @@ class Store {
         imagen_id: product.imagen_id || null,
         updated_at: new Date().toISOString()
       };
-      const { error } = await this.supabase.from("productos").upsert(payload);
+      const query = this.supabase.from("productos").upsert(payload);
+      const { staffPin } = this.getLocalSettings();
+      if (staffPin && typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-staff-pin", staffPin);
+      }
+      const { error } = await query;
       if (error) {
         console.warn("Error guardando producto en Supabase:", error);
         this.notify("cloud_error", error.message);
@@ -530,7 +571,7 @@ class Store {
     if (product.codigo !== undefined && (typeof product.codigo !== "string" || product.codigo.length > 50)) throw new Error("El SKU admite hasta 50 caracteres.");
     if (product.detalle !== undefined && (typeof product.detalle !== "string" || product.detalle.length > 500)) throw new Error("El detalle admite hasta 500 caracteres.");
     if (product.imagen_id !== undefined && product.imagen_id !== null) {
-      if (typeof product.imagen_id !== "string" || !product.imagen_id.trim() || product.imagen_id.length > 100) throw new Error("El identificador de imagen no es válido.");
+      if (typeof product.imagen_id !== "string" || !product.imagen_id.trim() || product.imagen_id.length > 500) throw new Error("El identificador de imagen no es válido.");
       if (product.imagen_id.startsWith("data:")) throw new Error("Las imágenes no deben guardarse en el producto como base64 o blob.");
     }
   }
@@ -1026,7 +1067,10 @@ class Store {
     const orders = this.getOrders().filter((o) => o.id !== orderId);
     this.persistOrders(orders);
     if (this.supabase) {
-      this.supabase.from("pedidos").delete().eq("id", orderId).then(() => {});
+      this.supabase.from("pedidos").update({
+        estado: "CANCELADO",
+        cancelado_at: new Date().toISOString()
+      }).eq("id", orderId).then(() => {});
     }
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);

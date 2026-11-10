@@ -342,7 +342,11 @@ export function renderAdminView(container) {
     update();
 
     if (product?.imagen_id) {
-      getImage(product.imagen_id).then(blob => {
+      if (product.imagen_id.startsWith("https://") || product.imagen_id.startsWith("http://")) {
+        stagedPreviewUrl = product.imagen_id;
+        const previewImg = container.querySelector("#form-photo-preview");
+        if (previewImg) previewImg.src = product.imagen_id;
+      } else getImage(product.imagen_id).then(blob => {
         if (sessionToken !== formSessionToken || !productDraft || editingProductId !== id) return;
         if (!blob) return;
         const previewImg = container.querySelector("#form-photo-preview");

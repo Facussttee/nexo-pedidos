@@ -285,6 +285,35 @@ export function createStaticServer({ publicRoot } = {}) {
       }
 
       const contentType = MIME_TYPES[finalExt] || "application/octet-stream";
+      const securityHeaders = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+      };
+      const etag = `W/"${finalStat.size.toString(16)}-${Math.trunc(finalStat.mtimeMs).toString(16)}"`;
+      const ifNoneMatch = req.headers["if-none-match"];
+
+      if (ifNoneMatch && (ifNoneMatch === etag || ifNoneMatch === "*" || ifNoneMatch.includes(etag))) {
+        res.writeHead(304, {
+          "ETag": etag,
+          "Cache-Control": "no-cache",
+          ...securityHeaders
+        });
+        return res.end();
+      }
+
+      if (method === "HEAD") {
+        res.writeHead(200, {
+          "Content-Type": contentType,
+          "Content-Length": String(finalStat.size),
+          "ETag": etag,
+          "Cache-Control": "no-cache",
+          ...securityHeaders
+        });
+        return res.end();
+      }
+
       let content;
       try {
         content = await fs.promises.readFile(realTarget);
@@ -298,16 +327,14 @@ export function createStaticServer({ publicRoot } = {}) {
       res.writeHead(200, {
         "Content-Type": contentType,
         "Content-Length": String(content.byteLength),
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "no-cache"
+        "ETag": etag,
+        "Cache-Control": "no-cache",
+        ...securityHeaders
       });
 
-      if (method === "HEAD") {
-        res.end();
-      } else {
-        res.end(content);
-      }
-    } catch {
+      res.end(content);
+    } catch (err) {
+      console.error("[static-server] Error inesperado en petición:", err);
       if (!res.headersSent) {
         sendPlainText(res, method, 500, "500 Internal Server Error");
       } else {

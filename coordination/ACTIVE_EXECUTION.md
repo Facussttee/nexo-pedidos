@@ -1,4 +1,13 @@
-# Estado actual — demo local verificada, 2026-11-04
+# Estado actual — Nexo Pedidos v2 completado e integrado en rama `V2`, 2026-11-10
+
+- **Rama activa y sincronizada**: `V2` (en `d:\Escritorio\nexo-pedidos-worktrees\quality` y en el repositorio canónico `D:\Escritorio\nexo-pedidos`), paralela a `main`.
+- **Estado de ejecución**: Todos los paquetes del roadmap v2 (`V2-00` a `V2-07`) están **DONE**, probados e integrados con `--no-ff` en `V2`. No hay subagentes ni escritores activos.
+- **Bundle y raíz pública**: `js/bundle.js` regenerado en UTF-8 estricto sin BOM (`node --check js/bundle.js` OK) y `dist/public` actualizado mediante `node scripts/build-public.mjs`.
+- **Verificación de suites**: `test-demo-isolation`, `test-static-server`, `test-phone-numeric-validation`, `test-v2-01-privacy-rls`, `test-v2-02-authoritative-checkout`, `test-v2-03-storage-and-config`, `test-v2-04-payment-separation`, `test-catalog-import`, `test-inventory-stock` y `test-v2-07-whatsapp-outbox` en verde.
+
+---
+
+## Historial de cierre demo previo — 2026-11-04
 
 No hay escritor de código activo. Antigravity quedó detenido; agentes frontend/backend/QA/revisor finalizaron. La candidata completa está en D:/Escritorio/nexo-pedidos, rama codex/np-coordination, working tree sin commit sobre cea4d0e. Demo activa: http://127.0.0.1:3000/?demo=1, sólo localhost/dist/public, sin worker/DB/mensajes reales.
 

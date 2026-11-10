@@ -63,3 +63,18 @@ SO observado: Microsoft Windows NT 10.0.26100.0. Git 2.56.0.windows.4; Node v26.
 
 Implementado, probado local e integrado. No desplegado ni validado en piloto. Mantiene dependencias visuales CDN; PIN local, persistencia autoritativa, Auth/RLS, IDs servidor, inventario cuantitativo, entrega/pago separados y outbox siguen pendientes. El resumen heredado del operario aún usa total_real || total_estimado: caso total final cero registrado como deuda del tramo de pesaje, no corregido fuera de alcance.
 Siguiente propuesta: coordination/tasks/NP-004-PROPOSED.md — Auth/roles/RLS y seguimiento por token acotado, con pruebas positivas/negativas contra DB descartable. Sin ejecutor ni servicios iniciados. Mostrar este checkpoint y seguir las indicaciones de Facu antes de otra fase.
+
+---
+
+## Checkpoint Nexo Pedidos v2 (`V2-00` a `V2-07`) — 2026-11-10
+
+- **Rama integrada**: `V2` (sincronizada en `d:\Escritorio\nexo-pedidos-worktrees\quality` y en `D:\Escritorio\nexo-pedidos`), manteniendo `main` intacta como línea base.
+- **Paquetes completados e integrados**:
+  1. `V2-00`: Unificación Git (`d2fb02a`), deslop y CI (`Dockerfile`, `.github/workflows/ci.yml`).
+  2. `V2-01` (`feature/v2-01-order-privacy-rls`): RLS estricta en `pedidos`/`clientes` (`verify_staff_pin_header()` y `x-nexo-client-phone`) + RPC `update_staff_pin`.
+  3. `V2-02` (`feature/v2-02-authoritative-checkout`): RPC `create_order_atomic` (precios desde `productos`, idempotencia `checkout_cart_key`) + bloqueo optimista (`version`, `tomado_por`).
+  4. `V2-03` (`feature/v2-03-storage-media-comercio-config`): Imágenes híbridas (IndexedDB en demo + Supabase Storage `product-images` en prod) + tabla singleton `public.comercio_config`.
+  5. `V2-04` (`feature/v2-04-payment-delivery-separation`): Columnas `estado_pago` y `metodo_pago` desacopladas de la entrega, con controles rápidos y filtro de pendientes de cobro.
+  6. `V2-05` (`feature/v2-05-catalog-importer`): Parser local RFC 4180 (`js/csv-parser.js`), vista previa sin escritura y lote seguro `importCatalogBatch` con backup y protección de snapshots.
+  7. `V2-06` (`feature/v2-06-inventory-stock-reservation`): Inventario cuantitativo (`controlar_stock`, `stock_actual`, `stock_reservado`), reserva en checkout, descuento en balanza y liberación única al cancelar.
+  8. `V2-07` (`feature/v2-07-whatsapp-outbox`): Cola durable `public.whatsapp_outbox`, claim atómico `FOR UPDATE SKIP LOCKED`, backoff exponencial en `bot/index.js` y estado/reintento en Operador.

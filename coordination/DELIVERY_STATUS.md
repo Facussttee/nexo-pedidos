@@ -74,3 +74,20 @@ Se usaron computer-use para Antigravity; graphify para orientar la exploración 
 Incidencia de herramienta: la revisión automática rechazó cerrar un panel vacío de Antigravity por posible cierre de aplicación con estado sin guardar. Se dejó abierto y no bloqueó la entrega; no se intentó eludir el rechazo.
 
 Publicación posterior: Facu autorizó guardar y actualizar GitHub con esta candidata el 2026-11-04. Las menciones sin commit/push describen el checkpoint previo; consultar el historial Git para la publicación. No se autorizó ni ejecutó despliegue en este cierre.
+
+---
+
+## Actualización Nexo Pedidos v2 (`V2-00` a `V2-07`) — 2026-11-10
+
+Estado: **COMPLETADO E INTEGRADO EN RAMA `V2`** (sincronizado en `d:\Escritorio\nexo-pedidos-worktrees\quality` y en el repositorio canónico `D:\Escritorio\nexo-pedidos`).
+
+| Paquete | Rama Feature | Estado | Resumen Técnico |
+|---|---|---|---|
+| **V2-00** | `main` (`fe1f5e9`) | **DONE** | Unificación Git (`d2fb02a`), deslop en `app.js`/`operator.js`/`bot/index.js`, `Dockerfile` y `.github/workflows/ci.yml`. |
+| **V2-01** | `feature/v2-01-order-privacy-rls` | **DONE** | RLS estricta en `pedidos` y `clientes` (`verify_staff_pin_header()` y `x-nexo-client-phone`), RPC `update_staff_pin(p_old_pin, p_new_pin)` con `FOR UPDATE`. |
+| **V2-02** | `feature/v2-02-authoritative-checkout` | **DONE** | RPC `create_order_atomic` (precios desde `productos`, idempotencia por `checkout_cart_key`) y bloqueo optimista (`version`, `tomado_por`) en `takeOrder`. |
+| **V2-03** | `feature/v2-03-storage-media-comercio-config` | **DONE** | Imágenes híbridas (IndexedDB en demo, bucket `product-images` en Supabase Storage en prod) y singleton `public.comercio_config` editable desde Admin. |
+| **V2-04** | `feature/v2-04-payment-delivery-separation` | **DONE** | Columnas `estado_pago` (`PENDIENTE`, `INFORMADO`, `COBRADO`) y `metodo_pago` (`EFECTIVO`, `TRANSFERENCIA`, `OTRO`), controles en tarjeta y filtro de impagos. |
+| **V2-05** | `feature/v2-05-catalog-importer` | **DONE** | Parser RFC 4180 `js/csv-parser.js` sin dependencias, preservación de SKU string, modal de vista previa sin escritura y lote seguro `importCatalogBatch`. |
+| **V2-06** | `feature/v2-06-inventory-stock-reservation` | **DONE** | Inventario cuantitativo (`controlar_stock`, `stock_actual`, `stock_reservado`), reserva en checkout, descuento en balanza y liberación única al cancelar. |
+| **V2-07** | `feature/v2-07-whatsapp-outbox` | **DONE** | Tabla `public.whatsapp_outbox`, RPCs `enqueue_whatsapp_outbox` / `claim_whatsapp_outbox_batch` (`FOR UPDATE SKIP LOCKED`) / `retry_whatsapp_outbox` y UI en Operador. |

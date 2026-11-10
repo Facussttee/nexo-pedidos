@@ -2,6 +2,7 @@
 
 Producto derivado de Facussttee/MiHuerta. Leer docs/PRODUCT.md y coordination/tasks/<ID>.md.
 - **Contexto de repositorio y Grafo de Conocimiento obligatorio:** Cualquier agente o IA que opere en este repositorio DEBE consultar graphify-out/GRAPH_REPORT.md (resumen global, clusters arquitectónicos y dependencias cruzadas) y graphify-out/graph.json antes de planificar o modificar flujos en el código. La visualización interactiva navegable está disponible en graphify-out/graph.html.
+- **Documentación Siempre Actualizada (Regla Permanente):** Ante cualquier avance, fix, nueva feature, cambio de arquitectura o cierre de tarea, actualizar en el mismo turno la documentación canónica (`README.md`, `PROJECT.md`, `docs/PRODUCT.md`, `docs/REPO_MAP.md` y registros en `coordination/`) para que cualquier agente o sesión tenga el estado exacto y al día.
 - **Detección y Ubicación de Raíz Canónica:** Antes de iniciar auditorías, tareas de orquestación o invocaciones multi-agente, verificar si la raíz de trabajo es el repositorio principal (`D:\Escritorio\nexo-pedidos`) o un worktree secundario.
 - **Filosofía Ponytail & Backend Patterns:** Aplicar la solución más simple y directa sin sobre-ingeniería (ponytail), manteniendo patrones limpios de backend (ETag, validación estricta y separación de servicios).
 - Nunca modificar D:\Escritorio\miHuerta ni sus servicios, DB o WhatsApp. Datos sintéticos; cero mensajes reales, push o deploy.

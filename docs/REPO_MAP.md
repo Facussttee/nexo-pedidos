@@ -1,43 +1,43 @@
-# Mapa real del repositorio — Nexo Pedidos (E0)
+# Mapa real del repositorio — Nexo Pedidos v2
 
-Base: commit `169247d`, rama `codex/experiment-E0`. Mapa por lectura estática local; no se ejecutó código, ni red, ni Supabase, ni WhatsApp. Lo que sigue describe lo que el código *hace*, no que esté desplegado ni que sea seguro.
+Base actualizada: rama `V2` (2026-11-10) con todos los paquetes `V2-00` a `V2-07` integrados y verificados.
 
-## Componentes
+## Componentes Principales
 
 | Ruta | Rol |
 |---|---|
-| `index.html`, `css/style.css` | Shell web / SPA (no se comprobó manifest ni service worker) |
-| `js/app.js` | Router de vistas y compuerta de PIN (`renderPinGate` L103, `navigate` L195) |
-| `js/products-data.js` | Catálogo semilla `INITIAL_PRODUCTS` |
-| `js/store.js` | Estado híbrido localStorage + Supabase + Realtime (clase única, 1023 líneas) |
-| `js/views/client.js` / `operator.js` / `admin.js` | Vistas cliente, mostrador/balanza, administración |
-| `js/bundle.js` | Bundle generado (no se editó) |
-| `supabase/schema.sql` | Tablas `clientes`, `productos`, `pedidos`, RLS, Realtime, semilla |
-| `bot/index.js` | Bot WhatsApp (Baileys) + servidor web local + listener Realtime |
+| `index.html`, `css/style.css` | Shell web / SPA móvil (touch targets >= 44 px, inputs >= 16 px, cero overflow horizontal) |
+| `js/app.js` | Router de vistas (`cliente`, `operario`, `admin`), compuerta de PIN y sincronización de tema |
+| `js/config.js` / `js/public-config.js` | Resolución y validación fail-closed de configuración pública (`demo` vs `production`) |
+| `js/products-data.js` | Catálogo semilla `INITIAL_PRODUCTS` con campos de inventario (`controlar_stock`, `stock_actual`, `stock_reservado`) |
+| `js/csv-parser.js` | Parser RFC 4180 sin dependencias (`parseCatalogTabular`, `buildCatalogImportPreview`) para importación CSV/TSV (`V2-05`) |
+| `js/images.js` | Pipeline híbrido de imágenes: compresión WebP/JPEG a 512 px, IndexedDB en demo y bucket `product-images` en Supabase Storage en producción (`V2-03`) |
+| `js/store.js` | Estado central reactivo (`localStorage` + Supabase REST/RPC + Realtime) |
+| `js/views/client.js` | Catálogo móvil, control de stock disponible, horarios/mínimo de compra, medio de pago y seguimiento de pedidos |
+| `js/views/operator.js` | Kanban de preparación, toma exclusiva (`version`/`tomado_por`), balanza kg/g, controles de cobro y estado/reintento de WhatsApp Outbox |
+| `js/views/admin.js` | CRUD de catálogo e inventario, importador masivo con vista previa, editor de `comercio_config` y cambio de PIN (`update_staff_pin`) |
+| `js/bundle.js` | Bundle unificado en UTF-8 sin BOM generado por `build-bundle.ps1` |
+| `supabase/schema.sql` | Esquema completo v2 (`clientes`, `productos`, `pedidos`, `comercio_config`, `whatsapp_outbox`, `nexo_secrets`), RPCs transaccionales, triggers, RLS y Realtime |
+| `bot/index.js` | Worker de WhatsApp (Baileys) con procesamiento de `whatsapp_outbox` (`claim_whatsapp_outbox_batch`), backoff exponencial y servidor local |
+| `scripts/build-public.mjs` | Builder de allowlist estricta hacia `dist/public` |
 
-## Flujo real: catálogo → store → Supabase → bot
+## Flujo Real en Nexo Pedidos v2
 
-1. **Catálogo.** `js/store.js` L1 importa `INITIAL_PRODUCTS`; `init()` (L83) lo guarda en localStorage si no existe (L88-90). `getProducts()` (L437) lo lee; lo consumen `client.js` (L314, L736), `operator.js` (L248) y `admin.js` (L12).
-2. **Carrito.** `addToCart` (L525), `setCartQuantity` (L559), `getCartSummary` (L588). Todo local.
-3. **Pedido.** `client.js` L1145 llama `createOrder` (store L661): id local `max(id)+1` o 101 (L666), estado `PENDIENTE`, `total_real: null`, ítems con `sin_stock:false`. Guarda local (L691) y llama `syncOrderToSupabase` (L692).
-4. **Sync a Supabase.** `syncOrderToSupabase` (L396): `upsert` en `clientes` (L402) y luego en `pedidos` (L410). Errores sólo `console.warn`; sin reintento ni cola. Se invoca desde cada mutación (L692, 710, 740, 771, 811, 844, 871, 917, 941).
-5. **Conexión.** `init()` llama `initSupabaseConnection` (L298) cuando hay configuración cloud (L242-245); `pullFromSupabase` (L316) lee `productos`, `clientes` por teléfono y los últimos 50 `pedidos`; `subscribeToSupabaseRealtime` (L376) escucha `pedidos` y `productos` y vuelve a hacer pull completo.
-6. **Operación.** `operator.js`: `updateOrderStatus` (L742, L1007), `cancelOrder` (L757), `finalizeOrderWeighing` (L997); store: `updateItemWeight` L714, `toggleItemOutOfStock` L746, `removeItemFromOrder` L852, `addProductToOrder` L876, `updateOrderDetails` L922. Existe la flexibilidad cancelar / quitar / sumar ítems / pesar.
-7. **Bot.** `bot/index.js` crea el cliente Supabase (L183), `setupSupabaseRealtimeListener` (L425) escucha `pedidos`; si `estado === "LISTO"` y no `notificado_whatsapp` (L447) llama `notifyOrderReady` (L365), que envía por WhatsApp y marca `notificado_whatsapp` (L380-388). `reconcilePendingReadyOrders` (L397) recupera pedidos LISTO sin notificar. `startWhatsAppBot()` se invoca al cargar el módulo (L455: efecto inmediato al importarlo/ejecutarlo).
-8. **Esquema.** `supabase/schema.sql`: `pedidos` L32-47 con `items JSONB`; RLS habilitada L83-85; políticas `FOR ALL USING (true) WITH CHECK (true)` L89-104; Realtime y semilla L106-155.
-
-## Diferencias concretas entre docs y código
-
-1. **Modelo de datos.** `docs/03_ARQUITECTURA_Y_DATOS.md` L160-170 define una tabla `pedido_items` con `sin_stock`, `peso_real`, etc. `supabase/schema.sql` no la tiene: los ítems son una columna `items JSONB` en `pedidos` (L41), y `store.js` escribe `items` directamente (L419).
-2. **Seguridad/RLS.** `docs/05_PLAN_DE_DESARROLLO_MVP.md` L47 habla de esquema "con políticas RLS" y L43 de PIN de admin. En código las políticas son abiertas a todos (`schema.sql` L89-104). El PIN por defecto está en el cliente (`store.js` L223, L253, L282-286: comparación en el navegador) y la configuración cloud por defecto está embebida en `store.js` L220-223 y L250-253. El PIN es sólo control de interfaz, no autorización de datos.
-3. **Rutas/estado de despliegue.** `README.md` L84-85 y `docs/05` L47, L52 enlazan a rutas absolutas del repo original (`miHuerta`), y `docs/05` L26 afirma "100% Operativo" para un proyecto cloud concreto. El despliegue y el estado operativo declarados no se pueden verificar estáticamente desde este repo.
-
-Observación adicional: los ids de pedido se calculan en el cliente (`store.js` L666) mientras `schema.sql` L33 define `SERIAL`; con varios dispositivos puede haber colisión o sobrescritura por `upsert`.
-
-## Límites
-
-- No se verificó despliegue, estado de la base remota, seguridad, ni comportamiento en navegador o WhatsApp.
-- Sin Auth, idempotencia, transacciones ni outbox; la notificación depende de un bot activo y del flag `notificado_whatsapp` (no es entrega exactamente-una-vez).
-- No hay stock cuantitativo: `disponible` y `sin_stock` son booleanos.
-- No se copiaron claves, endpoints, teléfonos ni direcciones; sólo referencias a línea.
-- Números de línea válidos para `169247d`.
+1. **Catálogo e Inventario (`V2-03`, `V2-05`, `V2-06`)**:
+   - `js/store.js` carga `productos` y `comercio_config`.
+   - En Admin (`js/views/admin.js`), el usuario puede crear/editar productos individualmente (incluyendo `controlar_stock` y `stock_actual`) o importar planillas CSV/TSV mediante `js/csv-parser.js` con vista previa sin escritura y aplicación por lote (`importCatalogBatch`) que preserva snapshots históricos.
+2. **Carrito y Checkout Autoritativo (`V2-02`, `V2-04`, `V2-06`)**:
+   - `client.js` valida topes de stock disponible (`stock_actual - stock_reservado`), monto de `compra_minima` y selección de `metodo_pago`.
+   - En producción, `syncOrderToSupabase` invoca el RPC `public.create_order_atomic`, que verifica disponibilidad, reserva stock atómicamente (`stock_reservado`), toma el precio real desde `public.productos` y garantiza idempotencia por `checkout_cart_key`.
+3. **Privacidad y Seguridad RLS (`V2-01`)**:
+   - Las tablas `pedidos`, `clientes`, `productos`, `comercio_config` y `whatsapp_outbox` tienen RLS activo.
+   - Las operaciones de personal verifican `public.verify_staff_pin_header()` (`x-nexo-staff-pin`) contra `public.nexo_secrets`.
+   - Las consultas de clientes filtran por `x-nexo-client-phone`.
+4. **Preparación, Toma Exclusiva y Balanza (`V2-02`, `V2-04`, `V2-06`)**:
+   - `store.takeOrder` aplica bloqueo optimista (`version` + `tomado_por`) para que dos operarios no tomen el mismo pedido.
+   - Al finalizar el pesaje (`finalizeOrderWeighing` / `finalize_order_stock_rpc`), se libera `stock_reservado` y se descuenta el peso/cantidad real de `stock_actual`. Si se cancela (`cancelOrder` / `release_order_stock_rpc`), se libera la reserva una sola vez.
+   - El cobro (`estado_pago`: `PENDIENTE`, `INFORMADO`, `COBRADO`) se gestiona de forma desacoplada de la entrega (`updateOrderPayment`).
+5. **WhatsApp Outbox Durable (`V2-07`)**:
+   - Al pasar un pedido a `LISTO`, el trigger `trigger_order_ready_outbox` encola el mensaje en `public.whatsapp_outbox`.
+   - `bot/index.js` reclama mensajes con `claim_whatsapp_outbox_batch` (`FOR UPDATE SKIP LOCKED`), marca `SENT` o `FAILED` con backoff exponencial y registra `ultimo_error`.
+   - `operator.js` muestra el badge de estado de outbox, intentos, último error y el botón de reintento manual (`store.retryWhatsAppOutbox`).

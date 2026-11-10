@@ -323,12 +323,12 @@ async function startWhatsAppBot() {
 }
 
 // Función común y segura para despachar el mensaje de pedido pesado y listo
-async function notifyOrderReady(sock, order) {
-  const phone = order.cliente_telefono;
+async function notifyOrderReady(sock, order, outboxItem = null) {
+  const phone = outboxItem?.telefono || order?.cliente_telefono;
   if (!phone) return false;
 
   const jid = await resolveWhatsAppJid(sock, phone);
-  const summaryText = buildOrderReadyMessage(order);
+  const summaryText = outboxItem?.mensaje || buildOrderReadyMessage(order);
 
   try {
     await sock.sendMessage(jid, { text: summaryText });
@@ -346,17 +346,76 @@ async function notifyOrderReady(sock, order) {
           notificado_at: new Date().toISOString()
         })
         .eq("id", order.id);
+
+      if (outboxItem?.id) {
+        await supabase
+          .from("whatsapp_outbox")
+          .update({
+            estado: "SENT",
+            ultimo_error: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", outboxItem.id);
+      }
     }
     return true;
   } catch (err) {
     console.error(`[ERROR] Falló el envío del resumen del pedido #${order.id}:`, err.message);
+    if (supabase && outboxItem?.id) {
+      const attempts = Number(outboxItem.intentos || 1);
+      const backoffSeconds = Math.min(3600, Math.pow(2, attempts) * 15);
+      const nextRetryAt = new Date(Date.now() + backoffSeconds * 1000).toISOString();
+      await supabase
+        .from("whatsapp_outbox")
+        .update({
+          estado: "FAILED",
+          ultimo_error: String(err.message || "Error al enviar mensaje de WhatsApp"),
+          next_retry_at: nextRetryAt,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", outboxItem.id);
+    }
     return false;
+  }
+}
+
+// Procesamiento de la cola durable whatsapp_outbox (V2-07)
+async function processWhatsAppOutboxBatch(sock) {
+  if (!supabase) return;
+  try {
+    const { data: claimed, error } = await supabase.rpc("claim_whatsapp_outbox_batch", { p_limit: 5 });
+    if (error || !Array.isArray(claimed) || claimed.length === 0) return;
+
+    for (const item of claimed) {
+      const { data: order } = await supabase
+        .from("pedidos")
+        .select("*")
+        .eq("id", item.pedido_id)
+        .maybeSingle();
+
+      if (!order) {
+        await supabase
+          .from("whatsapp_outbox")
+          .update({
+            estado: "FAILED",
+            ultimo_error: "Pedido no encontrado en base de datos",
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", item.id);
+        continue;
+      }
+
+      await notifyOrderReady(sock, order, item);
+    }
+  } catch (err) {
+    console.warn("[OUTBOX] Error procesando lote de whatsapp_outbox:", err.message);
   }
 }
 
 // Reconciliación: enviar avisos a pedidos LISTO que se prepararon mientras el bot estaba apagado
 async function reconcilePendingReadyOrders(sock) {
   if (!supabase) return;
+  await processWhatsAppOutboxBatch(sock);
   try {
     const { data: pending, error } = await supabase
       .from("pedidos")
@@ -380,7 +439,7 @@ async function reconcilePendingReadyOrders(sock) {
   }
 }
 
-// 2. Suscribirse en tiempo real a los pedidos que pasan a estado "LISTO" en Supabase
+// 2. Suscribirse en tiempo real a los pedidos que pasan a estado "LISTO" y a whatsapp_outbox en Supabase
 let realtimeChannel = null;
 
 function setupSupabaseRealtimeListener(sock) {
@@ -390,10 +449,24 @@ function setupSupabaseRealtimeListener(sock) {
     supabase.removeChannel(realtimeChannel);
   }
 
-  console.log("[REALTIME] Escuchando pedidos listos en Supabase...");
+  console.log("[REALTIME] Escuchando pedidos listos y cola whatsapp_outbox en Supabase...");
 
   realtimeChannel = supabase
     .channel("bot-pedidos-listos")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "whatsapp_outbox"
+      },
+      async (payload) => {
+        const row = payload.new;
+        if (row && (row.estado === "PENDING" || row.estado === "FAILED")) {
+          await processWhatsAppOutboxBatch(sock);
+        }
+      }
+    )
     .on(
       "postgres_changes",
       {
@@ -406,7 +479,7 @@ function setupSupabaseRealtimeListener(sock) {
 
         // Disparar mensaje cuando el estado es LISTO y aún no fue notificado por WhatsApp
         if (nuevo && nuevo.estado === "LISTO" && !nuevo.notificado_whatsapp) {
-          await notifyOrderReady(sock, nuevo);
+          await processWhatsAppOutboxBatch(sock);
         }
       }
     )

@@ -90,6 +90,58 @@ function renderPaymentControls(order) {
   `;
 }
 
+function renderWhatsAppOutboxSection(order) {
+  const status = (order?.whatsapp_outbox_status || (order?.notificado_whatsapp ? "SENT" : "PENDING")).toUpperCase();
+  const attempts = Number(order?.whatsapp_attempts || (order?.notificado_whatsapp ? 1 : 0));
+  const lastError = order?.whatsapp_last_error || "";
+
+  let badgeClass = "";
+  let statusLabel = "";
+
+  if (status === "SENT") {
+    badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800";
+    statusLabel = "WhatsApp: Enviado";
+  } else if (status === "PROCESSING") {
+    badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-300 dark:border-blue-800";
+    statusLabel = "WhatsApp: Procesando";
+  } else if (status === "FAILED") {
+    badgeClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800";
+    statusLabel = "WhatsApp: Falló envío";
+  } else {
+    badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800";
+    statusLabel = "WhatsApp: En cola";
+  }
+
+  return `
+    <div data-outbox-order="${order.id}" class="mt-3 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span data-outbox-badge="${order.id}" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${badgeClass}">
+            <span>${statusLabel}</span>
+          </span>
+          <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            Intentos: ${attempts}
+          </span>
+        </div>
+        ${status !== "SENT" ? `
+          <button
+            type="button"
+            data-retry-whatsapp-order="${order.id}"
+            class="btn-retry-whatsapp min-h-[44px] px-3 py-1.5 bg-slate-900 hover:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition tap-feedback touch-target flex items-center gap-1.5"
+          >
+            <span>Reintentar envío</span>
+          </button>
+        ` : ""}
+      </div>
+      ${lastError ? `
+        <p data-outbox-error="${order.id}" class="text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded-xl p-2">
+          Último error: ${escapeHtml(lastError)}
+        </p>
+      ` : ""}
+    </div>
+  `;
+}
+
 export function renderOperatorView(container) {
   let activeTab = "PENDIENTE"; // PENDIENTE | EN_PREPARACION | LISTO | ENTREGADO
   let editingOrderId = null; // ID del pedido que se está editando en modal
@@ -460,6 +512,9 @@ export function renderOperatorView(container) {
                 <div class="mt-3 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-xs text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line leading-relaxed">
                   ${escapeHtml(waSummary)}
                 </div>
+
+                <!-- Estado Outbox WhatsApp y Reintento (V2-07) -->
+                ${renderWhatsAppOutboxSection(order)}
 
                 <div class="grid grid-cols-2 gap-2 mt-4">
                   <button
@@ -921,6 +976,20 @@ Alias para transferir: ${businessAlias}
         if (fb && res.simulated) {
           fb.textContent = `Envío simulado en Modo Demo para #${order.id} (${order.cliente.telefono}). No se contactó ningún número real.`;
           fb.classList.remove("hidden");
+        }
+      });
+    });
+
+    container.querySelectorAll(".btn-retry-whatsapp").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.retryWhatsappOrder);
+        try {
+          await store.retryWhatsAppOutbox(id);
+          actionError = "";
+          update();
+        } catch (error) {
+          showError(error.message);
         }
       });
     });

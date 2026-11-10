@@ -4,7 +4,7 @@ import { putImage, getImage, deleteImage, processProductImageFile, createScopedI
 
 export function renderAdminView(container) {
   let selectedCategory = "Todos", selectedStatus = "Todos", searchQuery = "";
-  let showCloudSettings = false, configSavedToast = false;
+  let showCloudSettings = false, configSavedToast = false, pinError = "";
   let productDraft = null, editingProductId = null, formError = "", notice = "";
 
   let stagedImageBlob = null;
@@ -54,12 +54,24 @@ export function renderAdminView(container) {
               <button id="btn-admin-logout" class="${buttonClass}">Salir</button>
             </div>
           </div>
-          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2">
-            <label for="cfg-pin" class="block text-xs font-bold text-slate-700 dark:text-slate-200">PIN del negocio</label>
-            <input id="cfg-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin)}" class="${inputClass}" />
-            <p class="text-xs text-slate-500 dark:text-slate-400">El PIN bloquea el acceso en este dispositivo.</p>
-            <button class="${buttonClass}" type="submit">Guardar PIN Local</button>
-            ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN guardado</p>' : ""}
+          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-3">
+            <div>
+              <span class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">PIN del negocio</span>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Actualizá el PIN de Staff para este dispositivo y el servidor.</p>
+            </div>
+            <div class="space-y-2">
+              <div>
+                <label for="cfg-old-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">PIN actual</label>
+                <input id="cfg-old-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Ingresá el PIN actual" class="${inputClass}" required />
+              </div>
+              <div>
+                <label for="cfg-new-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nuevo PIN (4 a 8 dígitos)</label>
+                <input id="cfg-new-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN" class="${inputClass}" required />
+              </div>
+            </div>
+            <button id="btn-save-pin" class="${buttonClass} bg-emerald-600 hover:bg-emerald-500 text-white font-bold" type="submit">Actualizar PIN</button>
+            ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN actualizado con éxito</p>' : ""}
+            ${pinError ? `<p class="text-xs font-bold text-rose-700 dark:text-rose-300" role="alert">${escapeHtml(pinError)}</p>` : ""}
           </form>` : ""}
         </header>
 
@@ -650,17 +662,43 @@ export function renderAdminView(container) {
     container.querySelector("#btn-toggle-cloud")?.addEventListener("click", () => {
       showCloudSettings = !showCloudSettings;
       configSavedToast = false;
+      pinError = "";
       update();
     });
 
-    container.querySelector("#cloud-config-form")?.addEventListener("submit", event => {
+    container.querySelector("#cloud-config-form")?.addEventListener("submit", async event => {
       event.preventDefault();
+      const oldPin = container.querySelector("#cfg-old-pin")?.value?.trim() || "";
+      const newPin = container.querySelector("#cfg-new-pin")?.value?.trim() || "";
+
+      if (!oldPin) {
+        pinError = "Ingresá el PIN actual.";
+        configSavedToast = false;
+        update();
+        return;
+      }
+      if (!/^[0-9]{4,8}$/.test(newPin)) {
+        pinError = "El nuevo PIN debe ser numérico de 4 a 8 dígitos.";
+        configSavedToast = false;
+        update();
+        return;
+      }
+      if (newPin === oldPin) {
+        pinError = "El nuevo PIN no puede ser igual al actual.";
+        configSavedToast = false;
+        update();
+        return;
+      }
+
       try {
-        store.saveLocalSettings({ staffPin: container.querySelector("#cfg-pin")?.value });
+        await store.updateStaffPin(oldPin, newPin);
         configSavedToast = true;
+        pinError = "";
         update();
       } catch (error) {
-        showNotice(error.message);
+        configSavedToast = false;
+        pinError = (error && error.message) || "Error al actualizar el PIN.";
+        update();
       }
     });
 

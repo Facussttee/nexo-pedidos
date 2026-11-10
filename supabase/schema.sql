@@ -153,7 +153,29 @@ INSERT INTO public.nexo_secrets (key, value)
 VALUES ('staff_pin', '1234')
 ON CONFLICT (key) DO NOTHING;
 
--- 5.2 Función para verificar el PIN de Staff enviado en la cabecera x-nexo-staff-pin
+-- 5.2 Funciones de Autenticación por Cabecera y Actualización de PIN
+CREATE OR REPLACE FUNCTION public.get_request_header(header_name TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    req_headers TEXT;
+    val TEXT;
+BEGIN
+    req_headers := current_setting('request.headers', true);
+    IF req_headers IS NULL OR req_headers = '' THEN
+        RETURN NULL;
+    END IF;
+    val := req_headers::json ->> lower(header_name);
+    RETURN NULLIF(TRIM(val), '');
+EXCEPTION WHEN OTHERS THEN
+    RETURN NULL;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.verify_staff_pin_header()
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -161,16 +183,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    req_headers TEXT;
     req_pin TEXT;
     expected_pin TEXT;
 BEGIN
-    req_headers := current_setting('request.headers', true);
-    IF req_headers IS NULL OR req_headers = '' THEN
-        RETURN FALSE;
-    END IF;
-    req_pin := COALESCE((req_headers::json ->> 'x-nexo-staff-pin'), '');
-    IF req_pin = '' THEN
+    req_pin := public.get_request_header('x-nexo-staff-pin');
+    IF req_pin IS NULL OR req_pin = '' THEN
         RETURN FALSE;
     END IF;
     SELECT value INTO expected_pin FROM public.nexo_secrets WHERE key = 'staff_pin';
@@ -179,6 +196,49 @@ EXCEPTION WHEN OTHERS THEN
     RETURN FALSE;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.update_staff_pin(old_pin TEXT, new_pin TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    current_pin TEXT;
+    clean_old TEXT;
+    clean_new TEXT;
+BEGIN
+    clean_old := TRIM(COALESCE(old_pin, ''));
+    clean_new := TRIM(COALESCE(new_pin, ''));
+
+    -- 1. Validar PIN actual contra nexo_secrets
+    SELECT value INTO current_pin FROM public.nexo_secrets WHERE key = 'staff_pin';
+    IF current_pin IS NULL OR clean_old <> current_pin THEN
+        RAISE EXCEPTION 'PIN actual incorrecto';
+    END IF;
+
+    -- 2. Validar formato numérico de 4 a 8 dígitos
+    IF clean_new !~ '^[0-9]{4,8}$' THEN
+        RAISE EXCEPTION 'El nuevo PIN debe ser numérico de 4 a 8 dígitos';
+    END IF;
+
+    -- 3. Validar que no sea idéntico al actual
+    IF clean_new = clean_old THEN
+        RAISE EXCEPTION 'El nuevo PIN no puede ser igual al actual';
+    END IF;
+
+    -- 4. Actualizar secreto
+    UPDATE public.nexo_secrets
+    SET value = clean_new
+    WHERE key = 'staff_pin';
+
+    RETURN jsonb_build_object('ok', true, 'message', 'PIN actualizado con éxito');
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_request_header(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.verify_staff_pin_header() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.update_staff_pin(TEXT, TEXT) TO anon, authenticated, service_role;
 
 -- 5.3 Control de Inundación de Pedidos (Rate Limiting en Base de Datos)
 CREATE OR REPLACE FUNCTION public.enforce_order_rate_limit()
@@ -242,17 +302,25 @@ CREATE POLICY "productos_write_staff"
     USING (public.verify_staff_pin_header())
     WITH CHECK (public.verify_staff_pin_header());
 
--- CLIENTES: Teléfono numérico válido, longitudes acotadas, borrado prohibido
+-- CLIENTES: Acceso restringido por PIN de Staff o teléfono de cliente autenticado vía cabecera
 DROP POLICY IF EXISTS "Permitir acceso publico a clientes" ON public.clientes;
 DROP POLICY IF EXISTS "Permitir acceso publico a clientes MVP" ON public.clientes;
 DROP POLICY IF EXISTS "clientes_read_public" ON public.clientes;
 DROP POLICY IF EXISTS "clientes_insert_valid" ON public.clientes;
 DROP POLICY IF EXISTS "clientes_update_valid" ON public.clientes;
+DROP POLICY IF EXISTS "clientes_select_restricted" ON public.clientes;
+DROP POLICY IF EXISTS "clientes_update_restricted" ON public.clientes;
 
-CREATE POLICY "clientes_read_public"
+CREATE POLICY "clientes_select_restricted"
     ON public.clientes FOR SELECT
     TO anon, authenticated
-    USING (true);
+    USING (
+        public.verify_staff_pin_header()
+        OR (
+            public.get_request_header('x-nexo-client-phone') IS NOT NULL
+            AND telefono = public.get_request_header('x-nexo-client-phone')
+        )
+    );
 
 CREATE POLICY "clientes_insert_valid"
     ON public.clientes FOR INSERT
@@ -263,27 +331,41 @@ CREATE POLICY "clientes_insert_valid"
         AND char_length(COALESCE(direccion, '')) <= 250
     );
 
-CREATE POLICY "clientes_update_valid"
+CREATE POLICY "clientes_update_restricted"
     ON public.clientes FOR UPDATE
     TO anon, authenticated
-    USING (true)
+    USING (
+        public.verify_staff_pin_header()
+        OR (
+            public.get_request_header('x-nexo-client-phone') IS NOT NULL
+            AND telefono = public.get_request_header('x-nexo-client-phone')
+        )
+    )
     WITH CHECK (
         telefono ~ '^[0-9]{8,15}$'
         AND char_length(nombre) >= 2 AND char_length(nombre) <= 120
         AND char_length(COALESCE(direccion, '')) <= 250
     );
 
--- PEDIDOS: Creación y actualización protegidas, importes válidos, items JSONB acotados, borrado prohibido
+-- PEDIDOS: Creación estructurada, consulta y actualización restringidas
 DROP POLICY IF EXISTS "Permitir acceso publico a pedidos" ON public.pedidos;
 DROP POLICY IF EXISTS "Permitir acceso publico a pedidos MVP" ON public.pedidos;
 DROP POLICY IF EXISTS "pedidos_read_public" ON public.pedidos;
 DROP POLICY IF EXISTS "pedidos_insert_valid" ON public.pedidos;
 DROP POLICY IF EXISTS "pedidos_update_valid" ON public.pedidos;
+DROP POLICY IF EXISTS "pedidos_select_restricted" ON public.pedidos;
+DROP POLICY IF EXISTS "pedidos_update_restricted" ON public.pedidos;
 
-CREATE POLICY "pedidos_read_public"
+CREATE POLICY "pedidos_select_restricted"
     ON public.pedidos FOR SELECT
     TO anon, authenticated
-    USING (true);
+    USING (
+        public.verify_staff_pin_header()
+        OR (
+            public.get_request_header('x-nexo-client-phone') IS NOT NULL
+            AND cliente_telefono = public.get_request_header('x-nexo-client-phone')
+        )
+    );
 
 CREATE POLICY "pedidos_insert_valid"
     ON public.pedidos FOR INSERT
@@ -297,15 +379,30 @@ CREATE POLICY "pedidos_insert_valid"
         AND octet_length(items::text) <= 65536
     );
 
-CREATE POLICY "pedidos_update_valid"
+CREATE POLICY "pedidos_update_restricted"
     ON public.pedidos FOR UPDATE
     TO anon, authenticated
-    USING (true)
+    USING (
+        public.verify_staff_pin_header()
+        OR (
+            public.get_request_header('x-nexo-client-phone') IS NOT NULL
+            AND cliente_telefono = public.get_request_header('x-nexo-client-phone')
+            AND estado IN ('PENDIENTE', 'EN_PREPARACION')
+        )
+    )
     WITH CHECK (
         total_estimado >= 0
         AND (total_real IS NULL OR total_real >= 0)
         AND jsonb_typeof(items) = 'array'
         AND octet_length(items::text) <= 65536
+        AND (
+            public.verify_staff_pin_header()
+            OR (
+                public.get_request_header('x-nexo-client-phone') IS NOT NULL
+                AND cliente_telefono = public.get_request_header('x-nexo-client-phone')
+                AND estado = 'CANCELADO'
+            )
+        )
     );
 
 -- =============================================================================

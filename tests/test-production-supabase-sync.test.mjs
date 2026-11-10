@@ -17,8 +17,33 @@ test("Production Supabase Sync Suite", async (t) => {
   const upsertedCustomers = [];
   const orderSelectLogs = [];
   const capturedProductHeaders = {};
+  const capturedOrderHeaders = [];
+  const capturedCustomerHeaders = [];
+  const rpcCalls = [];
+  let currentServerPin = "1234";
 
   const mockSupabase = {
+    rpc(fnName, args) {
+      rpcCalls.push({ fnName, args });
+      if (fnName === "update_staff_pin") {
+        const { old_pin, new_pin } = args;
+        if (old_pin !== currentServerPin) {
+          return Promise.resolve({ data: null, error: { message: "PIN actual incorrecto" } });
+        }
+        if (!/^[0-9]{4,8}$/.test(new_pin)) {
+          return Promise.resolve({ data: null, error: { message: "El nuevo PIN debe ser numérico de 4 a 8 dígitos" } });
+        }
+        if (new_pin === old_pin) {
+          return Promise.resolve({ data: null, error: { message: "El nuevo PIN no puede ser igual al actual" } });
+        }
+        currentServerPin = new_pin;
+        return Promise.resolve({
+          data: { ok: true, message: "PIN actualizado con éxito" },
+          error: null
+        });
+      }
+      return Promise.resolve({ data: null, error: { message: `Unknown RPC ${fnName}` } });
+    },
     from(table) {
       if (table === "productos") {
         return {
@@ -59,15 +84,35 @@ test("Production Supabase Sync Suite", async (t) => {
       if (table === "clientes") {
         return {
           select() {
-            return {
+            let captured = {};
+            const queryObj = {
+              setHeader(name, val) {
+                captured[name] = val;
+                capturedCustomerHeaders.push({ op: "select", name, val });
+                return this;
+              },
               eq() {
                 return Promise.resolve({ data: [] });
+              },
+              order() {
+                return Promise.resolve({ data: [] });
+              },
+              then(resolve) {
+                resolve({ data: [] });
               }
             };
+            return queryObj;
           },
           upsert(payload) {
+            let captured = {};
+            const queryPromise = Promise.resolve({ error: null });
+            queryPromise.setHeader = (name, val) => {
+              captured[name] = val;
+              capturedCustomerHeaders.push({ op: "upsert", name, val });
+              return queryPromise;
+            };
             upsertedCustomers.push(payload);
-            return Promise.resolve({ error: null });
+            return queryPromise;
           }
         };
       }
@@ -75,21 +120,27 @@ test("Production Supabase Sync Suite", async (t) => {
       if (table === "pedidos") {
         return {
           select() {
-            return {
-              order() {
+            let captured = {};
+            const builder = {
+              setHeader(name, val) {
+                captured[name] = val;
+                capturedOrderHeaders.push({ op: "select", name, val });
+                return this;
+              },
+              order(col, opts) {
                 return {
                   limit(n) {
-                    orderSelectLogs.push({ isGlobal: true, limit: n });
+                    orderSelectLogs.push({ isGlobal: true, limit: n, headers: { ...captured } });
                     return Promise.resolve({ data: [] });
                   }
                 };
               },
               eq(col, val) {
                 return {
-                  order() {
+                  order(c, o) {
                     return {
                       limit(n) {
-                        orderSelectLogs.push({ isGlobal: false, col, val, limit: n });
+                        orderSelectLogs.push({ isGlobal: false, col, val, limit: n, headers: { ...captured } });
                         return Promise.resolve({ data: [] });
                       }
                     };
@@ -97,10 +148,17 @@ test("Production Supabase Sync Suite", async (t) => {
                 };
               }
             };
+            return builder;
           },
           insert(payload) {
+            let captured = {};
             insertedOrders.push(payload);
-            return {
+            const queryObj = {
+              setHeader(name, val) {
+                captured[name] = val;
+                capturedOrderHeaders.push({ op: "insert", name, val });
+                return this;
+              },
               select() {
                 return Promise.resolve({
                   data: [{ ...payload, id: 501 }],
@@ -108,10 +166,17 @@ test("Production Supabase Sync Suite", async (t) => {
                 });
               }
             };
+            return queryObj;
           },
           upsert(payload) {
+            let captured = {};
             upsertedOrders.push(payload);
-            return {
+            const queryObj = {
+              setHeader(name, val) {
+                captured[name] = val;
+                capturedOrderHeaders.push({ op: "upsert", name, val });
+                return this;
+              },
               select() {
                 return Promise.resolve({
                   data: [{ ...payload, id: payload.id || 501 }],
@@ -119,11 +184,18 @@ test("Production Supabase Sync Suite", async (t) => {
                 });
               }
             };
+            return queryObj;
           },
           update(payload) {
+            let captured = {};
             return {
+              setHeader(name, val) {
+                captured[name] = val;
+                capturedOrderHeaders.push({ op: "update", name, val });
+                return this;
+              },
               eq(col, val) {
-                updatedOrders.push({ payload, col, val });
+                updatedOrders.push({ payload, col, val, headers: { ...captured } });
                 return {
                   then(resolve) {
                     resolve({ data: null, error: null });
@@ -353,5 +425,120 @@ test("Production Supabase Sync Suite", async (t) => {
     assert.equal(updatedOrders.length, 1);
     assert.equal(updatedOrders[0].payload.estado, "CANCELADO");
     assert.equal(updatedOrders[0].val, 501);
+  });
+
+  await t.test("10. Client order queries and soft cancellation include x-nexo-client-phone header", async () => {
+    capturedOrderHeaders.length = 0;
+    store.lockStaff();
+    store.setCurrentUser({ telefono: "1155667788", nombre: "Carlos Gómez" });
+
+    // Client pullFromSupabase
+    await store.pullFromSupabase();
+    const clientSelect = capturedOrderHeaders.find((h) => h.op === "select" && h.name === "x-nexo-client-phone");
+    assert.ok(clientSelect, "Client select query must include x-nexo-client-phone header");
+    assert.equal(clientSelect.val, "1155667788");
+
+    // Client deleteOrder (cancellation)
+    capturedOrderHeaders.length = 0;
+    store.deleteOrder(501);
+    const clientUpdate = capturedOrderHeaders.find((h) => h.op === "update" && h.name === "x-nexo-client-phone");
+    assert.ok(clientUpdate, "Client cancellation must include x-nexo-client-phone header");
+    assert.equal(clientUpdate.val, "1155667788");
+  });
+
+  await t.test("11. Staff order queries and updates include x-nexo-staff-pin header", async () => {
+    capturedOrderHeaders.length = 0;
+    assert.ok(store.verifyStaffPin("1234"));
+
+    // Staff pullFromSupabase
+    await store.pullFromSupabase();
+    const staffSelect = capturedOrderHeaders.find((h) => h.op === "select" && h.name === "x-nexo-staff-pin");
+    assert.ok(staffSelect, "Staff select query must include x-nexo-staff-pin header");
+    assert.equal(staffSelect.val, "1234");
+
+    // Staff creates and updates order
+    store.addToCart("prod-cloud-1", 1);
+    const newStaffOrder = store.createOrder({
+      cliente: { nombre: "Staff Test", telefono: "1199887766", direccion: "Mostrador" },
+      tipo_entrega: "RETIRO"
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    capturedOrderHeaders.length = 0;
+    store.updateOrderStatus(newStaffOrder.id, "EN_PREPARACION");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const staffUpsert = capturedOrderHeaders.find((h) => h.op === "upsert" && h.name === "x-nexo-staff-pin");
+    assert.ok(staffUpsert, "Staff status update must include x-nexo-staff-pin header");
+    assert.equal(staffUpsert.val, "1234");
+
+    store.lockStaff();
+  });
+
+  await t.test("12. updateStaffPin successfully calls update_staff_pin RPC and updates local PIN in production", async () => {
+    rpcCalls.length = 0;
+    const res = await store.updateStaffPin("1234", "5678");
+    assert.ok(res);
+    assert.equal(res.ok, true);
+    assert.equal(store.getLocalSettings().staffPin, "5678");
+    assert.equal(rpcCalls.length, 1);
+    assert.equal(rpcCalls[0].fnName, "update_staff_pin");
+    assert.equal(rpcCalls[0].args.old_pin, "1234");
+    assert.equal(rpcCalls[0].args.new_pin, "5678");
+  });
+
+  await t.test("13. updateStaffPin validates PIN inputs and propagates RPC errors for invalid current PIN", async () => {
+    // Missing old PIN
+    await assert.rejects(
+      async () => await store.updateStaffPin("", "9999"),
+      /Ingresá el PIN actual/
+    );
+
+    // Invalid new PIN format (non-numeric or length < 4 or > 8)
+    await assert.rejects(
+      async () => await store.updateStaffPin("5678", "12"),
+      /El nuevo PIN debe ser numérico de 4 a 8 dígitos/
+    );
+    await assert.rejects(
+      async () => await store.updateStaffPin("5678", "abcd"),
+      /El nuevo PIN debe ser numérico de 4 a 8 dígitos/
+    );
+
+    // Same PIN as current
+    await assert.rejects(
+      async () => await store.updateStaffPin("5678", "5678"),
+      /El nuevo PIN no puede ser igual al actual/
+    );
+
+    // Wrong old PIN rejected by server RPC
+    await assert.rejects(
+      async () => await store.updateStaffPin("0000", "9999"),
+      /PIN actual incorrecto/
+    );
+  });
+
+  await t.test("14. updateStaffPin in demo mode updates localSettings without cloud calls", async () => {
+    rpcCalls.length = 0;
+    const demoConfig = {
+      mode: "demo",
+      ok: true,
+      errors: [],
+      warnings: [],
+      business: { name: "Demo", alias: "demo", whatsapp: "5491111111111", whatsappDisplay: "+54 11 1111-1111" },
+      storageKeys: prodConfig.storageKeys
+    };
+    const demoStore = new Store(demoConfig);
+    demoStore.saveLocalSettings({ staffPin: "4321" });
+
+    // Wrong old PIN
+    await assert.rejects(
+      async () => await demoStore.updateStaffPin("0000", "8888"),
+      /PIN actual incorrecto/
+    );
+
+    // Valid update
+    const res = await demoStore.updateStaffPin("4321", "8888");
+    assert.equal(res.ok, true);
+    assert.equal(demoStore.getLocalSettings().staffPin, "8888");
+    assert.equal(rpcCalls.length, 0, "Demo mode must not call cloud RPC");
   });
 });

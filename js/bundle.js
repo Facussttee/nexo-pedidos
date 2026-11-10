@@ -1080,6 +1080,52 @@ class Store {
     return updated;
   }
 
+  async updateStaffPin(oldPin, newPin) {
+    const cleanOld = String(oldPin || "").trim();
+    const cleanNew = String(newPin || "").trim();
+
+    if (!cleanOld) {
+      throw new Error("Ingresá el PIN actual.");
+    }
+    if (!/^[0-9]{4,8}$/.test(cleanNew)) {
+      throw new Error("El nuevo PIN debe ser numérico de 4 a 8 dígitos.");
+    }
+    if (cleanNew === cleanOld) {
+      throw new Error("El nuevo PIN no puede ser igual al actual.");
+    }
+
+    if (this.isDemo()) {
+      const { staffPin } = this.getLocalSettings();
+      if (cleanOld !== staffPin) {
+        throw new Error("PIN actual incorrecto");
+      }
+      this.saveLocalSettings({ staffPin: cleanNew });
+      return { ok: true, message: "PIN actualizado con éxito" };
+    }
+
+    if (this.supabase && typeof this.supabase.rpc === "function") {
+      const { data, error } = await this.supabase.rpc("update_staff_pin", {
+        old_pin: cleanOld,
+        new_pin: cleanNew
+      });
+      if (error) {
+        throw new Error(error.message || "Error al actualizar el PIN.");
+      }
+      if (data && data.ok === false) {
+        throw new Error(data.message || "Error al actualizar el PIN.");
+      }
+      this.saveLocalSettings({ staffPin: cleanNew });
+      return data || { ok: true, message: "PIN actualizado con éxito" };
+    } else {
+      const { staffPin } = this.getLocalSettings();
+      if (cleanOld !== staffPin) {
+        throw new Error("PIN actual incorrecto");
+      }
+      this.saveLocalSettings({ staffPin: cleanNew });
+      return { ok: true, message: "PIN actualizado con éxito" };
+    }
+  }
+
   isCloudConnected() {
     return Boolean(this.supabase);
   }
@@ -1185,21 +1231,44 @@ class Store {
       const cleanPhone = currentUser?.telefono
         ? String(currentUser.telefono).replace(/\D/g, "")
         : "";
+      const { staffPin } = this.getLocalSettings();
 
-      const clientQuery = isStaff
-        ? null
-        : cleanPhone
-        ? this.supabase.from("clientes").select("*").eq("telefono", cleanPhone)
-        : null;
+      let clientQuery = null;
+      if (isStaff) {
+        const query = this.supabase.from("clientes").select("*");
+        if (staffPin && typeof query.setHeader === "function") {
+          query.setHeader("x-nexo-staff-pin", staffPin);
+        }
+        clientQuery = query;
+      } else if (cleanPhone) {
+        const query = this.supabase.from("clientes").select("*");
+        if (typeof query.setHeader === "function") {
+          query.setHeader("x-nexo-client-phone", cleanPhone);
+        }
+        clientQuery = query.eq("telefono", cleanPhone);
+      }
 
-      const orderQuery = isStaff
-        ? this.supabase.from("pedidos").select("*").order("id", { ascending: false }).limit(50)
-        : cleanPhone
-        ? this.supabase.from("pedidos").select("*").eq("cliente_telefono", cleanPhone).order("id", { ascending: false }).limit(20)
-        : Promise.resolve({ data: [] });
+      let orderQuery = null;
+      if (isStaff) {
+        const query = this.supabase.from("pedidos").select("*");
+        if (staffPin && typeof query.setHeader === "function") {
+          query.setHeader("x-nexo-staff-pin", staffPin);
+        }
+        orderQuery = query.order("id", { ascending: false }).limit(50);
+      } else if (cleanPhone) {
+        const query = this.supabase.from("pedidos").select("*");
+        if (typeof query.setHeader === "function") {
+          query.setHeader("x-nexo-client-phone", cleanPhone);
+        }
+        orderQuery = query.eq("cliente_telefono", cleanPhone).order("id", { ascending: false }).limit(20);
+      } else {
+        orderQuery = Promise.resolve({ data: [] });
+      }
+
+      const prodQuery = this.supabase.from("productos").select("*").order("id");
 
       const [prodRes, cliRes, ordRes] = await Promise.all([
-        this.supabase.from("productos").select("*").order("id"),
+        prodQuery,
         clientQuery ? clientQuery : Promise.resolve({ data: [] }),
         orderQuery
       ]);
@@ -1283,23 +1352,33 @@ class Store {
   async syncOrderToSupabase(order) {
     if (!this.supabase || !order) return;
     try {
+      const isStaff = this.isStaffUnlocked();
+      const { staffPin } = this.getLocalSettings();
+      const currentUser = this.getCurrentUser();
+      const userPhone = currentUser?.telefono ? String(currentUser.telefono).replace(/\D/g, "") : "";
       const cleanPhone = order.cliente && order.cliente.telefono
         ? String(order.cliente.telefono).replace(/\D/g, "")
-        : "";
+        : userPhone;
 
       // Garantizar que el cliente exista en Supabase antes de insertar el pedido para satisfacer la Foreign Key
       if (cleanPhone) {
-        await this.supabase.from("clientes").upsert({
+        const clientQuery = this.supabase.from("clientes").upsert({
           telefono: cleanPhone,
-          nombre: order.cliente.nombre || "Cliente",
-          direccion: order.cliente.direccion || "",
+          nombre: order.cliente?.nombre || currentUser?.nombre || "Cliente",
+          direccion: order.cliente?.direccion || currentUser?.direccion || "",
           updated_at: new Date().toISOString()
         });
+        if (isStaff && staffPin && typeof clientQuery.setHeader === "function") {
+          clientQuery.setHeader("x-nexo-staff-pin", staffPin);
+        } else if (cleanPhone && typeof clientQuery.setHeader === "function") {
+          clientQuery.setHeader("x-nexo-client-phone", cleanPhone);
+        }
+        await clientQuery;
       }
 
       const orderPayload = {
         cliente_telefono: cleanPhone || null,
-        cliente_nombre: order.cliente?.nombre || "Cliente",
+        cliente_nombre: order.cliente?.nombre || currentUser?.nombre || "Cliente",
         tipo_entrega: order.tipo_entrega || "RETIRO",
         direccion_entrega: order.direccion_entrega || (order.tipo_entrega === "DELIVERY" ? "" : "Retiro en Mostrador"),
         estado: order.estado || "PENDIENTE",
@@ -1313,13 +1392,27 @@ class Store {
         orderPayload.id = order.id;
       }
 
-      const res = order._isNew
-        ? await this.supabase.from("pedidos").insert(orderPayload).select()
-        : await this.supabase.from("pedidos").upsert(orderPayload).select();
+      const query = order._isNew
+        ? this.supabase.from("pedidos").insert(orderPayload)
+        : this.supabase.from("pedidos").upsert(orderPayload);
+
+      if (isStaff && staffPin && typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-staff-pin", staffPin);
+      } else if (cleanPhone && typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-client-phone", cleanPhone);
+      }
+
+      const res = typeof query.select === "function" ? await query.select() : await query;
 
       if (res.error) {
         if (order._isNew && order.id) {
-          await this.supabase.from("pedidos").upsert({ id: order.id, ...orderPayload });
+          const fallbackQuery = this.supabase.from("pedidos").upsert({ id: order.id, ...orderPayload });
+          if (isStaff && staffPin && typeof fallbackQuery.setHeader === "function") {
+            fallbackQuery.setHeader("x-nexo-staff-pin", staffPin);
+          } else if (cleanPhone && typeof fallbackQuery.setHeader === "function") {
+            fallbackQuery.setHeader("x-nexo-client-phone", cleanPhone);
+          }
+          await fallbackQuery;
         }
         console.warn("Error guardando pedido en Supabase:", res.error);
         this.notify("cloud_error", res.error.message);
@@ -1967,10 +2060,23 @@ class Store {
     const orders = this.getOrders().filter((o) => o.id !== orderId);
     this.persistOrders(orders);
     if (this.supabase) {
-      this.supabase.from("pedidos").update({
+      const query = this.supabase.from("pedidos").update({
         estado: "CANCELADO",
         cancelado_at: new Date().toISOString()
-      }).eq("id", orderId).then(() => {});
+      });
+
+      const isStaff = this.isStaffUnlocked();
+      const { staffPin } = this.getLocalSettings();
+      const currentUser = this.getCurrentUser();
+      const cleanPhone = currentUser?.telefono ? String(currentUser.telefono).replace(/\D/g, "") : "";
+
+      if (isStaff && staffPin && typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-staff-pin", staffPin);
+      } else if (cleanPhone && typeof query.setHeader === "function") {
+        query.setHeader("x-nexo-client-phone", cleanPhone);
+      }
+
+      query.eq("id", orderId).then(() => {});
     }
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);
@@ -4657,7 +4763,7 @@ Alias para transferir: ${businessAlias}
 
 function renderAdminView(container) {
   let selectedCategory = "Todos", selectedStatus = "Todos", searchQuery = "";
-  let showCloudSettings = false, configSavedToast = false;
+  let showCloudSettings = false, configSavedToast = false, pinError = "";
   let productDraft = null, editingProductId = null, formError = "", notice = "";
 
   let stagedImageBlob = null;
@@ -4707,12 +4813,24 @@ function renderAdminView(container) {
               <button id="btn-admin-logout" class="${buttonClass}">Salir</button>
             </div>
           </div>
-          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2">
-            <label for="cfg-pin" class="block text-xs font-bold text-slate-700 dark:text-slate-200">PIN del negocio</label>
-            <input id="cfg-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin)}" class="${inputClass}" />
-            <p class="text-xs text-slate-500 dark:text-slate-400">El PIN bloquea el acceso en este dispositivo.</p>
-            <button class="${buttonClass}" type="submit">Guardar PIN Local</button>
-            ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN guardado</p>' : ""}
+          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-3">
+            <div>
+              <span class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">PIN del negocio</span>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Actualizá el PIN de Staff para este dispositivo y el servidor.</p>
+            </div>
+            <div class="space-y-2">
+              <div>
+                <label for="cfg-old-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">PIN actual</label>
+                <input id="cfg-old-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Ingresá el PIN actual" class="${inputClass}" required />
+              </div>
+              <div>
+                <label for="cfg-new-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nuevo PIN (4 a 8 dígitos)</label>
+                <input id="cfg-new-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN" class="${inputClass}" required />
+              </div>
+            </div>
+            <button id="btn-save-pin" class="${buttonClass} bg-emerald-600 hover:bg-emerald-500 text-white font-bold" type="submit">Actualizar PIN</button>
+            ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN actualizado con éxito</p>' : ""}
+            ${pinError ? `<p class="text-xs font-bold text-rose-700 dark:text-rose-300" role="alert">${escapeHtml(pinError)}</p>` : ""}
           </form>` : ""}
         </header>
 
@@ -5303,17 +5421,43 @@ function renderAdminView(container) {
     container.querySelector("#btn-toggle-cloud")?.addEventListener("click", () => {
       showCloudSettings = !showCloudSettings;
       configSavedToast = false;
+      pinError = "";
       update();
     });
 
-    container.querySelector("#cloud-config-form")?.addEventListener("submit", event => {
+    container.querySelector("#cloud-config-form")?.addEventListener("submit", async event => {
       event.preventDefault();
+      const oldPin = container.querySelector("#cfg-old-pin")?.value?.trim() || "";
+      const newPin = container.querySelector("#cfg-new-pin")?.value?.trim() || "";
+
+      if (!oldPin) {
+        pinError = "Ingresá el PIN actual.";
+        configSavedToast = false;
+        update();
+        return;
+      }
+      if (!/^[0-9]{4,8}$/.test(newPin)) {
+        pinError = "El nuevo PIN debe ser numérico de 4 a 8 dígitos.";
+        configSavedToast = false;
+        update();
+        return;
+      }
+      if (newPin === oldPin) {
+        pinError = "El nuevo PIN no puede ser igual al actual.";
+        configSavedToast = false;
+        update();
+        return;
+      }
+
       try {
-        store.saveLocalSettings({ staffPin: container.querySelector("#cfg-pin")?.value });
+        await store.updateStaffPin(oldPin, newPin);
         configSavedToast = true;
+        pinError = "";
         update();
       } catch (error) {
-        showNotice(error.message);
+        configSavedToast = false;
+        pinError = (error && error.message) || "Error al actualizar el PIN.";
+        update();
       }
     });
 

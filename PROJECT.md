@@ -35,8 +35,8 @@
 | M1 | V2-01 Order Privacy & RLS | RLS on `pedidos`/`clientes`, `update_staff_pin`, client phone header | None | DONE (commit 82799a7, 71/71 tests pass) |
 | M2 | V2-02 Authoritative Checkout | `create_order_atomic`, `version`, `tomado_por`, store checkout sync | M1 | DONE (commit 156bacc, 131/131 tests pass) |
 | M3 | V2-03 Storage Images & Config | `product-images` bucket upload, `public.comercio_config`, Admin form | M1 | DONE (36/36 V2 tests pass) |
-| M4 | V2-04 Payment Separation | `estado_pago`, `metodo_pago`, operator card buttons & pending filter | M1 | PLANNED |
-| M5 | V2-05 Catalog CSV/TSV Import | `js/csv-parser.js`, Admin preview modal, batch apply preserving snapshots | None | PLANNED |
+| M4 | V2-04 Payment Separation | `estado_pago`, `metodo_pago`, operator card buttons & pending filter | M1 | DONE (commit f197261, 35/35 tests pass) |
+| M5 | V2-05 Catalog CSV/TSV Import | `js/csv-parser.js`, Admin preview modal, batch apply preserving snapshots | None | IN_PROGRESS |
 | M6 | V2-06 Inventory & Stock Res. | `controlar_stock`, `stock_actual`, `stock_reservado`, scale adjust/release | M2, M5 | PLANNED |
 | M7 | V2-07 WhatsApp Outbox | `public.whatsapp_outbox`, operator card retry UI, bot integration pattern | M1, M2 | PLANNED |
 | M8 | Final Integration into `V2` | Merge all task branches into `V2`, bundle build & full test pass | M1-M7 | PLANNED |

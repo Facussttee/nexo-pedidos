@@ -543,26 +543,49 @@ class Store {
       }
 
       if (ordRes.data) {
-        const mappedOrders = ordRes.data.map((o) => ({
-          id: o.id,
-          cliente: {
-            nombre: o.cliente_nombre,
-            telefono: o.cliente_telefono,
-            direccion: o.direccion_entrega
-          },
-          tipo_entrega: o.tipo_entrega,
-          direccion_entrega: o.direccion_entrega,
-          estado: o.estado,
-          estado_pago: o.estado_pago || "PENDIENTE",
-          metodo_pago: o.metodo_pago || "EFECTIVO",
-          fecha: o.fecha || o.created_at || new Date().toISOString(),
-          total_estimado: Number(o.total_estimado),
-          total_real: o.total_real !== null ? Number(o.total_real) : null,
-          items: Array.isArray(o.items) ? o.items : [],
-          checkout_cart_key: o.checkout_cart_key || null,
-          version: o.version != null ? Number(o.version) : 1,
-          tomado_por: o.tomado_por || null
-        }));
+        let outboxByOrder = new Map();
+        if (isStaff && typeof this.supabase?.from === "function") {
+          try {
+            const outboxQuery = this.supabase.from("whatsapp_outbox").select("*");
+            if (staffPin && typeof outboxQuery.setHeader === "function") {
+              outboxQuery.setHeader("x-nexo-staff-pin", staffPin);
+            }
+            const outboxRes = await outboxQuery;
+            if (outboxRes && Array.isArray(outboxRes.data)) {
+              outboxRes.data.forEach((row) => {
+                outboxByOrder.set(Number(row.pedido_id), row);
+              });
+            }
+          } catch {}
+        }
+
+        const mappedOrders = ordRes.data.map((o) => {
+          const outbox = outboxByOrder.get(Number(o.id));
+          return {
+            id: o.id,
+            cliente: {
+              nombre: o.cliente_nombre,
+              telefono: o.cliente_telefono,
+              direccion: o.direccion_entrega
+            },
+            tipo_entrega: o.tipo_entrega,
+            direccion_entrega: o.direccion_entrega,
+            estado: o.estado,
+            estado_pago: o.estado_pago || "PENDIENTE",
+            metodo_pago: o.metodo_pago || "EFECTIVO",
+            fecha: o.fecha || o.created_at || new Date().toISOString(),
+            total_estimado: Number(o.total_estimado),
+            total_real: o.total_real !== null ? Number(o.total_real) : null,
+            items: Array.isArray(o.items) ? o.items : [],
+            checkout_cart_key: o.checkout_cart_key || null,
+            version: o.version != null ? Number(o.version) : 1,
+            tomado_por: o.tomado_por || null,
+            notificado_whatsapp: Boolean(o.notificado_whatsapp),
+            whatsapp_outbox_status: outbox ? outbox.estado : (o.notificado_whatsapp ? "SENT" : (o.estado === "LISTO" ? "PENDING" : null)),
+            whatsapp_attempts: outbox ? Number(outbox.intentos || 0) : (o.notificado_whatsapp ? 1 : 0),
+            whatsapp_last_error: outbox ? (outbox.ultimo_error || null) : null
+          };
+        });
         this.persistOrders(mappedOrders);
         this.notify("orders_changed");
       }
@@ -609,6 +632,9 @@ class Store {
         this.pullFromSupabase();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "comercio_config" }, () => {
+        this.pullFromSupabase();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_outbox" }, () => {
         this.pullFromSupabase();
       })
       .subscribe();
@@ -1956,6 +1982,9 @@ class Store {
       estado: "LISTO",
       stock_reserved: false,
       stock_deducted: true,
+      whatsapp_outbox_status: order.whatsapp_outbox_status === "SENT" ? "SENT" : "PENDING",
+      whatsapp_attempts: Number(order.whatsapp_attempts || 0),
+      whatsapp_last_error: null,
       finalizado_at: new Date().toISOString()
     };
     this.persistOrders(orders.map((o) => o.id === orderId ? target : o));
@@ -1963,6 +1992,72 @@ class Store {
     this.notify("orders_changed");
     this.notify("order_ready", orderId);
     return target;
+  }
+
+  // Consultar estado de outbox WhatsApp de un pedido (V2-07)
+  getWhatsAppOutboxStatus(orderId) {
+    const order = this.getOrders().find((o) => o.id === Number(orderId));
+    if (!order) return null;
+    return {
+      pedido_id: order.id,
+      estado: order.whatsapp_outbox_status || (order.notificado_whatsapp ? "SENT" : (order.estado === "LISTO" ? "PENDING" : null)),
+      intentos: Number(order.whatsapp_attempts || 0),
+      ultimo_error: order.whatsapp_last_error || null
+    };
+  }
+
+  // Actualizar estado local de outbox WhatsApp (para simulación o sincronización)
+  updateWhatsAppOutboxState(orderId, { estado, intentos, ultimo_error } = {}) {
+    const validStates = ["PENDING", "PROCESSING", "SENT", "FAILED"];
+    const nextState = estado ? String(estado).toUpperCase() : "PENDING";
+    if (!validStates.includes(nextState)) {
+      throw new Error("Estado de outbox WhatsApp no válido.");
+    }
+    let updated = null;
+    const orders = this.getOrders().map((order) => {
+      if (order.id === Number(orderId)) {
+        updated = {
+          ...order,
+          notificado_whatsapp: nextState === "SENT" ? true : Boolean(order.notificado_whatsapp),
+          whatsapp_outbox_status: nextState,
+          whatsapp_attempts: intentos !== undefined ? Math.max(0, Number(intentos)) : Number(order.whatsapp_attempts || 0),
+          whatsapp_last_error: ultimo_error !== undefined ? ultimo_error : (nextState === "SENT" || nextState === "PENDING" ? null : order.whatsapp_last_error || null)
+        };
+        return updated;
+      }
+      return order;
+    });
+    if (!updated) throw new Error("No se encontró el pedido.");
+    this.persistOrders(orders);
+    this.notify("orders_changed");
+    return updated;
+  }
+
+  // Reintentar envío de WhatsApp desde el tablero de Operador (V2-07)
+  async retryWhatsAppOutbox(orderId) {
+    const cleanId = Number(orderId);
+    const current = this.getOrders().find((o) => o.id === cleanId);
+    if (!current) throw new Error("No se encontró el pedido.");
+
+    const updatedLocal = this.updateWhatsAppOutboxState(cleanId, {
+      estado: "PENDING",
+      ultimo_error: null
+    });
+
+    if (!this.isDemo() && this.supabase) {
+      const headers = this.getStaffPinHeaders();
+      if (typeof this.supabase.rpc === "function") {
+        let rpcCall = this.supabase.rpc("retry_whatsapp_outbox", { p_pedido_id: cleanId });
+        if (headers["x-nexo-staff-pin"] && typeof rpcCall.setHeader === "function") {
+          rpcCall = rpcCall.setHeader("x-nexo-staff-pin", headers["x-nexo-staff-pin"]);
+        }
+        const { data, error } = await rpcCall;
+        if (error) throw new Error(error.message || "No se pudo reintentar el envío de WhatsApp.");
+        if (data && data.ok === false) throw new Error(data.error || "Error al reencolar mensaje en WhatsApp Outbox.");
+      }
+    }
+
+    return updatedLocal;
   }
 
   // Eliminar o cancelar completamente un pedido

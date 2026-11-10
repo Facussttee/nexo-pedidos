@@ -816,11 +816,170 @@ VALUES (1, 'Mi Huerta', 'mihuerta', '5491112345678', 500.00, 2000.00, 'Lunes a S
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
+-- 6.B COLA TRANSACCIONAL WHATSAPP OUTBOX (V2-07)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.whatsapp_outbox (
+    id SERIAL PRIMARY KEY,
+    pedido_id INT NOT NULL REFERENCES public.pedidos(id) ON DELETE CASCADE,
+    telefono VARCHAR(25) NOT NULL,
+    mensaje TEXT NOT NULL DEFAULT '',
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (estado IN ('PENDING', 'PROCESSING', 'SENT', 'FAILED')),
+    intentos INT NOT NULL DEFAULT 0 CHECK (intentos >= 0),
+    ultimo_error TEXT DEFAULT NULL,
+    next_retry_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT whatsapp_outbox_pedido_id_unique UNIQUE (pedido_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_outbox_estado_retry ON public.whatsapp_outbox (estado, next_retry_at);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_outbox_pedido_id ON public.whatsapp_outbox (pedido_id);
+
+ALTER TABLE public.whatsapp_outbox ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE ON public.whatsapp_outbox TO anon, authenticated;
+GRANT USAGE, SELECT ON SEQUENCE public.whatsapp_outbox_id_seq TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.whatsapp_outbox TO service_role;
+
+DROP POLICY IF EXISTS "whatsapp_outbox_select_staff" ON public.whatsapp_outbox;
+DROP POLICY IF EXISTS "whatsapp_outbox_write_staff" ON public.whatsapp_outbox;
+
+CREATE POLICY "whatsapp_outbox_select_staff"
+    ON public.whatsapp_outbox FOR SELECT
+    TO anon, authenticated
+    USING (public.verify_staff_pin_header());
+
+CREATE POLICY "whatsapp_outbox_write_staff"
+    ON public.whatsapp_outbox FOR ALL
+    TO anon, authenticated
+    USING (public.verify_staff_pin_header())
+    WITH CHECK (public.verify_staff_pin_header());
+
+-- RPC para encolar o actualizar mensaje de pedido listo
+CREATE OR REPLACE FUNCTION public.enqueue_whatsapp_outbox(
+    p_pedido_id INT,
+    p_telefono TEXT,
+    p_mensaje TEXT DEFAULT ''
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_row public.whatsapp_outbox%ROWTYPE;
+BEGIN
+    INSERT INTO public.whatsapp_outbox (pedido_id, telefono, mensaje, estado, intentos, ultimo_error, next_retry_at, updated_at)
+    VALUES (p_pedido_id, COALESCE(p_telefono, ''), COALESCE(p_mensaje, ''), 'PENDING', 0, NULL, NOW(), NOW())
+    ON CONFLICT (pedido_id) DO UPDATE
+    SET telefono = EXCLUDED.telefono,
+        mensaje = CASE WHEN EXCLUDED.mensaje <> '' THEN EXCLUDED.mensaje ELSE public.whatsapp_outbox.mensaje END,
+        estado = CASE WHEN public.whatsapp_outbox.estado = 'SENT' THEN 'SENT' ELSE 'PENDING' END,
+        next_retry_at = NOW(),
+        updated_at = NOW()
+    RETURNING * INTO v_row;
+
+    RETURN to_jsonb(v_row);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.enqueue_whatsapp_outbox(INT, TEXT, TEXT) TO anon, authenticated, service_role;
+
+-- RPC de claim atómico con FOR UPDATE SKIP LOCKED para el worker de WhatsApp
+CREATE OR REPLACE FUNCTION public.claim_whatsapp_outbox_batch(p_limit INT DEFAULT 5)
+RETURNS SETOF public.whatsapp_outbox
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH claimed AS (
+        SELECT id
+        FROM public.whatsapp_outbox
+        WHERE estado IN ('PENDING', 'FAILED')
+          AND intentos < 5
+          AND (next_retry_at IS NULL OR next_retry_at <= NOW())
+        ORDER BY next_retry_at ASC NULLS FIRST, id ASC
+        LIMIT GREATEST(1, LEAST(COALESCE(p_limit, 5), 50))
+        FOR UPDATE SKIP LOCKED
+    )
+    UPDATE public.whatsapp_outbox o
+    SET estado = 'PROCESSING',
+        intentos = o.intentos + 1,
+        updated_at = NOW()
+    FROM claimed c
+    WHERE o.id = c.id
+    RETURNING o.*;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.claim_whatsapp_outbox_batch(INT) TO anon, authenticated, service_role;
+
+-- RPC de reintento manual desde el tablero de Operador
+CREATE OR REPLACE FUNCTION public.retry_whatsapp_outbox(p_pedido_id INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_order RECORD;
+    v_row public.whatsapp_outbox%ROWTYPE;
+BEGIN
+    IF NOT public.verify_staff_pin_header() THEN
+        RAISE EXCEPTION 'No autorizado: PIN de staff requerido para reintentar envío WhatsApp';
+    END IF;
+
+    SELECT * INTO v_order FROM public.pedidos WHERE id = p_pedido_id;
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Pedido no encontrado');
+    END IF;
+
+    INSERT INTO public.whatsapp_outbox (pedido_id, telefono, mensaje, estado, intentos, ultimo_error, next_retry_at, updated_at)
+    VALUES (p_pedido_id, COALESCE(v_order.cliente_telefono, ''), '', 'PENDING', 0, NULL, NOW(), NOW())
+    ON CONFLICT (pedido_id) DO UPDATE
+    SET estado = 'PENDING',
+        ultimo_error = NULL,
+        next_retry_at = NOW(),
+        updated_at = NOW()
+    RETURNING * INTO v_row;
+
+    RETURN jsonb_build_object('ok', true, 'outbox', to_jsonb(v_row));
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.retry_whatsapp_outbox(INT) TO anon, authenticated, service_role;
+
+-- Trigger automático cuando un pedido pasa a estado 'LISTO'
+CREATE OR REPLACE FUNCTION public.handle_order_ready_outbox()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NEW.estado = 'LISTO' AND (OLD.estado IS DISTINCT FROM 'LISTO') THEN
+        PERFORM public.enqueue_whatsapp_outbox(NEW.id, NEW.cliente_telefono, '');
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_order_ready_outbox ON public.pedidos;
+CREATE TRIGGER trigger_order_ready_outbox
+    AFTER UPDATE OF estado ON public.pedidos
+    FOR EACH ROW
+    WHEN (NEW.estado = 'LISTO' AND OLD.estado IS DISTINCT FROM 'LISTO')
+    EXECUTE FUNCTION public.handle_order_ready_outbox();
+
+-- =============================================================================
 -- 7. HABILITAR WEBSOCKETS EN TIEMPO REAL (SUPABASE REALTIME)
 -- =============================================================================
 ALTER TABLE public.pedidos REPLICA IDENTITY FULL;
 ALTER TABLE public.productos REPLICA IDENTITY FULL;
 ALTER TABLE public.comercio_config REPLICA IDENTITY FULL;
+ALTER TABLE public.whatsapp_outbox REPLICA IDENTITY FULL;
 
 DO $$
 BEGIN
@@ -843,6 +1002,13 @@ BEGIN
         WHERE pubname = 'supabase_realtime' AND tablename = 'comercio_config'
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.comercio_config;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND tablename = 'whatsapp_outbox'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_outbox;
     END IF;
 END $$;
 

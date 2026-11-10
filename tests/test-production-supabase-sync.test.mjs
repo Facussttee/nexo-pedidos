@@ -24,25 +24,53 @@ test("Production Supabase Sync Suite", async (t) => {
 
   const mockSupabase = {
     rpc(fnName, args) {
-      rpcCalls.push({ fnName, args });
-      if (fnName === "update_staff_pin") {
-        const { old_pin, new_pin } = args;
-        if (old_pin !== currentServerPin) {
-          return Promise.resolve({ data: null, error: { message: "PIN actual incorrecto" } });
+      let captured = {};
+      const queryPromise = (async () => {
+        rpcCalls.push({ fnName, args, headers: { ...captured } });
+        if (fnName === "create_order_atomic") {
+          const newOrder = {
+            id: 501,
+            cliente_telefono: args.p_cliente_telefono,
+            cliente_nombre: args.p_cliente_nombre,
+            tipo_entrega: args.p_tipo_entrega,
+            direccion_entrega: args.p_direccion_entrega,
+            estado: "PENDIENTE",
+            total_estimado: 3750,
+            items: args.p_items,
+            checkout_cart_key: args.p_checkout_cart_key,
+            version: 1
+          };
+          insertedOrders.push(newOrder);
+          return {
+            data: { ok: true, replayed: false, pedido: newOrder },
+            error: null
+          };
         }
-        if (!/^[0-9]{4,8}$/.test(new_pin)) {
-          return Promise.resolve({ data: null, error: { message: "El nuevo PIN debe ser numérico de 4 a 8 dígitos" } });
+        if (fnName === "update_staff_pin") {
+          const { old_pin, new_pin } = args;
+          if (old_pin !== currentServerPin) {
+            return { data: null, error: { message: "PIN actual incorrecto" } };
+          }
+          if (!/^[0-9]{4,8}$/.test(new_pin)) {
+            return { data: null, error: { message: "El nuevo PIN debe ser numérico de 4 a 8 dígitos" } };
+          }
+          if (new_pin === old_pin) {
+            return { data: null, error: { message: "El nuevo PIN no puede ser igual al actual" } };
+          }
+          currentServerPin = new_pin;
+          return {
+            data: { ok: true, message: "PIN actualizado con éxito" },
+            error: null
+          };
         }
-        if (new_pin === old_pin) {
-          return Promise.resolve({ data: null, error: { message: "El nuevo PIN no puede ser igual al actual" } });
-        }
-        currentServerPin = new_pin;
-        return Promise.resolve({
-          data: { ok: true, message: "PIN actualizado con éxito" },
-          error: null
-        });
-      }
-      return Promise.resolve({ data: null, error: { message: `Unknown RPC ${fnName}` } });
+        return { data: null, error: { message: `Unknown RPC ${fnName}` } };
+      })();
+      queryPromise.setHeader = (name, val) => {
+        captured[name] = val;
+        capturedOrderHeaders.push({ op: "rpc", name, val });
+        return queryPromise;
+      };
+      return queryPromise;
     },
     from(table) {
       if (table === "productos") {
@@ -188,21 +216,39 @@ test("Production Supabase Sync Suite", async (t) => {
           },
           update(payload) {
             let captured = {};
-            return {
+            const filters = {};
+            let lastCol = null;
+            let lastVal = null;
+            const builder = {
               setHeader(name, val) {
                 captured[name] = val;
                 capturedOrderHeaders.push({ op: "update", name, val });
                 return this;
               },
               eq(col, val) {
-                updatedOrders.push({ payload, col, val, headers: { ...captured } });
-                return {
-                  then(resolve) {
-                    resolve({ data: null, error: null });
-                  }
+                filters[col] = val;
+                lastCol = col;
+                lastVal = val;
+                return this;
+              },
+              select() {
+                updatedOrders.push({ payload, col: lastCol, val: lastVal, headers: { ...captured }, filters: { ...filters } });
+                if (filters.version !== undefined && filters._simulateConflict) {
+                  return Promise.resolve({ data: [], error: null });
+                }
+                const updatedRow = {
+                  id: filters.id || 501,
+                  ...payload,
+                  updated_at: new Date().toISOString()
                 };
+                return Promise.resolve({ data: [updatedRow], error: null });
+              },
+              then(resolve) {
+                updatedOrders.push({ payload, col: lastCol, val: lastVal, headers: { ...captured }, filters: { ...filters } });
+                resolve({ data: null, error: null });
               }
             };
+            return builder;
           }
         };
       }
@@ -554,5 +600,57 @@ test("Production Supabase Sync Suite", async (t) => {
 
     // Verify local storage is not modified
     assert.equal(uninitializedStore.getLocalSettings().staffPin, "1234");
+  });
+
+  await t.test("16. takeOrder in production mode executes optimistic lock update with version and headers", async () => {
+    updatedOrders.length = 0;
+    store.saveLocalSettings({ staffPin: "5678" });
+
+    // Order 501 exists in store from previous tests with version 1
+    const res = await store.takeOrder(501, "Operador Central", 1);
+    assert.ok(res);
+    assert.equal(res.estado, "EN_PREPARACION");
+    assert.equal(res.tomado_por, "Operador Central");
+    assert.equal(res.version, 2);
+
+    // Verify query in updatedOrders
+    const lastUpdate = updatedOrders[updatedOrders.length - 1];
+    assert.equal(lastUpdate.filters.id, 501);
+    assert.equal(lastUpdate.filters.version, 1);
+    assert.equal(lastUpdate.payload.estado, "EN_PREPARACION");
+    assert.equal(lastUpdate.payload.tomado_por, "Operador Central");
+    assert.equal(lastUpdate.payload.version, 2);
+    assert.equal(lastUpdate.headers["x-nexo-staff-pin"], "5678");
+  });
+
+  await t.test("17. takeOrder in production mode throws concurrency error when version mismatch (0 rows updated)", async () => {
+    const mockUpdateWithConflict = {
+      ...mockSupabase,
+      from(table) {
+        if (table === "pedidos") {
+          return {
+            update() {
+              return {
+                setHeader() { return this; },
+                eq() { return this; },
+                select() {
+                  return Promise.resolve({ data: [], error: null });
+                }
+              };
+            }
+          };
+        }
+        return mockSupabase.from(table);
+      }
+    };
+
+    const conflictStore = new Store(prodConfig);
+    conflictStore.supabase = mockUpdateWithConflict;
+    conflictStore.persistOrders([{ id: 777, total_estimado: 1000, items: [], version: 1, estado: "PENDIENTE" }]);
+
+    await assert.rejects(
+      async () => await conflictStore.takeOrder(777, "Operador Concurrente", 1),
+      /El pedido ya fue tomado por otro operario o fue modificado/
+    );
   });
 });

@@ -202,6 +202,7 @@ export function renderOperatorView(container) {
                 <div class="mt-3 space-y-2">
                   <button
                     data-start-id="${order.id}"
+                    data-order-version="${order.version ?? 1}"
                     class="btn-start-prep w-full min-h-[48px] bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-xs transition tap-feedback touch-target flex items-center justify-center gap-2"
                   >
                     <span>Comenzar preparación</span>
@@ -517,17 +518,27 @@ Alias para transferir: ${businessAlias}
 
   // --- Attach Event Listeners ---
   function attachActions(orders) {
-    // Tomar y pesar
+    // Tomar y pesar con control de concurrencia optimista (V2-02)
     container.querySelectorAll(".btn-start-prep").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
         const id = Number(btn.dataset.startId);
+        const order = orders.find((o) => o.id === id);
+        const expectedVersion = Number(btn.dataset.orderVersion || order?.version || 1);
+        const business = store.getBusinessProfile();
+        const operatorName = store.getStaffAlias?.() || store.getLocalSettings()?.operatorName || business.alias || "Operador";
         try {
-          store.updateOrderStatus(id, "EN_PREPARACION");
+          await store.takeOrder(id, operatorName, expectedVersion);
           actionError = "";
           activeTab = "EN_PREPARACION";
           update();
-        } catch (error) { showError(error.message); }
+        } catch (error) {
+          if (typeof alert === "function") {
+            try { alert(error.message); } catch {}
+          }
+          showError(error.message);
+          update();
+        }
       });
     });
 

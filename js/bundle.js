@@ -514,6 +514,8 @@ function buildDemoOrders(now = Date.now()) {
       tipo_entrega: "DELIVERY",
       direccion_entrega: "Calle Ficticia 101 (demo)",
       estado: "PENDIENTE",
+      estado_pago: "PENDIENTE",
+      metodo_pago: "EFECTIVO",
       fecha: new Date(now - 15 * 60 * 1000).toISOString(),
       total_estimado: 6400,
       total_real: null,
@@ -535,6 +537,8 @@ function buildDemoOrders(now = Date.now()) {
       tipo_entrega: "RETIRO",
       direccion_entrega: "Retiro por Mostrador",
       estado: "EN_PREPARACION",
+      estado_pago: "PENDIENTE",
+      metodo_pago: "TRANSFERENCIA",
       fecha: new Date(now - 35 * 60 * 1000).toISOString(),
       total_estimado: 4700,
       total_real: null,
@@ -1255,6 +1259,11 @@ class Store {
     return { staffPin: pin || "1234" };
   }
 
+  getStaffPinHeaders() {
+    const { staffPin } = this.getLocalSettings();
+    return staffPin ? { "x-nexo-staff-pin": staffPin } : {};
+  }
+
   saveLocalSettings(newSettings = {}) {
     const current = this.getLocalSettings();
     const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
@@ -1496,6 +1505,8 @@ class Store {
           tipo_entrega: o.tipo_entrega,
           direccion_entrega: o.direccion_entrega,
           estado: o.estado,
+          estado_pago: o.estado_pago || "PENDIENTE",
+          metodo_pago: o.metodo_pago || "EFECTIVO",
           fecha: o.fecha || o.created_at || new Date().toISOString(),
           total_estimado: Number(o.total_estimado),
           total_real: o.total_real !== null ? Number(o.total_real) : null,
@@ -1596,7 +1607,8 @@ class Store {
             cantidad: i.cantidad_solicitada ?? i.cantidad ?? 1,
             precio: i.precio_unitario ?? i.precio
           })),
-          p_checkout_cart_key: order.checkout_cart_key || null
+          p_checkout_cart_key: order.checkout_cart_key || null,
+          p_metodo_pago: order.metodo_pago || "EFECTIVO"
         };
 
         const rpcCall = this.supabase.rpc("create_order_atomic", rpcPayload);
@@ -1620,6 +1632,8 @@ class Store {
           const oldId = order.id;
           order.id = dbId;
           order.version = dbOrder.version != null ? Number(dbOrder.version) : 1;
+          order.estado_pago = dbOrder.estado_pago || order.estado_pago || "PENDIENTE";
+          order.metodo_pago = dbOrder.metodo_pago || order.metodo_pago || "EFECTIVO";
           if (dbOrder.total_estimado != null) order.total_estimado = Number(dbOrder.total_estimado);
           if (Array.isArray(dbOrder.items) && dbOrder.items.length) order.items = dbOrder.items;
 
@@ -1631,6 +1645,8 @@ class Store {
                     ...o,
                     id: dbId,
                     version: order.version,
+                    estado_pago: order.estado_pago,
+                    metodo_pago: order.metodo_pago,
                     total_estimado: order.total_estimado,
                     items: order.items,
                     _isNew: false
@@ -1652,6 +1668,8 @@ class Store {
         tipo_entrega: order.tipo_entrega || "RETIRO",
         direccion_entrega: order.direccion_entrega || (order.tipo_entrega === "DELIVERY" ? "" : "Retiro en Mostrador"),
         estado: order.estado || "PENDIENTE",
+        estado_pago: order.estado_pago || "PENDIENTE",
+        metodo_pago: order.metodo_pago || "EFECTIVO",
         total_estimado: Number(order.total_estimado || 0),
         total_real: order.total_real !== null && order.total_real !== undefined ? Number(order.total_real) : null,
         items: Array.isArray(order.items) ? order.items : [],
@@ -2210,7 +2228,7 @@ class Store {
     return this.checkoutWarning || null;
   }
 
-  createOrder({ cliente, tipo_entrega, direccion_entrega }) {
+  createOrder({ cliente, tipo_entrega, direccion_entrega, metodo_pago = "EFECTIVO" }) {
     if (!this.config.ok) return null;
     const config = this.getComercioConfigSync();
     const { items, subtotal } = this.getCartSummary({ tipo_entrega });
@@ -2240,10 +2258,17 @@ class Store {
     const totalEstimado = subtotal + costoEnvio;
 
     const newId = orders.length > 0 ? Math.max(...orders.map((o) => o.id)) + 1 : 101;
+    const cleanMetodoPago = (metodo_pago && ["EFECTIVO", "TRANSFERENCIA", "OTRO"].includes(String(metodo_pago).toUpperCase()))
+      ? String(metodo_pago).toUpperCase()
+      : "EFECTIVO";
+
     const newOrder = {
       id: newId, cliente, tipo_entrega,
       direccion_entrega: tipo_entrega === "DELIVERY" ? direccion_entrega : "Retiro en Mostrador",
-      estado: "PENDIENTE", fecha: new Date().toISOString(),
+      estado: "PENDIENTE",
+      estado_pago: "PENDIENTE",
+      metodo_pago: cleanMetodoPago,
+      fecha: new Date().toISOString(),
       total_estimado: totalEstimado, total_real: null, checkout_cart_key: cartKey,
       version: 1,
       tomado_por: null,
@@ -2263,6 +2288,123 @@ class Store {
     this.playAudioAlert();
     this.notify("order_created", newOrder);
     return newOrder;
+  }
+
+  createOrderDirect(orderData) {
+    if (!this.config.ok) return null;
+    if (!orderData || !orderData.cliente) throw new Error("Datos de cliente requeridos.");
+    const orders = this.getOrders();
+    const newId = orderData.id || (orders.length > 0 ? Math.max(...orders.map((o) => o.id)) + 1 : 101);
+    const cleanMetodoPago = orderData.metodo_pago && ["EFECTIVO", "TRANSFERENCIA", "OTRO"].includes(String(orderData.metodo_pago).toUpperCase())
+      ? String(orderData.metodo_pago).toUpperCase()
+      : "EFECTIVO";
+    const cleanEstadoPago = orderData.estado_pago && ["PENDIENTE", "INFORMADO", "COBRADO"].includes(String(orderData.estado_pago).toUpperCase())
+      ? String(orderData.estado_pago).toUpperCase()
+      : "PENDIENTE";
+    const newOrder = {
+      id: newId,
+      cliente: orderData.cliente,
+      tipo_entrega: orderData.tipo_entrega || "RETIRO",
+      direccion_entrega: orderData.tipo_entrega === "DELIVERY" ? (orderData.direccion_entrega || "") : "Retiro en Mostrador",
+      estado: orderData.estado || "PENDIENTE",
+      estado_pago: cleanEstadoPago,
+      metodo_pago: cleanMetodoPago,
+      fecha: orderData.fecha || new Date().toISOString(),
+      total_estimado: Number(orderData.total_estimado || 0),
+      total_real: orderData.total_real !== null && orderData.total_real !== undefined ? Number(orderData.total_real) : null,
+      checkout_cart_key: orderData.checkout_cart_key || null,
+      version: orderData.version != null ? Number(orderData.version) : 1,
+      tomado_por: orderData.tomado_por || null,
+      _isNew: true,
+      items: Array.isArray(orderData.items) ? orderData.items : []
+    };
+    this.persistOrders([newOrder, ...orders]);
+    this.syncOrderToSupabase(newOrder);
+    this.notify("order_created", newOrder);
+    return newOrder;
+  }
+
+  async updateOrderPayment(orderId, { estado_pago, metodo_pago } = {}) {
+    const id = Number(orderId);
+    if (!Number.isFinite(id)) throw new Error("ID de pedido no válido.");
+
+    let cleanEstadoPago;
+    if (estado_pago !== undefined) {
+      cleanEstadoPago = String(estado_pago || "").toUpperCase();
+      if (!["PENDIENTE", "INFORMADO", "COBRADO"].includes(cleanEstadoPago)) {
+        throw new Error(`Estado de pago no válido: ${estado_pago}`);
+      }
+    }
+
+    let cleanMetodoPago;
+    if (metodo_pago !== undefined) {
+      cleanMetodoPago = String(metodo_pago || "").toUpperCase();
+      if (!["EFECTIVO", "TRANSFERENCIA", "OTRO"].includes(cleanMetodoPago)) {
+        throw new Error(`Método de pago no válido: ${metodo_pago}`);
+      }
+    }
+
+    if (cleanEstadoPago === undefined && cleanMetodoPago === undefined) {
+      throw new Error("Debe proporcionar estado_pago o metodo_pago a actualizar.");
+    }
+
+    if (this.isDemo()) {
+      const orders = this.getOrders();
+      const order = orders.find((o) => o.id === id);
+      if (!order) throw new Error("Pedido no encontrado.");
+
+      const updatedOrder = {
+        ...order,
+        ...(cleanEstadoPago !== undefined ? { estado_pago: cleanEstadoPago } : {}),
+        ...(cleanMetodoPago !== undefined ? { metodo_pago: cleanMetodoPago } : {}),
+        updated_at: new Date().toISOString()
+      };
+
+      this.persistOrders(orders.map((o) => (o.id === id ? updatedOrder : o)));
+      this.notify("orders_changed");
+      return updatedOrder;
+    }
+
+    if (!this.supabase) {
+      throw new Error("No hay conexión con Supabase en modo producción.");
+    }
+
+    const updatePayload = {
+      ...(cleanEstadoPago !== undefined ? { estado_pago: cleanEstadoPago } : {}),
+      ...(cleanMetodoPago !== undefined ? { metodo_pago: cleanMetodoPago } : {}),
+      updated_at: new Date().toISOString()
+    };
+
+    const query = this.supabase.from("pedidos").update(updatePayload).eq("id", id);
+    const staffPinHeaders = this.getStaffPinHeaders();
+    if (staffPinHeaders["x-nexo-staff-pin"] && typeof query.setHeader === "function") {
+      query.setHeader("x-nexo-staff-pin", staffPinHeaders["x-nexo-staff-pin"]);
+    }
+
+    const res = typeof query.select === "function" ? await query.select() : await query;
+    if (res.error) {
+      throw new Error(res.error.message || "Error al actualizar el pago del pedido en Supabase.");
+    }
+
+    const currentOrders = this.getOrders();
+    let updatedLocal = null;
+    const newOrders = currentOrders.map((o) => {
+      if (o.id === id) {
+        updatedLocal = {
+          ...o,
+          ...updatePayload
+        };
+        return updatedLocal;
+      }
+      return o;
+    });
+
+    if (updatedLocal) {
+      this.persistOrders(newOrders);
+      this.notify("orders_changed");
+    }
+
+    return (res.data && res.data[0]) || updatedLocal;
   }
 
   updateOrderStatus(orderId, newStatus) {
@@ -2689,6 +2831,7 @@ function renderClientView(container) {
   let selectedOrderId = null;
   let deliveryMode = "RETIRO"; // RETIRO | DELIVERY
   let deliveryAddress = "";
+  let paymentMethod = "EFECTIVO"; // EFECTIVO | TRANSFERENCIA
   let checkoutError = "";
   let catalogRecoveryError = "";
 
@@ -2716,6 +2859,7 @@ function renderClientView(container) {
       viewMode = "catalog";
       deliveryMode = "RETIRO";
       deliveryAddress = "";
+      paymentMethod = "EFECTIVO";
       checkoutError = "";
       selectedCategory = "Todos";
       searchQuery = "";
@@ -3613,6 +3757,38 @@ function renderClientView(container) {
                 />
               </div>
 
+              <!-- Selector de Método de Pago -->
+              <div class="pt-3">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+                  Método de Pago
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  <label id="payment-card-efectivo" class="flex flex-col p-3.5 border rounded-2xl cursor-pointer transition tap-feedback ${
+                    paymentMethod === "EFECTIVO"
+                      ? "border-slate-900 dark:border-emerald-500 bg-slate-900 dark:bg-slate-800 text-white shadow-xs"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
+                  }">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black">Efectivo</span>
+                      <input type="radio" name="checkout-payment-method" value="EFECTIVO" ${paymentMethod === "EFECTIVO" ? "checked" : ""} class="accent-emerald-500" />
+                    </div>
+                    <span class="text-[10px] opacity-75 mt-1">Abonás al recibir</span>
+                  </label>
+
+                  <label id="payment-card-transferencia" class="flex flex-col p-3.5 border rounded-2xl cursor-pointer transition tap-feedback ${
+                    paymentMethod === "TRANSFERENCIA"
+                      ? "border-slate-900 dark:border-emerald-500 bg-slate-900 dark:bg-slate-800 text-white shadow-xs"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
+                  }">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black">Transferencia</span>
+                      <input type="radio" name="checkout-payment-method" value="TRANSFERENCIA" ${paymentMethod === "TRANSFERENCIA" ? "checked" : ""} class="accent-emerald-500" />
+                    </div>
+                    <span class="text-[10px] opacity-75 mt-1">Alias / CBU disponible</span>
+                  </label>
+                </div>
+              </div>
+
               <div class="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-3.5 text-xs text-amber-950 dark:text-amber-200 mt-2">
                 <div class="flex items-center gap-1.5 mb-1">
                   <span class="w-2 h-2 rounded-full bg-amber-500"></span>
@@ -3853,6 +4029,29 @@ function renderClientView(container) {
       });
     });
 
+    // Toggle de método de pago
+    const payCardEfectivo = container.querySelector("#payment-card-efectivo");
+    const payCardTransferencia = container.querySelector("#payment-card-transferencia");
+    const payRadios = container.querySelectorAll('input[name="checkout-payment-method"]');
+
+    payRadios.forEach((radio) => {
+      radio.addEventListener("change", (e) => {
+        paymentMethod = e.target.value;
+        const isEf = paymentMethod === "EFECTIVO";
+        if (isEf) {
+          payCardEfectivo?.classList.add(...selClasses);
+          payCardEfectivo?.classList.remove(...unselClasses);
+          payCardTransferencia?.classList.remove(...selClasses);
+          payCardTransferencia?.classList.add(...unselClasses);
+        } else {
+          payCardTransferencia?.classList.add(...selClasses);
+          payCardTransferencia?.classList.remove(...unselClasses);
+          payCardEfectivo?.classList.remove(...selClasses);
+          payCardEfectivo?.classList.add(...unselClasses);
+        }
+      });
+    });
+
     // Steppers en Carrito
     container.querySelectorAll("[data-drawer-inc]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -3904,7 +4103,12 @@ function renderClientView(container) {
 
       try {
         checkoutError = "";
-        const newOrder = store.createOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
+        const newOrder = store.createOrder({
+          cliente: user,
+          tipo_entrega: mode,
+          direccion_entrega: finalAddress,
+          metodo_pago: paymentMethod
+        });
         if (newOrder) {
           isCartOpen = false;
           isDrawerFirstOpen = true;
@@ -4142,8 +4346,10 @@ function renderClientView(container) {
         : "El pedido fue pesado y podés pasar a retirarlo por el local.";
     } else if (isDelivered) {
       stepNumber = 4;
-      stepTitle = "Entregado y Cobrado";
-      stepDesc = "Pedido finalizado exitosamente. ¡Muchas gracias por tu compra!";
+      stepTitle = currentOrder.estado_pago === "COBRADO" ? "Entregado y Cobrado" : "Pedido Entregado";
+      stepDesc = currentOrder.estado_pago === "COBRADO"
+        ? "Pedido entregado y abonado. ¡Muchas gracias por tu compra!"
+        : "Pedido entregado al cliente.";
     }
 
     const waHelpRawText = `Hola! Consulto por mi pedido #${currentOrder.id} a nombre de ${currentOrder.cliente.nombre}.`;
@@ -4226,6 +4432,13 @@ function renderClientView(container) {
                 <span class="text-slate-800 dark:text-slate-200 font-medium text-right">${escapeHtml(currentOrder.direccion_entrega)}</span>
               </div>
             ` : ""}
+
+            <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>Pago:</span>
+              <strong class="text-slate-800 dark:text-slate-200 font-semibold">
+                ${(currentOrder.metodo_pago || "EFECTIVO") === "TRANSFERENCIA" ? "Transferencia" : "Efectivo"} · ${(currentOrder.estado_pago || "PENDIENTE") === "COBRADO" ? "Cobrado" : (currentOrder.estado_pago || "PENDIENTE") === "INFORMADO" ? "Informado" : "Pendiente"}
+              </strong>
+            </div>
 
             ${isReady && Number.isFinite(currentOrder.total_real) ? `
               <div class="pt-2.5 border-t border-slate-200 dark:border-slate-800">
@@ -4367,11 +4580,93 @@ function parseOperatorWeight(rawInput, isWeight = true) {
   return value;
 }
 
+function renderPaymentBadge(order) {
+  const status = (order?.estado_pago || "PENDIENTE").toUpperCase();
+  const method = (order?.metodo_pago || "EFECTIVO").toUpperCase();
+  const methodLabel = method === "TRANSFERENCIA" ? "Transferencia" : method === "EFECTIVO" ? "Efectivo" : "Otro";
+
+  let badgeClass = "";
+  let statusLabel = "";
+
+  if (status === "COBRADO") {
+    badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800";
+    statusLabel = "Cobrado";
+  } else if (status === "INFORMADO") {
+    badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-300 dark:border-blue-800";
+    statusLabel = "Informado";
+  } else {
+    badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800";
+    statusLabel = "Pendiente";
+  }
+
+  return `
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${badgeClass}">
+      <span>Pago: ${statusLabel}</span>
+      <span class="opacity-60">·</span>
+      <span class="font-bold opacity-90">${methodLabel}</span>
+    </span>
+  `;
+}
+
+function renderPaymentControls(order) {
+  const status = (order?.estado_pago || "PENDIENTE").toUpperCase();
+  const method = (order?.metodo_pago || "EFECTIVO").toUpperCase();
+
+  return `
+    <div class="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5">
+        <label for="pay-method-${order.id}" class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Método:</label>
+        <select
+          id="pay-method-${order.id}"
+          data-payment-method-order="${order.id}"
+          class="select-payment-method min-h-[44px] px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
+        >
+          <option value="EFECTIVO" ${method === "EFECTIVO" ? "selected" : ""}>Efectivo</option>
+          <option value="TRANSFERENCIA" ${method === "TRANSFERENCIA" ? "selected" : ""}>Transferencia</option>
+          <option value="OTRO" ${method === "OTRO" ? "selected" : ""}>Otro</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        ${status !== "COBRADO" ? `
+          <button
+            type="button"
+            data-mark-paid-order="${order.id}"
+            class="btn-mark-paid min-h-[44px] px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs transition tap-feedback touch-target flex items-center gap-1"
+          >
+            <span>✓ Marcar Cobrado</span>
+          </button>
+        ` : `
+          <button
+            type="button"
+            data-mark-unpaid-order="${order.id}"
+            class="btn-mark-unpaid min-h-[44px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-xs transition tap-feedback touch-target"
+            title="Cambiar a pago pendiente"
+          >
+            <span>Desmarcar Cobrado</span>
+          </button>
+        `}
+        ${status === "PENDIENTE" ? `
+          <button
+            type="button"
+            data-mark-informed-order="${order.id}"
+            class="btn-mark-informed min-h-[44px] px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-bold rounded-xl text-xs transition tap-feedback touch-target border border-blue-200 dark:border-blue-900/60"
+            title="Cliente informó pago por transferencia"
+          >
+            <span>Informado</span>
+          </button>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
 function renderOperatorView(container) {
   let activeTab = "PENDIENTE"; // PENDIENTE | EN_PREPARACION | LISTO | ENTREGADO
   let editingOrderId = null; // ID del pedido que se está editando en modal
   let actionError = "";
   let addingProductOrderId = null; // ID del pedido que tiene abierto el desplegable de agregar ítem
+  let filterUnpaidOnly = false; // Filtro de pendientes de cobro
 
   function update() {
     container.innerHTML = "";
@@ -4384,6 +4679,7 @@ function renderOperatorView(container) {
       ENTREGADO: orders.filter((o) => o.estado === "ENTREGADO").length,
       CANCELADO: orders.filter((o) => o.estado === "CANCELADO").length
     };
+    const unpaidTotal = orders.filter((o) => o.estado !== "CANCELADO" && (o.estado_pago || "PENDIENTE") !== "COBRADO").length;
 
     container.innerHTML = `
       <div class="max-w-2xl mx-auto pb-24 overflow-x-clip safe-pb">
@@ -4462,12 +4758,35 @@ function renderOperatorView(container) {
                 activeTab === "ENTREGADO" ? "bg-slate-700 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
             >
-              <span>Cobrados</span>
+              <span>Entregados</span>
               <span class="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5 bg-slate-700 text-slate-300">${counts.ENTREGADO}</span>
             </button>
             <button data-tab="CANCELADO" class="tab-btn min-h-[48px] px-1 py-1.5 rounded-xl text-[10px] font-bold tap-feedback touch-target ${activeTab === "CANCELADO" ? "bg-rose-950 text-rose-200" : "text-slate-400"}">
               Cancelados <span class="block">${counts.CANCELADO}</span>
             </button>
+          </div>
+
+          <!-- Filtro Toolbar de Pendiente de Cobro -->
+          <div class="mt-2.5 flex items-center justify-between gap-2 px-1">
+            <button
+              id="btn-toggle-unpaid-filter"
+              class="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 tap-feedback touch-target border ${
+                filterUnpaidOnly
+                  ? "bg-amber-400 text-slate-950 border-amber-500 font-black shadow-xs"
+                  : "bg-slate-800 text-slate-300 border-slate-700 hover:text-white"
+              }"
+              aria-pressed="${filterUnpaidOnly}"
+            >
+              <span>${filterUnpaidOnly ? "✓ Solo pendientes de cobro" : "Pendientes de cobro"}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full ${
+                filterUnpaidOnly ? "bg-amber-600/30 text-slate-950 font-black" : "bg-slate-700 text-amber-300"
+              }">${unpaidTotal}</span>
+            </button>
+            ${filterUnpaidOnly ? `
+              <span class="text-[11px] text-amber-300 font-semibold">
+                Filtrando cobro pendiente
+              </span>
+            ` : ""}
           </div>
         </header>
 
@@ -4481,6 +4800,12 @@ function renderOperatorView(container) {
         ${editingOrderId ? renderEditModal(orders.find((o) => o.id === editingOrderId)) : ""}
       </div>
     `;
+
+    // Listeners del header
+    container.querySelector("#btn-toggle-unpaid-filter")?.addEventListener("click", () => {
+      filterUnpaidOnly = !filterUnpaidOnly;
+      update();
+    });
 
     // Listeners del header
     container.querySelector("#btn-test-sound")?.addEventListener("click", () => {
@@ -4505,13 +4830,16 @@ function renderOperatorView(container) {
 
   // --- Render según Pestaña ---
   function renderTabContent(orders) {
-    const tabOrders = orders.filter((o) => o.estado === activeTab);
+    let tabOrders = orders.filter((o) => o.estado === activeTab);
+    if (filterUnpaidOnly) {
+      tabOrders = tabOrders.filter((o) => (o.estado_pago || "PENDIENTE") !== "COBRADO");
+    }
 
     if (tabOrders.length === 0) {
       return `
         <div class="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-6">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Sin órdenes</span>
-          <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">No hay pedidos en esta columna</h3>
+          <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">${filterUnpaidOnly ? "No hay pedidos pendientes de cobro en esta columna" : "No hay pedidos en esta columna"}</h3>
           <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Los nuevos pedidos ingresarán automáticamente aquí en tiempo real.</p>
         </div>
       `;
@@ -4531,7 +4859,7 @@ function renderOperatorView(container) {
               <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs transition">
                 <div class="flex items-start justify-between gap-2">
                   <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                       <span class="text-base font-black text-slate-900 dark:text-white">#${order.id}</span>
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         order.tipo_entrega === "DELIVERY"
@@ -4540,6 +4868,7 @@ function renderOperatorView(container) {
                       }">
                         ${order.tipo_entrega === "DELIVERY" ? "Envío a Domicilio" : "Retiro en Local"}
                       </span>
+                      ${renderPaymentBadge(order)}
                     </div>
                     <h3 class="font-extrabold text-slate-900 dark:text-white text-sm mt-1.5">${escapeHtml(order.cliente.nombre)}</h3>
                     <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(order.cliente.telefono)} · ${timeAgo(order.fecha)}</p>
@@ -4555,6 +4884,9 @@ function renderOperatorView(container) {
                   <span class="font-bold text-slate-700 dark:text-slate-300 block mb-0.5 text-[11px] uppercase tracking-wider">Productos solicitados (${order.items.length}):</span>
                   <p class="leading-relaxed">${itemsList || "Sin productos"}</p>
                 </div>
+
+                <!-- Controles de Pago -->
+                ${renderPaymentControls(order)}
 
                 <!-- Acciones Principales y de Gestión -->
                 <div class="mt-3 space-y-2">
@@ -4598,7 +4930,11 @@ function renderOperatorView(container) {
         return `
           <section data-preparation-order="${escapeHtml(order.id)}" class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs">
             <div class="flex flex-wrap justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div><span class="text-[10px] uppercase tracking-wider font-black text-blue-600 dark:text-blue-400">En preparación</span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-[10px] uppercase tracking-wider font-black text-blue-600 dark:text-blue-400">En preparación</span>
+                  ${renderPaymentBadge(order)}
+                </div>
                 <h2 class="text-lg font-black text-slate-900 dark:text-white">Pedido #${escapeHtml(order.id)} · ${escapeHtml(order.cliente.nombre)}</h2>
                 <p class="text-xs text-slate-500 dark:text-slate-400">${order.tipo_entrega === "DELIVERY" ? escapeHtml(order.direccion_entrega) : "Retiro por mostrador"}</p>
               </div>
@@ -4654,6 +4990,7 @@ function renderOperatorView(container) {
                 </div>` : `<button data-toggle-add-order="${escapeHtml(order.id)}" class="btn-open-add-product w-full min-h-[44px] mb-2 px-3 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300">Agregar producto que olvidó el cliente</button>`}
               <button data-finish-order-id="${escapeHtml(order.id)}" class="btn-finish-weighing w-full min-h-[48px] rounded-xl bg-slate-900 dark:bg-emerald-600 text-white text-sm font-bold disabled:opacity-40" ${progress.canFinalize ? "" : "disabled"}>Finalizar preparación</button>
               <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">El precio final se confirma al terminar todos los ítems.</p>
+              ${renderPaymentControls(order)}
               <div class="grid grid-cols-2 gap-2 mt-2">
                 <button data-edit-order-id="${escapeHtml(order.id)}" class="btn-open-edit min-h-[44px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200">Cambiar entrega/datos</button>
                 <button data-cancel-order-id="${escapeHtml(order.id)}" class="btn-cancel-order min-h-[44px] px-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-xs font-bold text-rose-700 dark:text-rose-300">Cancelar pedido</button>
@@ -4675,9 +5012,12 @@ function renderOperatorView(container) {
               <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                 <div class="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div>
-                    <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      Preparación completa
-                    </span>
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                      <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        Preparación completa
+                      </span>
+                      ${renderPaymentBadge(order)}
+                    </div>
                     <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">#${order.id} · ${escapeHtml(order.cliente.nombre)}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(order.cliente.telefono)} · ${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"}</p>
                   </div>
@@ -4704,10 +5044,13 @@ function renderOperatorView(container) {
                     data-deliver-order-id="${order.id}"
                     class="btn-deliver-order min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-3 px-3 rounded-xl text-xs transition tap-feedback touch-target border border-transparent dark:border-slate-700 flex items-center justify-center"
                   >
-                    Marcar Cobrado
+                    Entregar Pedido
                   </button>
                 </div>
                 <p id="wa-sim-feedback-${order.id}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
+
+                <!-- Controles de Pago -->
+                ${renderPaymentControls(order)}
 
                 <!-- Opción de Cancelar / Eliminar Pedido Listo -->
                 <div class="mt-2 text-right">
@@ -4727,23 +5070,31 @@ function renderOperatorView(container) {
       `;
     }
 
-    // 4. Pestaña ENTREGADOS / COBRADOS
+    // 4. Pestaña ENTREGADOS
     if (activeTab === "ENTREGADO") {
       return `
-        <div class="space-y-2.5">
+        <div class="space-y-3">
           ${tabOrders
             .map(
               (order) => `
-            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-              <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${order.id}</span>
-                <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${escapeHtml(order.cliente.nombre)}</h4>
-                <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${timeAgo(order.fecha)}</p>
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${order.id}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      Entregado
+                    </span>
+                    ${renderPaymentBadge(order)}
+                  </div>
+                  <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${escapeHtml(order.cliente.nombre)}</h4>
+                  <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${timeAgo(order.fecha)}</p>
+                </div>
+                <div class="text-right">
+                  <span class="font-black text-base text-slate-900 dark:text-white">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
+                </div>
               </div>
-              <div class="text-right">
-                <span class="font-black text-base text-slate-900 dark:text-white">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
-                <span class="block text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">${order.total_real == null ? "Estimado · final no registrado" : "Cobrado"}</span>
-              </div>
+              ${renderPaymentControls(order)}
             </div>
           `
             )
@@ -5151,6 +5502,58 @@ Alias para transferir: ${businessAlias}
         const id = Number(btn.dataset.deliverOrderId);
         try { store.updateOrderStatus(id, "ENTREGADO"); update(); }
         catch (error) { showError(error.message); }
+      });
+    });
+
+    container.querySelectorAll(".btn-mark-paid").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.markPaidOrder);
+        try {
+          await store.updateOrderPayment(id, { estado_pago: "COBRADO" });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".btn-mark-unpaid").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.markUnpaidOrder);
+        try {
+          await store.updateOrderPayment(id, { estado_pago: "PENDIENTE" });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".btn-mark-informed").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.markInformedOrder);
+        try {
+          await store.updateOrderPayment(id, { estado_pago: "INFORMADO" });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".select-payment-method").forEach((sel) => {
+      sel.addEventListener("change", async (e) => {
+        const id = Number(sel.dataset.paymentMethodOrder);
+        const method = e.target.value;
+        try {
+          await store.updateOrderPayment(id, { metodo_pago: method });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
       });
     });
   }

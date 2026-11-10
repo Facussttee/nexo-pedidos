@@ -9,11 +9,93 @@ function parseOperatorWeight(rawInput, isWeight = true) {
   return value;
 }
 
+function renderPaymentBadge(order) {
+  const status = (order?.estado_pago || "PENDIENTE").toUpperCase();
+  const method = (order?.metodo_pago || "EFECTIVO").toUpperCase();
+  const methodLabel = method === "TRANSFERENCIA" ? "Transferencia" : method === "EFECTIVO" ? "Efectivo" : "Otro";
+
+  let badgeClass = "";
+  let statusLabel = "";
+
+  if (status === "COBRADO") {
+    badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800";
+    statusLabel = "Cobrado";
+  } else if (status === "INFORMADO") {
+    badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-300 dark:border-blue-800";
+    statusLabel = "Informado";
+  } else {
+    badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800";
+    statusLabel = "Pendiente";
+  }
+
+  return `
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${badgeClass}">
+      <span>Pago: ${statusLabel}</span>
+      <span class="opacity-60">·</span>
+      <span class="font-bold opacity-90">${methodLabel}</span>
+    </span>
+  `;
+}
+
+function renderPaymentControls(order) {
+  const status = (order?.estado_pago || "PENDIENTE").toUpperCase();
+  const method = (order?.metodo_pago || "EFECTIVO").toUpperCase();
+
+  return `
+    <div class="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5">
+        <label for="pay-method-${order.id}" class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Método:</label>
+        <select
+          id="pay-method-${order.id}"
+          data-payment-method-order="${order.id}"
+          class="select-payment-method min-h-[44px] px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
+        >
+          <option value="EFECTIVO" ${method === "EFECTIVO" ? "selected" : ""}>Efectivo</option>
+          <option value="TRANSFERENCIA" ${method === "TRANSFERENCIA" ? "selected" : ""}>Transferencia</option>
+          <option value="OTRO" ${method === "OTRO" ? "selected" : ""}>Otro</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        ${status !== "COBRADO" ? `
+          <button
+            type="button"
+            data-mark-paid-order="${order.id}"
+            class="btn-mark-paid min-h-[44px] px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs transition tap-feedback touch-target flex items-center gap-1"
+          >
+            <span>✓ Marcar Cobrado</span>
+          </button>
+        ` : `
+          <button
+            type="button"
+            data-mark-unpaid-order="${order.id}"
+            class="btn-mark-unpaid min-h-[44px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-xs transition tap-feedback touch-target"
+            title="Cambiar a pago pendiente"
+          >
+            <span>Desmarcar Cobrado</span>
+          </button>
+        `}
+        ${status === "PENDIENTE" ? `
+          <button
+            type="button"
+            data-mark-informed-order="${order.id}"
+            class="btn-mark-informed min-h-[44px] px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-bold rounded-xl text-xs transition tap-feedback touch-target border border-blue-200 dark:border-blue-900/60"
+            title="Cliente informó pago por transferencia"
+          >
+            <span>Informado</span>
+          </button>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
 export function renderOperatorView(container) {
   let activeTab = "PENDIENTE"; // PENDIENTE | EN_PREPARACION | LISTO | ENTREGADO
   let editingOrderId = null; // ID del pedido que se está editando en modal
   let actionError = "";
   let addingProductOrderId = null; // ID del pedido que tiene abierto el desplegable de agregar ítem
+  let filterUnpaidOnly = false; // Filtro de pendientes de cobro
 
   function update() {
     container.innerHTML = "";
@@ -26,6 +108,7 @@ export function renderOperatorView(container) {
       ENTREGADO: orders.filter((o) => o.estado === "ENTREGADO").length,
       CANCELADO: orders.filter((o) => o.estado === "CANCELADO").length
     };
+    const unpaidTotal = orders.filter((o) => o.estado !== "CANCELADO" && (o.estado_pago || "PENDIENTE") !== "COBRADO").length;
 
     container.innerHTML = `
       <div class="max-w-2xl mx-auto pb-24 overflow-x-clip safe-pb">
@@ -104,12 +187,35 @@ export function renderOperatorView(container) {
                 activeTab === "ENTREGADO" ? "bg-slate-700 text-white font-black shadow-xs" : "text-slate-400 hover:text-white"
               }"
             >
-              <span>Cobrados</span>
+              <span>Entregados</span>
               <span class="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5 bg-slate-700 text-slate-300">${counts.ENTREGADO}</span>
             </button>
             <button data-tab="CANCELADO" class="tab-btn min-h-[48px] px-1 py-1.5 rounded-xl text-[10px] font-bold tap-feedback touch-target ${activeTab === "CANCELADO" ? "bg-rose-950 text-rose-200" : "text-slate-400"}">
               Cancelados <span class="block">${counts.CANCELADO}</span>
             </button>
+          </div>
+
+          <!-- Filtro Toolbar de Pendiente de Cobro -->
+          <div class="mt-2.5 flex items-center justify-between gap-2 px-1">
+            <button
+              id="btn-toggle-unpaid-filter"
+              class="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 tap-feedback touch-target border ${
+                filterUnpaidOnly
+                  ? "bg-amber-400 text-slate-950 border-amber-500 font-black shadow-xs"
+                  : "bg-slate-800 text-slate-300 border-slate-700 hover:text-white"
+              }"
+              aria-pressed="${filterUnpaidOnly}"
+            >
+              <span>${filterUnpaidOnly ? "✓ Solo pendientes de cobro" : "Pendientes de cobro"}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full ${
+                filterUnpaidOnly ? "bg-amber-600/30 text-slate-950 font-black" : "bg-slate-700 text-amber-300"
+              }">${unpaidTotal}</span>
+            </button>
+            ${filterUnpaidOnly ? `
+              <span class="text-[11px] text-amber-300 font-semibold">
+                Filtrando cobro pendiente
+              </span>
+            ` : ""}
           </div>
         </header>
 
@@ -123,6 +229,12 @@ export function renderOperatorView(container) {
         ${editingOrderId ? renderEditModal(orders.find((o) => o.id === editingOrderId)) : ""}
       </div>
     `;
+
+    // Listeners del header
+    container.querySelector("#btn-toggle-unpaid-filter")?.addEventListener("click", () => {
+      filterUnpaidOnly = !filterUnpaidOnly;
+      update();
+    });
 
     // Listeners del header
     container.querySelector("#btn-test-sound")?.addEventListener("click", () => {
@@ -147,13 +259,16 @@ export function renderOperatorView(container) {
 
   // --- Render según Pestaña ---
   function renderTabContent(orders) {
-    const tabOrders = orders.filter((o) => o.estado === activeTab);
+    let tabOrders = orders.filter((o) => o.estado === activeTab);
+    if (filterUnpaidOnly) {
+      tabOrders = tabOrders.filter((o) => (o.estado_pago || "PENDIENTE") !== "COBRADO");
+    }
 
     if (tabOrders.length === 0) {
       return `
         <div class="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-6">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Sin órdenes</span>
-          <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">No hay pedidos en esta columna</h3>
+          <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">${filterUnpaidOnly ? "No hay pedidos pendientes de cobro en esta columna" : "No hay pedidos en esta columna"}</h3>
           <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Los nuevos pedidos ingresarán automáticamente aquí en tiempo real.</p>
         </div>
       `;
@@ -173,7 +288,7 @@ export function renderOperatorView(container) {
               <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs transition">
                 <div class="flex items-start justify-between gap-2">
                   <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                       <span class="text-base font-black text-slate-900 dark:text-white">#${order.id}</span>
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         order.tipo_entrega === "DELIVERY"
@@ -182,6 +297,7 @@ export function renderOperatorView(container) {
                       }">
                         ${order.tipo_entrega === "DELIVERY" ? "Envío a Domicilio" : "Retiro en Local"}
                       </span>
+                      ${renderPaymentBadge(order)}
                     </div>
                     <h3 class="font-extrabold text-slate-900 dark:text-white text-sm mt-1.5">${escapeHtml(order.cliente.nombre)}</h3>
                     <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(order.cliente.telefono)} · ${timeAgo(order.fecha)}</p>
@@ -197,6 +313,9 @@ export function renderOperatorView(container) {
                   <span class="font-bold text-slate-700 dark:text-slate-300 block mb-0.5 text-[11px] uppercase tracking-wider">Productos solicitados (${order.items.length}):</span>
                   <p class="leading-relaxed">${itemsList || "Sin productos"}</p>
                 </div>
+
+                <!-- Controles de Pago -->
+                ${renderPaymentControls(order)}
 
                 <!-- Acciones Principales y de Gestión -->
                 <div class="mt-3 space-y-2">
@@ -240,7 +359,11 @@ export function renderOperatorView(container) {
         return `
           <section data-preparation-order="${escapeHtml(order.id)}" class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs">
             <div class="flex flex-wrap justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div><span class="text-[10px] uppercase tracking-wider font-black text-blue-600 dark:text-blue-400">En preparación</span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-[10px] uppercase tracking-wider font-black text-blue-600 dark:text-blue-400">En preparación</span>
+                  ${renderPaymentBadge(order)}
+                </div>
                 <h2 class="text-lg font-black text-slate-900 dark:text-white">Pedido #${escapeHtml(order.id)} · ${escapeHtml(order.cliente.nombre)}</h2>
                 <p class="text-xs text-slate-500 dark:text-slate-400">${order.tipo_entrega === "DELIVERY" ? escapeHtml(order.direccion_entrega) : "Retiro por mostrador"}</p>
               </div>
@@ -296,6 +419,7 @@ export function renderOperatorView(container) {
                 </div>` : `<button data-toggle-add-order="${escapeHtml(order.id)}" class="btn-open-add-product w-full min-h-[44px] mb-2 px-3 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300">Agregar producto que olvidó el cliente</button>`}
               <button data-finish-order-id="${escapeHtml(order.id)}" class="btn-finish-weighing w-full min-h-[48px] rounded-xl bg-slate-900 dark:bg-emerald-600 text-white text-sm font-bold disabled:opacity-40" ${progress.canFinalize ? "" : "disabled"}>Finalizar preparación</button>
               <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">El precio final se confirma al terminar todos los ítems.</p>
+              ${renderPaymentControls(order)}
               <div class="grid grid-cols-2 gap-2 mt-2">
                 <button data-edit-order-id="${escapeHtml(order.id)}" class="btn-open-edit min-h-[44px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200">Cambiar entrega/datos</button>
                 <button data-cancel-order-id="${escapeHtml(order.id)}" class="btn-cancel-order min-h-[44px] px-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-xs font-bold text-rose-700 dark:text-rose-300">Cancelar pedido</button>
@@ -317,9 +441,12 @@ export function renderOperatorView(container) {
               <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                 <div class="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div>
-                    <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      Preparación completa
-                    </span>
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                      <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        Preparación completa
+                      </span>
+                      ${renderPaymentBadge(order)}
+                    </div>
                     <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">#${order.id} · ${escapeHtml(order.cliente.nombre)}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(order.cliente.telefono)} · ${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"}</p>
                   </div>
@@ -346,10 +473,13 @@ export function renderOperatorView(container) {
                     data-deliver-order-id="${order.id}"
                     class="btn-deliver-order min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-3 px-3 rounded-xl text-xs transition tap-feedback touch-target border border-transparent dark:border-slate-700 flex items-center justify-center"
                   >
-                    Marcar Cobrado
+                    Entregar Pedido
                   </button>
                 </div>
                 <p id="wa-sim-feedback-${order.id}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
+
+                <!-- Controles de Pago -->
+                ${renderPaymentControls(order)}
 
                 <!-- Opción de Cancelar / Eliminar Pedido Listo -->
                 <div class="mt-2 text-right">
@@ -369,23 +499,31 @@ export function renderOperatorView(container) {
       `;
     }
 
-    // 4. Pestaña ENTREGADOS / COBRADOS
+    // 4. Pestaña ENTREGADOS
     if (activeTab === "ENTREGADO") {
       return `
-        <div class="space-y-2.5">
+        <div class="space-y-3">
           ${tabOrders
             .map(
               (order) => `
-            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-              <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${order.id}</span>
-                <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${escapeHtml(order.cliente.nombre)}</h4>
-                <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${timeAgo(order.fecha)}</p>
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${order.id}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      Entregado
+                    </span>
+                    ${renderPaymentBadge(order)}
+                  </div>
+                  <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${escapeHtml(order.cliente.nombre)}</h4>
+                  <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${timeAgo(order.fecha)}</p>
+                </div>
+                <div class="text-right">
+                  <span class="font-black text-base text-slate-900 dark:text-white">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
+                </div>
               </div>
-              <div class="text-right">
-                <span class="font-black text-base text-slate-900 dark:text-white">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
-                <span class="block text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">${order.total_real == null ? "Estimado · final no registrado" : "Cobrado"}</span>
-              </div>
+              ${renderPaymentControls(order)}
             </div>
           `
             )
@@ -793,6 +931,58 @@ Alias para transferir: ${businessAlias}
         const id = Number(btn.dataset.deliverOrderId);
         try { store.updateOrderStatus(id, "ENTREGADO"); update(); }
         catch (error) { showError(error.message); }
+      });
+    });
+
+    container.querySelectorAll(".btn-mark-paid").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.markPaidOrder);
+        try {
+          await store.updateOrderPayment(id, { estado_pago: "COBRADO" });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".btn-mark-unpaid").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.markUnpaidOrder);
+        try {
+          await store.updateOrderPayment(id, { estado_pago: "PENDIENTE" });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".btn-mark-informed").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch {} }
+        const id = Number(btn.dataset.markInformedOrder);
+        try {
+          await store.updateOrderPayment(id, { estado_pago: "INFORMADO" });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".select-payment-method").forEach((sel) => {
+      sel.addEventListener("change", async (e) => {
+        const id = Number(sel.dataset.paymentMethodOrder);
+        const method = e.target.value;
+        try {
+          await store.updateOrderPayment(id, { metodo_pago: method });
+          update();
+        } catch (error) {
+          showError(error.message);
+        }
       });
     });
   }

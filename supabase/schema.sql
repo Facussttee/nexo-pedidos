@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS public.pedidos (
     tipo_entrega VARCHAR(20) NOT NULL DEFAULT 'RETIRO' CHECK (tipo_entrega IN ('RETIRO', 'DELIVERY')),
     direccion_entrega TEXT DEFAULT 'Retiro en Mostrador',
     estado VARCHAR(25) NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO', 'CANCELADO')),
+    estado_pago VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' CHECK (estado_pago IN ('PENDIENTE', 'INFORMADO', 'COBRADO')),
+    metodo_pago VARCHAR(20) NOT NULL DEFAULT 'EFECTIVO' CHECK (metodo_pago IN ('EFECTIVO', 'TRANSFERENCIA', 'OTRO')),
     total_estimado NUMERIC(10, 2) NOT NULL DEFAULT 0,
     total_real NUMERIC(10, 2),
     items JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -97,10 +99,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'pedidos' AND column_name = 'tomado_por') THEN
         ALTER TABLE public.pedidos ADD COLUMN tomado_por VARCHAR(60) DEFAULT NULL;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'pedidos' AND column_name = 'estado_pago') THEN
+        ALTER TABLE public.pedidos ADD COLUMN estado_pago VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' CHECK (estado_pago IN ('PENDIENTE', 'INFORMADO', 'COBRADO'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'pedidos' AND column_name = 'metodo_pago') THEN
+        ALTER TABLE public.pedidos ADD COLUMN metodo_pago VARCHAR(20) NOT NULL DEFAULT 'EFECTIVO' CHECK (metodo_pago IN ('EFECTIVO', 'TRANSFERENCIA', 'OTRO'));
+    END IF;
 END $$;
 
 ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
 ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS tomado_por VARCHAR(60) DEFAULT NULL;
+ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS estado_pago VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE';
+ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(20) NOT NULL DEFAULT 'EFECTIVO';
 
 -- Iniciar secuencia de pedidos en 101 si está en valor inferior
 SELECT setval(
@@ -110,6 +120,7 @@ SELECT setval(
 
 -- Índices de consulta y rendimiento
 CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON public.pedidos(estado);
+CREATE INDEX IF NOT EXISTS idx_pedidos_estado_pago ON public.pedidos(estado_pago);
 CREATE INDEX IF NOT EXISTS idx_pedidos_cliente_tel ON public.pedidos(cliente_telefono);
 CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON public.pedidos(fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_productos_categoria ON public.productos(categoria);
@@ -256,7 +267,9 @@ GRANT EXECUTE ON FUNCTION public.get_request_header(TEXT) TO anon, authenticated
 GRANT EXECUTE ON FUNCTION public.verify_staff_pin_header() TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.update_staff_pin(TEXT, TEXT) TO anon, authenticated, service_role;
 
--- 5.3 Checkout Autoritativo en Servidor y Creación Atómica de Pedidos (V2-02)
+-- 5.3 Checkout Autoritativo en Servidor y Creación Atómica de Pedidos (V2-02 & V2-04)
+DROP FUNCTION IF EXISTS public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT);
+
 CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_cliente_telefono TEXT,
     p_cliente_nombre TEXT,
@@ -264,7 +277,8 @@ CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_tipo_entrega TEXT,
     p_direccion_entrega TEXT,
     p_items JSONB,
-    p_checkout_cart_key TEXT DEFAULT NULL
+    p_checkout_cart_key TEXT DEFAULT NULL,
+    p_metodo_pago TEXT DEFAULT 'EFECTIVO'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -278,6 +292,7 @@ DECLARE
     v_tipo_entrega TEXT;
     v_direccion_entrega TEXT;
     v_clean_cart_key TEXT;
+    v_metodo_pago TEXT;
     v_existing_pedido RECORD;
     v_item JSONB;
     v_product RECORD;
@@ -323,6 +338,11 @@ BEGIN
     END IF;
 
     v_clean_cart_key := NULLIF(TRIM(COALESCE(p_checkout_cart_key, '')), '');
+
+    v_metodo_pago := UPPER(TRIM(COALESCE(p_metodo_pago, 'EFECTIVO')));
+    IF v_metodo_pago NOT IN ('EFECTIVO', 'TRANSFERENCIA', 'OTRO') THEN
+        v_metodo_pago := 'EFECTIVO';
+    END IF;
 
     -- 2. Idempotencia: Si p_checkout_cart_key existe para este p_cliente_telefono, retornar fila existente
     IF v_clean_cart_key IS NOT NULL THEN
@@ -417,13 +437,15 @@ BEGIN
         v_verified_items := v_verified_items || jsonb_build_array(v_new_item);
     END LOOP;
 
-    -- 5. Inserción del pedido con estado PENDIENTE y version = 1
+    -- 5. Inserción del pedido con estado PENDIENTE, estado_pago PENDIENTE, metodo_pago y version = 1
     INSERT INTO public.pedidos (
         cliente_telefono,
         cliente_nombre,
         tipo_entrega,
         direccion_entrega,
         estado,
+        estado_pago,
+        metodo_pago,
         total_estimado,
         items,
         checkout_cart_key,
@@ -434,6 +456,8 @@ BEGIN
         v_tipo_entrega,
         v_direccion_entrega,
         'PENDIENTE',
+        'PENDIENTE',
+        v_metodo_pago,
         v_total_estimado,
         v_verified_items,
         v_clean_cart_key,
@@ -450,7 +474,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT) TO anon, authenticated, service_role;
 
 -- 5.3 Control de Inundación de Pedidos (Rate Limiting en Base de Datos)
 CREATE OR REPLACE FUNCTION public.enforce_order_rate_limit()

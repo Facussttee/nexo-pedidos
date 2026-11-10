@@ -12,6 +12,7 @@ export function renderClientView(container) {
   let selectedOrderId = null;
   let deliveryMode = "RETIRO"; // RETIRO | DELIVERY
   let deliveryAddress = "";
+  let paymentMethod = "EFECTIVO"; // EFECTIVO | TRANSFERENCIA
   let checkoutError = "";
   let catalogRecoveryError = "";
 
@@ -39,6 +40,7 @@ export function renderClientView(container) {
       viewMode = "catalog";
       deliveryMode = "RETIRO";
       deliveryAddress = "";
+      paymentMethod = "EFECTIVO";
       checkoutError = "";
       selectedCategory = "Todos";
       searchQuery = "";
@@ -936,6 +938,38 @@ export function renderClientView(container) {
                 />
               </div>
 
+              <!-- Selector de Método de Pago -->
+              <div class="pt-3">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+                  Método de Pago
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  <label id="payment-card-efectivo" class="flex flex-col p-3.5 border rounded-2xl cursor-pointer transition tap-feedback ${
+                    paymentMethod === "EFECTIVO"
+                      ? "border-slate-900 dark:border-emerald-500 bg-slate-900 dark:bg-slate-800 text-white shadow-xs"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
+                  }">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black">Efectivo</span>
+                      <input type="radio" name="checkout-payment-method" value="EFECTIVO" ${paymentMethod === "EFECTIVO" ? "checked" : ""} class="accent-emerald-500" />
+                    </div>
+                    <span class="text-[10px] opacity-75 mt-1">Abonás al recibir</span>
+                  </label>
+
+                  <label id="payment-card-transferencia" class="flex flex-col p-3.5 border rounded-2xl cursor-pointer transition tap-feedback ${
+                    paymentMethod === "TRANSFERENCIA"
+                      ? "border-slate-900 dark:border-emerald-500 bg-slate-900 dark:bg-slate-800 text-white shadow-xs"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
+                  }">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black">Transferencia</span>
+                      <input type="radio" name="checkout-payment-method" value="TRANSFERENCIA" ${paymentMethod === "TRANSFERENCIA" ? "checked" : ""} class="accent-emerald-500" />
+                    </div>
+                    <span class="text-[10px] opacity-75 mt-1">Alias / CBU disponible</span>
+                  </label>
+                </div>
+              </div>
+
               <div class="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-3.5 text-xs text-amber-950 dark:text-amber-200 mt-2">
                 <div class="flex items-center gap-1.5 mb-1">
                   <span class="w-2 h-2 rounded-full bg-amber-500"></span>
@@ -1176,6 +1210,29 @@ export function renderClientView(container) {
       });
     });
 
+    // Toggle de método de pago
+    const payCardEfectivo = container.querySelector("#payment-card-efectivo");
+    const payCardTransferencia = container.querySelector("#payment-card-transferencia");
+    const payRadios = container.querySelectorAll('input[name="checkout-payment-method"]');
+
+    payRadios.forEach((radio) => {
+      radio.addEventListener("change", (e) => {
+        paymentMethod = e.target.value;
+        const isEf = paymentMethod === "EFECTIVO";
+        if (isEf) {
+          payCardEfectivo?.classList.add(...selClasses);
+          payCardEfectivo?.classList.remove(...unselClasses);
+          payCardTransferencia?.classList.remove(...selClasses);
+          payCardTransferencia?.classList.add(...unselClasses);
+        } else {
+          payCardTransferencia?.classList.add(...selClasses);
+          payCardTransferencia?.classList.remove(...unselClasses);
+          payCardEfectivo?.classList.remove(...selClasses);
+          payCardEfectivo?.classList.add(...unselClasses);
+        }
+      });
+    });
+
     // Steppers en Carrito
     container.querySelectorAll("[data-drawer-inc]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1227,7 +1284,12 @@ export function renderClientView(container) {
 
       try {
         checkoutError = "";
-        const newOrder = store.createOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
+        const newOrder = store.createOrder({
+          cliente: user,
+          tipo_entrega: mode,
+          direccion_entrega: finalAddress,
+          metodo_pago: paymentMethod
+        });
         if (newOrder) {
           isCartOpen = false;
           isDrawerFirstOpen = true;
@@ -1465,8 +1527,10 @@ export function renderClientView(container) {
         : "El pedido fue pesado y podés pasar a retirarlo por el local.";
     } else if (isDelivered) {
       stepNumber = 4;
-      stepTitle = "Entregado y Cobrado";
-      stepDesc = "Pedido finalizado exitosamente. ¡Muchas gracias por tu compra!";
+      stepTitle = currentOrder.estado_pago === "COBRADO" ? "Entregado y Cobrado" : "Pedido Entregado";
+      stepDesc = currentOrder.estado_pago === "COBRADO"
+        ? "Pedido entregado y abonado. ¡Muchas gracias por tu compra!"
+        : "Pedido entregado al cliente.";
     }
 
     const waHelpRawText = `Hola! Consulto por mi pedido #${currentOrder.id} a nombre de ${currentOrder.cliente.nombre}.`;
@@ -1549,6 +1613,13 @@ export function renderClientView(container) {
                 <span class="text-slate-800 dark:text-slate-200 font-medium text-right">${escapeHtml(currentOrder.direccion_entrega)}</span>
               </div>
             ` : ""}
+
+            <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>Pago:</span>
+              <strong class="text-slate-800 dark:text-slate-200 font-semibold">
+                ${(currentOrder.metodo_pago || "EFECTIVO") === "TRANSFERENCIA" ? "Transferencia" : "Efectivo"} · ${(currentOrder.estado_pago || "PENDIENTE") === "COBRADO" ? "Cobrado" : (currentOrder.estado_pago || "PENDIENTE") === "INFORMADO" ? "Informado" : "Pendiente"}
+              </strong>
+            </div>
 
             ${isReady && Number.isFinite(currentOrder.total_real) ? `
               <div class="pt-2.5 border-t border-slate-200 dark:border-slate-800">

@@ -303,6 +303,11 @@ class Store {
     return { staffPin: pin || "1234" };
   }
 
+  getStaffPinHeaders() {
+    const { staffPin } = this.getLocalSettings();
+    return staffPin ? { "x-nexo-staff-pin": staffPin } : {};
+  }
+
   saveLocalSettings(newSettings = {}) {
     const current = this.getLocalSettings();
     const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
@@ -544,6 +549,8 @@ class Store {
           tipo_entrega: o.tipo_entrega,
           direccion_entrega: o.direccion_entrega,
           estado: o.estado,
+          estado_pago: o.estado_pago || "PENDIENTE",
+          metodo_pago: o.metodo_pago || "EFECTIVO",
           fecha: o.fecha || o.created_at || new Date().toISOString(),
           total_estimado: Number(o.total_estimado),
           total_real: o.total_real !== null ? Number(o.total_real) : null,
@@ -644,7 +651,8 @@ class Store {
             cantidad: i.cantidad_solicitada ?? i.cantidad ?? 1,
             precio: i.precio_unitario ?? i.precio
           })),
-          p_checkout_cart_key: order.checkout_cart_key || null
+          p_checkout_cart_key: order.checkout_cart_key || null,
+          p_metodo_pago: order.metodo_pago || "EFECTIVO"
         };
 
         const rpcCall = this.supabase.rpc("create_order_atomic", rpcPayload);
@@ -668,6 +676,8 @@ class Store {
           const oldId = order.id;
           order.id = dbId;
           order.version = dbOrder.version != null ? Number(dbOrder.version) : 1;
+          order.estado_pago = dbOrder.estado_pago || order.estado_pago || "PENDIENTE";
+          order.metodo_pago = dbOrder.metodo_pago || order.metodo_pago || "EFECTIVO";
           if (dbOrder.total_estimado != null) order.total_estimado = Number(dbOrder.total_estimado);
           if (Array.isArray(dbOrder.items) && dbOrder.items.length) order.items = dbOrder.items;
 
@@ -679,6 +689,8 @@ class Store {
                     ...o,
                     id: dbId,
                     version: order.version,
+                    estado_pago: order.estado_pago,
+                    metodo_pago: order.metodo_pago,
                     total_estimado: order.total_estimado,
                     items: order.items,
                     _isNew: false
@@ -700,6 +712,8 @@ class Store {
         tipo_entrega: order.tipo_entrega || "RETIRO",
         direccion_entrega: order.direccion_entrega || (order.tipo_entrega === "DELIVERY" ? "" : "Retiro en Mostrador"),
         estado: order.estado || "PENDIENTE",
+        estado_pago: order.estado_pago || "PENDIENTE",
+        metodo_pago: order.metodo_pago || "EFECTIVO",
         total_estimado: Number(order.total_estimado || 0),
         total_real: order.total_real !== null && order.total_real !== undefined ? Number(order.total_real) : null,
         items: Array.isArray(order.items) ? order.items : [],
@@ -1258,7 +1272,7 @@ class Store {
     return this.checkoutWarning || null;
   }
 
-  createOrder({ cliente, tipo_entrega, direccion_entrega }) {
+  createOrder({ cliente, tipo_entrega, direccion_entrega, metodo_pago = "EFECTIVO" }) {
     if (!this.config.ok) return null;
     const config = this.getComercioConfigSync();
     const { items, subtotal } = this.getCartSummary({ tipo_entrega });
@@ -1288,10 +1302,17 @@ class Store {
     const totalEstimado = subtotal + costoEnvio;
 
     const newId = orders.length > 0 ? Math.max(...orders.map((o) => o.id)) + 1 : 101;
+    const cleanMetodoPago = (metodo_pago && ["EFECTIVO", "TRANSFERENCIA", "OTRO"].includes(String(metodo_pago).toUpperCase()))
+      ? String(metodo_pago).toUpperCase()
+      : "EFECTIVO";
+
     const newOrder = {
       id: newId, cliente, tipo_entrega,
       direccion_entrega: tipo_entrega === "DELIVERY" ? direccion_entrega : "Retiro en Mostrador",
-      estado: "PENDIENTE", fecha: new Date().toISOString(),
+      estado: "PENDIENTE",
+      estado_pago: "PENDIENTE",
+      metodo_pago: cleanMetodoPago,
+      fecha: new Date().toISOString(),
       total_estimado: totalEstimado, total_real: null, checkout_cart_key: cartKey,
       version: 1,
       tomado_por: null,
@@ -1311,6 +1332,123 @@ class Store {
     this.playAudioAlert();
     this.notify("order_created", newOrder);
     return newOrder;
+  }
+
+  createOrderDirect(orderData) {
+    if (!this.config.ok) return null;
+    if (!orderData || !orderData.cliente) throw new Error("Datos de cliente requeridos.");
+    const orders = this.getOrders();
+    const newId = orderData.id || (orders.length > 0 ? Math.max(...orders.map((o) => o.id)) + 1 : 101);
+    const cleanMetodoPago = orderData.metodo_pago && ["EFECTIVO", "TRANSFERENCIA", "OTRO"].includes(String(orderData.metodo_pago).toUpperCase())
+      ? String(orderData.metodo_pago).toUpperCase()
+      : "EFECTIVO";
+    const cleanEstadoPago = orderData.estado_pago && ["PENDIENTE", "INFORMADO", "COBRADO"].includes(String(orderData.estado_pago).toUpperCase())
+      ? String(orderData.estado_pago).toUpperCase()
+      : "PENDIENTE";
+    const newOrder = {
+      id: newId,
+      cliente: orderData.cliente,
+      tipo_entrega: orderData.tipo_entrega || "RETIRO",
+      direccion_entrega: orderData.tipo_entrega === "DELIVERY" ? (orderData.direccion_entrega || "") : "Retiro en Mostrador",
+      estado: orderData.estado || "PENDIENTE",
+      estado_pago: cleanEstadoPago,
+      metodo_pago: cleanMetodoPago,
+      fecha: orderData.fecha || new Date().toISOString(),
+      total_estimado: Number(orderData.total_estimado || 0),
+      total_real: orderData.total_real !== null && orderData.total_real !== undefined ? Number(orderData.total_real) : null,
+      checkout_cart_key: orderData.checkout_cart_key || null,
+      version: orderData.version != null ? Number(orderData.version) : 1,
+      tomado_por: orderData.tomado_por || null,
+      _isNew: true,
+      items: Array.isArray(orderData.items) ? orderData.items : []
+    };
+    this.persistOrders([newOrder, ...orders]);
+    this.syncOrderToSupabase(newOrder);
+    this.notify("order_created", newOrder);
+    return newOrder;
+  }
+
+  async updateOrderPayment(orderId, { estado_pago, metodo_pago } = {}) {
+    const id = Number(orderId);
+    if (!Number.isFinite(id)) throw new Error("ID de pedido no válido.");
+
+    let cleanEstadoPago;
+    if (estado_pago !== undefined) {
+      cleanEstadoPago = String(estado_pago || "").toUpperCase();
+      if (!["PENDIENTE", "INFORMADO", "COBRADO"].includes(cleanEstadoPago)) {
+        throw new Error(`Estado de pago no válido: ${estado_pago}`);
+      }
+    }
+
+    let cleanMetodoPago;
+    if (metodo_pago !== undefined) {
+      cleanMetodoPago = String(metodo_pago || "").toUpperCase();
+      if (!["EFECTIVO", "TRANSFERENCIA", "OTRO"].includes(cleanMetodoPago)) {
+        throw new Error(`Método de pago no válido: ${metodo_pago}`);
+      }
+    }
+
+    if (cleanEstadoPago === undefined && cleanMetodoPago === undefined) {
+      throw new Error("Debe proporcionar estado_pago o metodo_pago a actualizar.");
+    }
+
+    if (this.isDemo()) {
+      const orders = this.getOrders();
+      const order = orders.find((o) => o.id === id);
+      if (!order) throw new Error("Pedido no encontrado.");
+
+      const updatedOrder = {
+        ...order,
+        ...(cleanEstadoPago !== undefined ? { estado_pago: cleanEstadoPago } : {}),
+        ...(cleanMetodoPago !== undefined ? { metodo_pago: cleanMetodoPago } : {}),
+        updated_at: new Date().toISOString()
+      };
+
+      this.persistOrders(orders.map((o) => (o.id === id ? updatedOrder : o)));
+      this.notify("orders_changed");
+      return updatedOrder;
+    }
+
+    if (!this.supabase) {
+      throw new Error("No hay conexión con Supabase en modo producción.");
+    }
+
+    const updatePayload = {
+      ...(cleanEstadoPago !== undefined ? { estado_pago: cleanEstadoPago } : {}),
+      ...(cleanMetodoPago !== undefined ? { metodo_pago: cleanMetodoPago } : {}),
+      updated_at: new Date().toISOString()
+    };
+
+    const query = this.supabase.from("pedidos").update(updatePayload).eq("id", id);
+    const staffPinHeaders = this.getStaffPinHeaders();
+    if (staffPinHeaders["x-nexo-staff-pin"] && typeof query.setHeader === "function") {
+      query.setHeader("x-nexo-staff-pin", staffPinHeaders["x-nexo-staff-pin"]);
+    }
+
+    const res = typeof query.select === "function" ? await query.select() : await query;
+    if (res.error) {
+      throw new Error(res.error.message || "Error al actualizar el pago del pedido en Supabase.");
+    }
+
+    const currentOrders = this.getOrders();
+    let updatedLocal = null;
+    const newOrders = currentOrders.map((o) => {
+      if (o.id === id) {
+        updatedLocal = {
+          ...o,
+          ...updatePayload
+        };
+        return updatedLocal;
+      }
+      return o;
+    });
+
+    if (updatedLocal) {
+      this.persistOrders(newOrders);
+      this.notify("orders_changed");
+    }
+
+    return (res.data && res.data[0]) || updatedLocal;
   }
 
   updateOrderStatus(orderId, newStatus) {

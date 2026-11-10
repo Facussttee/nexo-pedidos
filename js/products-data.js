@@ -9,7 +9,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1800,
     disponible: true,
     paso: 0.5,
-    detalle: "Ecuador Seleccionada"
+    detalle: "Ecuador Seleccionada",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-2",
@@ -19,7 +22,10 @@ export const INITIAL_PRODUCTS = [
     precio: 2200,
     disponible: true,
     paso: 0.5,
-    detalle: "Alto Valle, Río Negro"
+    detalle: "Alto Valle, Río Negro",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-3",
@@ -29,7 +35,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1400,
     disponible: true,
     paso: 0.5,
-    detalle: "San Pedro dulce y jugosa"
+    detalle: "San Pedro dulce y jugosa",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-4",
@@ -39,7 +48,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1600,
     disponible: true,
     paso: 0.25,
-    detalle: "Tucumano cuatro estaciones"
+    detalle: "Tucumano cuatro estaciones",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-5",
@@ -49,7 +61,10 @@ export const INITIAL_PRODUCTS = [
     precio: 4500,
     disponible: true,
     paso: 0.25,
-    detalle: "Coronda madura y fresca"
+    detalle: "Coronda madura y fresca",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-6",
@@ -59,7 +74,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1200,
     disponible: true,
     paso: 1,
-    detalle: "Punto justo para consumir"
+    detalle: "Punto justo para consumir",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
 
   // Verduras
@@ -71,7 +89,10 @@ export const INITIAL_PRODUCTS = [
     precio: 950,
     disponible: true,
     paso: 1.0,
-    detalle: "Balcarce lavada y firme"
+    detalle: "Balcarce lavada y firme",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-8",
@@ -81,7 +102,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1100,
     disponible: true,
     paso: 0.5,
-    detalle: "Seca de primera calidad"
+    detalle: "Seca de primera calidad",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-9",
@@ -91,7 +115,10 @@ export const INITIAL_PRODUCTS = [
     precio: 2600,
     disponible: true,
     paso: 0.5,
-    detalle: "Platense maduro en planta"
+    detalle: "Platense maduro en planta",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-10",
@@ -101,7 +128,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1300,
     disponible: true,
     paso: 0.5,
-    detalle: "Dulce y crujiente"
+    detalle: "Dulce y crujiente",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-11",
@@ -111,7 +141,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1700,
     disponible: true,
     paso: 0.5,
-    detalle: "Chico y tierno"
+    detalle: "Chico y tierno",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-12",
@@ -121,7 +154,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1100,
     disponible: true,
     paso: 1.0,
-    detalle: "Cremosa y dulce"
+    detalle: "Cremosa y dulce",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
 
   // Hojas Verdes
@@ -133,7 +169,10 @@ export const INITIAL_PRODUCTS = [
     precio: 900,
     disponible: true,
     paso: 1,
-    detalle: "Atado fresco del día"
+    detalle: "Atado fresco del día",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-14",
@@ -143,7 +182,10 @@ export const INITIAL_PRODUCTS = [
     precio: 2800,
     disponible: true,
     paso: 0.25,
-    detalle: "Hojas tiernas y limpias"
+    detalle: "Hojas tiernas y limpias",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-15",
@@ -153,7 +195,10 @@ export const INITIAL_PRODUCTS = [
     precio: 1100,
     disponible: true,
     paso: 1,
-    detalle: "Atado grande seleccionado"
+    detalle: "Atado grande seleccionado",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
 
   // Almacén / Granja
@@ -165,7 +210,10 @@ export const INITIAL_PRODUCTS = [
     precio: 5200,
     disponible: true,
     paso: 1,
-    detalle: "Castaños de gallinas libres"
+    detalle: "Castaños de gallinas libres",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   },
   {
     id: "prod-17",
@@ -175,7 +223,10 @@ export const INITIAL_PRODUCTS = [
     precio: 2300,
     disponible: true,
     paso: 1,
-    detalle: "Caja seleccionada x 12 u."
+    detalle: "Caja seleccionada x 12 u.",
+    controlar_stock: false,
+    stock_actual: 0,
+    stock_reservado: 0
   }
 ];
 

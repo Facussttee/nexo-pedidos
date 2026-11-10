@@ -250,6 +250,11 @@ export function renderAdminView(container) {
   function renderProductModal() {
     const draft = productDraft;
     const hasPhoto = Boolean(stagedPreviewUrl || (draft.imagen_id && !removeImageFlag));
+    const stockActual = Number(draft.stock_actual || 0);
+    const stockReservado = Number(draft.stock_reservado || 0);
+    const stockDisponible = Math.max(0, stockActual - stockReservado);
+    const isKg = draft.unidad_medida === "KG";
+    const stockStep = isKg ? "0.001" : "1";
 
     return `
       <div id="product-modal-backdrop" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -350,6 +355,32 @@ export function renderAdminView(container) {
               <input id="prod-available" type="checkbox" ${draft.disponible ? "checked" : ""} class="w-5 h-5 accent-emerald-600 rounded" ${isSaving ? "disabled" : ""} />
               <span>Disponible para la venta</span>
             </label>
+
+            <div class="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+              <label for="prod-controlar-stock" class="flex items-center gap-3 min-h-[44px] text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                <input id="prod-controlar-stock" type="checkbox" ${draft.controlar_stock ? "checked" : ""} class="w-5 h-5 accent-emerald-600 rounded" ${isSaving ? "disabled" : ""} />
+                <span>Controlar stock cuantitativo</span>
+              </label>
+
+              <div id="stock-fields-container" class="${draft.controlar_stock ? "" : "opacity-60"} grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label for="prod-stock-actual" class="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-200">Stock Actual</label>
+                  <input id="prod-stock-actual" type="number" min="0" step="${stockStep}" value="${stockActual}" class="${inputClass} min-h-[44px]" ${isSaving ? "disabled" : ""} />
+                </div>
+                <div>
+                  <span class="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-200">Stock Reservado</span>
+                  <div id="prod-stock-reservado" class="${inputClass} min-h-[44px] flex items-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold cursor-not-allowed select-none">
+                    ${stockReservado.toLocaleString("es-AR")}
+                  </div>
+                </div>
+                <div>
+                  <span class="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-200">Stock Disponible</span>
+                  <div id="prod-stock-disponible" class="${inputClass} min-h-[44px] flex items-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-black cursor-not-allowed select-none">
+                    ${stockDisponible.toLocaleString("es-AR")}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             ${editingProductId !== null ? `
               <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -491,8 +522,17 @@ export function renderAdminView(container) {
     }
     editingProductId = id;
     productDraft = product
-      ? { ...product }
-      : { nombre: "", categoria: "", codigo: "", unidad_medida: "UNIDAD", paso: 1, precio: "", detalle: "", disponible: true, archivado: false };
+      ? {
+          ...product,
+          controlar_stock: Boolean(product.controlar_stock),
+          stock_actual: Number(product.stock_actual || 0),
+          stock_reservado: Number(product.stock_reservado || 0)
+        }
+      : {
+          nombre: "", categoria: "", codigo: "", unidad_medida: "UNIDAD", paso: 1, precio: "", detalle: "",
+          disponible: true, archivado: false,
+          controlar_stock: false, stock_actual: 0, stock_reservado: 0
+        };
 
     if (stagedPreviewUrl) {
       try { URL.revokeObjectURL(stagedPreviewUrl); } catch {}
@@ -537,6 +577,9 @@ export function renderAdminView(container) {
       precio: value("#prod-price"),
       detalle: value("#prod-detail"),
       disponible: container.querySelector("#prod-available")?.checked ?? true,
+      controlar_stock: container.querySelector("#prod-controlar-stock")?.checked ?? false,
+      stock_actual: container.querySelector("#prod-stock-actual")?.value !== "" ? Number(value("#prod-stock-actual")) : 0,
+      stock_reservado: Number(productDraft?.stock_reservado || 0),
       archivado: Boolean(productDraft?.archivado)
     };
   }
@@ -584,11 +627,33 @@ export function renderAdminView(container) {
     container.querySelector("#prod-unit")?.addEventListener("change", () => {
       const unit = container.querySelector("#prod-unit").value;
       const step = container.querySelector("#prod-step");
-      if (!step) return;
-      step.disabled = unit === "UNIDAD";
-      step.innerHTML = (unit === "UNIDAD" ? [1] : [0.25, 0.5, 1]).map(val => `
-        <option value="${val}">${val.toLocaleString("es-AR")} ${unit === "KG" ? "kg" : "unidad"}</option>
-      `).join("");
+      if (step) {
+        step.disabled = unit === "UNIDAD";
+        step.innerHTML = (unit === "UNIDAD" ? [1] : [0.25, 0.5, 1]).map(val => `
+          <option value="${val}">${val.toLocaleString("es-AR")} ${unit === "KG" ? "kg" : "unidad"}</option>
+        `).join("");
+      }
+      const stockInput = container.querySelector("#prod-stock-actual");
+      if (stockInput) {
+        stockInput.step = unit === "KG" ? "0.001" : "1";
+      }
+    });
+
+    container.querySelector("#prod-controlar-stock")?.addEventListener("change", (e) => {
+      const fieldsContainer = container.querySelector("#stock-fields-container");
+      if (fieldsContainer) {
+        if (e.target.checked) fieldsContainer.classList.remove("opacity-60");
+        else fieldsContainer.classList.add("opacity-60");
+      }
+    });
+
+    container.querySelector("#prod-stock-actual")?.addEventListener("input", (e) => {
+      const dispEl = container.querySelector("#prod-stock-disponible");
+      if (dispEl) {
+        const val = Number(e.target.value) || 0;
+        const res = Number(productDraft?.stock_reservado || 0);
+        dispEl.textContent = Math.max(0, val - res).toLocaleString("es-AR");
+      }
     });
 
     container.querySelector("#btn-modal-step-down")?.addEventListener("click", () => {

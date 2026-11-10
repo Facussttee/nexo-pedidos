@@ -222,10 +222,63 @@ export async function processProductImageFile(file) {
   }
 }
 
+export async function saveProductImage(fileOrBlob, { isDemo = false, supabase = null, staffPin = "", productId = null } = {}) {
+  if (!fileOrBlob) {
+    throw new Error("No se proporcionó ningún archivo o blob de imagen.");
+  }
+
+  let blob = fileOrBlob;
+  const isAlreadyProcessed =
+    blob &&
+    typeof blob === "object" &&
+    blob.type === "image/jpeg" &&
+    typeof blob.size === "number" &&
+    blob.size <= MAX_OUTPUT_SIZE;
+
+  if (!isAlreadyProcessed) {
+    blob = await processProductImageFile(fileOrBlob);
+  }
+
+  if (isDemo) {
+    return await putImage(blob);
+  }
+
+  if (!supabase || !supabase.storage || typeof supabase.storage.from !== "function") {
+    throw new Error("Cliente de Supabase Storage no disponible para guardar imagen.");
+  }
+
+  const filename = `${productId || generateImageId()}.jpg`;
+  const storagePath = `products/${filename}`;
+  const cleanPin = typeof staffPin === "string" ? staffPin.trim() : "";
+  const uploadOptions = {
+    contentType: "image/jpeg",
+    upsert: true
+  };
+  if (cleanPin) {
+    uploadOptions.headers = { "x-nexo-staff-pin": cleanPin };
+  }
+
+  const bucket = supabase.storage.from("product-images");
+  const { data, error } = await bucket.upload(storagePath, blob, uploadOptions);
+
+  if (error) {
+    throw new Error(`Error al subir imagen a Supabase Storage: ${error.message || JSON.stringify(error)}`);
+  }
+
+  const publicUrlRes = bucket.getPublicUrl(storagePath);
+  const publicUrl = publicUrlRes?.data?.publicUrl || publicUrlRes?.publicUrl;
+
+  if (!publicUrl) {
+    throw new Error("No se pudo obtener la URL pública de la imagen en Supabase Storage.");
+  }
+
+  return publicUrl;
+}
+
 export function isDirectImageUrl(id) {
   if (typeof id !== "string") return false;
   const trimmed = id.trim();
-  return trimmed.startsWith("https://");
+  return trimmed.startsWith("https://") || trimmed.startsWith("http://");
 }
 
 export function createScopedImageLoader() {

@@ -369,6 +369,7 @@ export function renderClientView(container) {
 
     const prevScrollEl = container.querySelector("#cart-drawer-items-list");
     const savedDrawerScroll = prevScrollEl ? prevScrollEl.scrollTop : 0;
+    const comercioConfig = store.getComercioConfigSync();
 
     container.innerHTML = `
       <div id="client-catalog-content" class="max-w-4xl mx-auto pb-32 sm:pb-36 w-full overflow-x-clip safe-pb">
@@ -414,6 +415,12 @@ export function renderClientView(container) {
               <span class="truncate">Hola, <strong class="text-slate-800 dark:text-slate-200 font-semibold">${escapeHtml(user.nombre)}</strong></span>
               <button id="btn-change-user" class="min-h-[44px] min-w-[44px] inline-flex items-center px-1 text-slate-400 dark:text-slate-500 underline hover:text-slate-600 dark:hover:text-slate-300 text-[11px] touch-target shrink-0">Cambiar</button>
             </div>
+            ${comercioConfig.horarios ? `
+              <div id="store-schedule-badge" class="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-lg shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span class="truncate max-w-[200px]" title="${escapeHtml(comercioConfig.horarios)}">${escapeHtml(comercioConfig.horarios)}</span>
+              </div>
+            ` : ""}
           </div>
         </div>
 
@@ -559,7 +566,7 @@ export function renderClientView(container) {
       const unitSubtitle = isKg ? "Por kilo" : "Por unidad";
       const inCart = currentQty > 0;
       const itemSubtotal = inCart ? Math.round(currentQty * product.precio) : 0;
-      const hasImage = Boolean(product.imagen_id);
+      const hasImage = Boolean(product.imagen_id || product.imagen_url);
 
       return `
         <div class="relative bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border transition flex flex-col justify-between ${
@@ -582,7 +589,7 @@ export function renderClientView(container) {
           <div>
             ${hasImage ? `
               <div class="product-photo-wrapper w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden mb-2.5 relative hidden">
-                <img data-image-id="${escapeHtml(product.imagen_id)}" alt="" class="w-full h-full object-cover hidden" />
+                <img data-image-id="${escapeHtml(product.imagen_url || product.imagen_id)}" alt="" class="w-full h-full object-cover hidden" />
               </div>
             ` : ""}
 
@@ -772,6 +779,13 @@ export function renderClientView(container) {
   function renderCartModal(user, items, totalEstimado) {
     const isDelivery = deliveryMode === "DELIVERY";
     const isEmpty = items.length === 0;
+    const comercioConfig = store.getComercioConfigSync();
+    const costoEnvio = isDelivery ? Number(comercioConfig.costo_envio || 0) : 0;
+    const subtotal = items.reduce((sum, item) => sum + item.subtotal_estimado, 0);
+    const finalTotal = subtotal + costoEnvio;
+    const compraMinima = Number(comercioConfig.compra_minima || 0);
+    const faltaParaMinimo = Math.max(0, compraMinima - subtotal);
+    const cumpleMinimo = subtotal >= compraMinima;
 
     return `
       <!-- Backdrop Modal con z-index 70 (sobre cabecera demo z-50) -->
@@ -901,7 +915,9 @@ export function renderClientView(container) {
                       <span class="text-xs font-black">Envío a Domicilio</span>
                       <input type="radio" name="delivery-mode" value="DELIVERY" ${isDelivery ? "checked" : ""} class="accent-emerald-500" />
                     </div>
-                    <span class="text-[10px] opacity-75 mt-1">Cadete a tu puerta</span>
+                    <span class="text-[10px] opacity-75 mt-1">
+                      ${comercioConfig.costo_envio > 0 ? `Costo: $${Number(comercioConfig.costo_envio).toLocaleString("es-AR")}` : "Cadete a tu puerta"}
+                    </span>
                   </label>
                 </div>
               </div>
@@ -934,13 +950,31 @@ export function renderClientView(container) {
 
           <!-- Footer con Safe Area Pad y Confirmación -->
           <div class="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-b-3xl space-y-3 safe-pb">
-            <div class="flex items-center justify-between">
-              <div>
-                <span class="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-bold tracking-wider">Total Estimado</span>
-                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sujeto a balanza</span>
+            <div class="space-y-1.5 pt-1">
+              <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Subtotal productos</span>
+                <span>$${subtotal.toLocaleString("es-AR")}</span>
               </div>
-              <span class="font-black text-2xl text-slate-900 dark:text-white">$${totalEstimado.toLocaleString("es-AR")}</span>
+              <div id="cart-shipping-row" class="${isDelivery && costoEnvio > 0 ? "" : "hidden"} flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Costo de envío</span>
+                <span>+$${costoEnvio.toLocaleString("es-AR")}</span>
+              </div>
+              <div class="flex items-center justify-between pt-1">
+                <div>
+                  <span class="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-bold tracking-wider">Total Estimado</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sujeto a balanza</span>
+                </div>
+                <span id="cart-final-total" class="font-black text-2xl text-slate-900 dark:text-white">$${finalTotal.toLocaleString("es-AR")}</span>
+              </div>
             </div>
+
+            <!-- Alerta de Compra Mínima si no se alcanza -->
+            ${!isEmpty && !cumpleMinimo ? `
+              <div id="min-purchase-alert" role="alert" class="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
+                <span class="font-bold text-sm">⚠️</span>
+                <span>La compra mínima es de <strong>$${compraMinima.toLocaleString("es-AR")}</strong> (faltan $${faltaParaMinimo.toLocaleString("es-AR")}).</span>
+              </div>
+            ` : ""}
 
             ${isEmpty ? `
               <button
@@ -949,6 +983,15 @@ export function renderClientView(container) {
                 class="w-full min-h-[50px] bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-black py-4 rounded-2xl text-sm cursor-not-allowed opacity-60 text-center"
               >
                 Pedido Vacío
+              </button>
+            ` : !cumpleMinimo ? `
+              <button
+                id="btn-confirm-order"
+                disabled
+                class="w-full min-h-[50px] bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-black py-4 rounded-2xl text-sm cursor-not-allowed opacity-60 text-center"
+                title="No alcanza la compra mínima"
+              >
+                Mínimo $${compraMinima.toLocaleString("es-AR")} (Faltan $${faltaParaMinimo.toLocaleString("es-AR")})
               </button>
             ` : `
               <button
@@ -1109,6 +1152,26 @@ export function renderClientView(container) {
           cardDelivery?.classList.remove(...selClasses);
           cardDelivery?.classList.add(...unselClasses);
           addressContainer?.classList.add("hidden");
+        }
+
+        const comercioConfig = store.getComercioConfigSync();
+        const costoEnvio = isDel ? Number(comercioConfig.costo_envio || 0) : 0;
+        const { items } = store.getCartSummary({ tipo_entrega: deliveryMode });
+        const subtotal = items.reduce((sum, item) => sum + item.subtotal_estimado, 0);
+        const finalTotal = subtotal + costoEnvio;
+        const shippingRow = container.querySelector("#cart-shipping-row");
+        const totalEl = container.querySelector("#cart-final-total");
+        if (shippingRow) {
+          if (isDel && costoEnvio > 0) {
+            shippingRow.classList.remove("hidden");
+            const valSpan = shippingRow.querySelector("span:last-child");
+            if (valSpan) valSpan.textContent = `+$${costoEnvio.toLocaleString("es-AR")}`;
+          } else {
+            shippingRow.classList.add("hidden");
+          }
+        }
+        if (totalEl) {
+          totalEl.textContent = `$${finalTotal.toLocaleString("es-AR")}`;
         }
       });
     });

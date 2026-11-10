@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.productos (
     detalle TEXT DEFAULT '',
     archivado BOOLEAN DEFAULT FALSE,
     imagen_id VARCHAR(100) DEFAULT NULL,
+    imagen_url TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -50,10 +51,14 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'imagen_id') THEN
         ALTER TABLE public.productos ADD COLUMN imagen_id VARCHAR(100) DEFAULT NULL;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'imagen_url') THEN
+        ALTER TABLE public.productos ADD COLUMN imagen_url TEXT DEFAULT NULL;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'productos' AND column_name = 'created_at') THEN
         ALTER TABLE public.productos ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
     END IF;
 END $$;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS imagen_url TEXT DEFAULT NULL;
 
 -- 3. TABLA DE PEDIDOS (CABECERA, DETALLE JSONB Y KANBAN DE MOSTRADOR)
 CREATE TABLE IF NOT EXISTS public.pedidos (
@@ -620,10 +625,40 @@ CREATE POLICY "pedidos_update_restricted"
     );
 
 -- =============================================================================
--- 6. HABILITAR WEBSOCKETS EN TIEMPO REAL (SUPABASE REALTIME)
+-- 6. TABLA DE CONFIGURACION DEL COMERCIO (SINGLETON) Y POLÍTICAS RLS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.comercio_config (
+    id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    nombre VARCHAR(120) NOT NULL,
+    alias VARCHAR(60) NOT NULL,
+    whatsapp VARCHAR(25) NOT NULL,
+    costo_envio NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (costo_envio >= 0),
+    compra_minima NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (compra_minima >= 0),
+    horarios VARCHAR(250) DEFAULT '',
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.comercio_config ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE ON public.comercio_config TO anon, authenticated;
+GRANT ALL ON TABLE public.comercio_config TO service_role;
+
+DROP POLICY IF EXISTS "comercio_config_select_public" ON public.comercio_config;
+DROP POLICY IF EXISTS "comercio_config_write_staff" ON public.comercio_config;
+
+CREATE POLICY "comercio_config_select_public" ON public.comercio_config FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "comercio_config_write_staff" ON public.comercio_config FOR ALL TO anon, authenticated USING (public.verify_staff_pin_header()) WITH CHECK (public.verify_staff_pin_header());
+
+INSERT INTO public.comercio_config (id, nombre, alias, whatsapp, costo_envio, compra_minima, horarios)
+VALUES (1, 'Mi Huerta', 'mihuerta', '5491112345678', 500.00, 2000.00, 'Lunes a Sábado de 8:00 a 20:00')
+ON CONFLICT (id) DO NOTHING;
+
+-- =============================================================================
+-- 7. HABILITAR WEBSOCKETS EN TIEMPO REAL (SUPABASE REALTIME)
 -- =============================================================================
 ALTER TABLE public.pedidos REPLICA IDENTITY FULL;
 ALTER TABLE public.productos REPLICA IDENTITY FULL;
+ALTER TABLE public.comercio_config REPLICA IDENTITY FULL;
 
 DO $$
 BEGIN
@@ -640,10 +675,17 @@ BEGIN
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.productos;
     END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND tablename = 'comercio_config'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.comercio_config;
+    END IF;
 END $$;
 
 -- =============================================================================
--- 7. SEMILLA INICIAL DE PRODUCTOS (17 PRODUCTOS BASE)
+-- 8. SEMILLA INICIAL DE PRODUCTOS (17 PRODUCTOS BASE)
 -- =============================================================================
 INSERT INTO public.productos (id, nombre, categoria, unidad_medida, precio, disponible, paso, codigo, detalle, archivado)
 VALUES

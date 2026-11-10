@@ -1,10 +1,11 @@
 import { store } from "../store.js";
 import { escapeHtml } from "../html.js";
-import { putImage, getImage, deleteImage, processProductImageFile, createScopedImageLoader } from "../images.js";
+import { putImage, getImage, deleteImage, processProductImageFile, saveProductImage, isDirectImageUrl, createScopedImageLoader } from "../images.js";
 
 export function renderAdminView(container) {
   let selectedCategory = "Todos", selectedStatus = "Todos", searchQuery = "";
   let showCloudSettings = false, configSavedToast = false, pinError = "";
+  let comercioSavedToast = false, comercioError = "";
   let productDraft = null, editingProductId = null, formError = "", notice = "";
 
   let stagedImageBlob = null;
@@ -38,6 +39,7 @@ export function renderAdminView(container) {
     const products = store.getAdminProducts();
     const catalogError = store.getCatalogError();
     const localSettings = store.getLocalSettings();
+    const comercioConfig = store.getComercioConfigSync();
 
     container.innerHTML = `
       <div class="max-w-4xl mx-auto p-4 pb-32 overflow-x-clip safe-pb">
@@ -50,29 +52,81 @@ export function renderAdminView(container) {
             </div>
             <div class="flex flex-wrap gap-1.5 items-center">
               <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${store.isDemo() ? "Demo local" : store.isCloudConnected() ? "Conectado" : "Sin conexión"}</span>
-              <button id="btn-toggle-cloud" class="${buttonClass}">${showCloudSettings ? "Cerrar PIN" : "Config PIN"}</button>
+              <button id="btn-toggle-cloud" class="${buttonClass}">${showCloudSettings ? "Cerrar Config" : "Config Comercio"}</button>
               <button id="btn-admin-logout" class="${buttonClass}">Salir</button>
             </div>
           </div>
-          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-3">
-            <div>
-              <span class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">PIN del negocio</span>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Actualizá el PIN de Staff para este dispositivo y el servidor.</p>
-            </div>
-            <div class="space-y-2">
+          ${showCloudSettings ? `
+          <div class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-4">
+            <!-- Formulario de Configuración del Comercio (V2-03) -->
+            <form id="comercio-config-form" class="space-y-3">
               <div>
-                <label for="cfg-old-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">PIN actual</label>
-                <input id="cfg-old-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Ingresá el PIN actual" class="${inputClass}" required />
+                <span class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-0.5">Configuración del Comercio</span>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Datos públicos del negocio, costo de envío, compra mínima y horarios.</p>
               </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="cfg-nombre" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nombre del Comercio</label>
+                  <input id="cfg-nombre" type="text" maxlength="120" value="${escapeHtml(comercioConfig.nombre || '')}" placeholder="Nombre del negocio" class="${inputClass}" required />
+                </div>
+                <div>
+                  <label for="cfg-alias" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Alias / Subdominio</label>
+                  <input id="cfg-alias" type="text" maxlength="60" value="${escapeHtml(comercioConfig.alias || '')}" placeholder="alias-comercio" class="${inputClass}" required />
+                </div>
+                <div>
+                  <label for="cfg-whatsapp" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">WhatsApp del Comercio</label>
+                  <input id="cfg-whatsapp" type="tel" maxlength="25" value="${escapeHtml(comercioConfig.whatsapp || '')}" placeholder="54911..." class="${inputClass}" required />
+                </div>
+                <div>
+                  <label for="cfg-costo-envio" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Costo de Envío ($)</label>
+                  <input id="cfg-costo-envio" type="number" min="0" step="50" value="${Number(comercioConfig.costo_envio || 0)}" class="${inputClass}" required />
+                </div>
+                <div>
+                  <label for="cfg-compra-minima" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Compra Mínima ($)</label>
+                  <input id="cfg-compra-minima" type="number" min="0" step="100" value="${Number(comercioConfig.compra_minima || 0)}" class="${inputClass}" required />
+                </div>
+                <div>
+                  <label for="cfg-horarios" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Horarios de Atención</label>
+                  <input id="cfg-horarios" type="text" maxlength="250" value="${escapeHtml(comercioConfig.horarios || '')}" placeholder="Ej: Lunes a Sábado de 8:00 a 20:00" class="${inputClass}" />
+                </div>
+              </div>
+
               <div>
-                <label for="cfg-new-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nuevo PIN (4 a 8 dígitos)</label>
-                <input id="cfg-new-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN" class="${inputClass}" required />
+                <label for="cfg-staff-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">PIN de Staff (para autorizar)</label>
+                <input id="cfg-staff-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin || '')}" placeholder="PIN de 4 a 8 dígitos" class="${inputClass}" required />
               </div>
-            </div>
-            <button id="btn-save-pin" class="${buttonClass} bg-emerald-600 hover:bg-emerald-500 text-white font-bold" type="submit">Actualizar PIN</button>
-            ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN actualizado con éxito</p>' : ""}
-            ${pinError ? `<p class="text-xs font-bold text-rose-700 dark:text-rose-300" role="alert">${escapeHtml(pinError)}</p>` : ""}
-          </form>` : ""}
+
+              <div class="flex items-center gap-2 pt-1">
+                <button id="btn-save-comercio-config" class="${buttonClass} bg-emerald-600 hover:bg-emerald-500 text-white font-bold" type="submit">Guardar Configuración</button>
+              </div>
+              ${comercioSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">Configuración guardada con éxito</p>' : ""}
+              ${comercioError ? `<p class="text-xs font-bold text-rose-700 dark:text-rose-300" role="alert">${escapeHtml(comercioError)}</p>` : ""}
+            </form>
+
+            <hr class="border-slate-200 dark:border-slate-700 my-2" />
+
+            <!-- Actualización de PIN -->
+            <form id="cloud-config-form" class="space-y-3">
+              <div>
+                <span class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">PIN del negocio</span>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Actualizá el PIN de Staff para este dispositivo y el servidor.</p>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <label for="cfg-old-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">PIN actual</label>
+                  <input id="cfg-old-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Ingresá el PIN actual" class="${inputClass}" required />
+                </div>
+                <div>
+                  <label for="cfg-new-pin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nuevo PIN (4 a 8 dígitos)</label>
+                  <input id="cfg-new-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN" class="${inputClass}" required />
+                </div>
+              </div>
+              <button id="btn-save-pin" class="${buttonClass} bg-slate-800 hover:bg-slate-700 text-white font-bold" type="submit">Actualizar PIN</button>
+              ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN actualizado con éxito</p>' : ""}
+              ${pinError ? `<p class="text-xs font-bold text-rose-700 dark:text-rose-300" role="alert">${escapeHtml(pinError)}</p>` : ""}
+            </form>
+          </div>` : ""}
         </header>
 
         <div class="sticky sticky-header-offset z-20 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 -mx-4 px-4 py-2.5 mb-4 space-y-2 shadow-xs">
@@ -122,7 +176,7 @@ export function renderAdminView(container) {
       return '<div class="col-span-full p-8 text-center text-sm text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">No hay productos para estos filtros.</div>';
     }
     return products.map(product => {
-      const hasImage = Boolean(product.imagen_id);
+      const hasImage = Boolean(product.imagen_id || product.imagen_url);
       const isPaused = !product.disponible && !product.archivado;
       const isArchived = Boolean(product.archivado);
 
@@ -131,7 +185,7 @@ export function renderAdminView(container) {
           <div>
             ${hasImage ? `
               <div class="w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden mb-2.5 relative product-photo-wrapper hidden">
-                <img data-image-id="${escapeHtml(product.imagen_id)}" alt="" class="w-full h-full object-cover hidden" />
+                <img data-image-id="${escapeHtml(product.imagen_url || product.imagen_id)}" alt="" class="w-full h-full object-cover hidden" />
               </div>
             ` : ""}
 
@@ -353,12 +407,13 @@ export function renderAdminView(container) {
 
     update();
 
-    if (product?.imagen_id) {
-      if (product.imagen_id.startsWith("https://") || product.imagen_id.startsWith("http://")) {
-        stagedPreviewUrl = product.imagen_id;
+    const initialImg = product?.imagen_url || product?.imagen_id;
+    if (initialImg) {
+      if (isDirectImageUrl(initialImg) || initialImg.startsWith("https://") || initialImg.startsWith("http://")) {
+        stagedPreviewUrl = initialImg;
         const previewImg = container.querySelector("#form-photo-preview");
-        if (previewImg) previewImg.src = product.imagen_id;
-      } else getImage(product.imagen_id).then(blob => {
+        if (previewImg) previewImg.src = initialImg;
+      } else getImage(initialImg).then(blob => {
         if (sessionToken !== formSessionToken || !productDraft || editingProductId !== id) return;
         if (!blob) return;
         const previewImg = container.querySelector("#form-photo-preview");
@@ -565,7 +620,7 @@ export function renderAdminView(container) {
       const blobToPut = stagedImageBlob;
       const shouldRemove = removeImageFlag;
       const previousProduct = targetId !== null ? store.getAdminProducts().find(p => p.id === targetId) : null;
-      const oldImageId = previousProduct?.imagen_id || null;
+      const oldImageId = previousProduct?.imagen_id || previousProduct?.imagen_url || null;
 
       // Deshabilitar todos los controles interactivos existentes (inputs, selects, textareas, botones)
       // para evitar ediciones tardias durante transacciones asincronas, registrando su estado original.
@@ -583,7 +638,14 @@ export function renderAdminView(container) {
         let createdImageId = null;
 
         if (blobToPut) {
-          createdImageId = await putImage(blobToPut);
+          const isDemo = store.isDemo();
+          const { staffPin } = store.getLocalSettings();
+          createdImageId = await saveProductImage(blobToPut, {
+            isDemo,
+            supabase: store.supabase,
+            staffPin,
+            productId: targetId || null
+          });
           targetImageId = createdImageId;
         } else if (shouldRemove) {
           targetImageId = null;
@@ -592,28 +654,43 @@ export function renderAdminView(container) {
         const productPayload = { ...targetDraft, precio: Number(targetDraft.precio) };
         if (targetImageId !== undefined) {
           productPayload.imagen_id = targetImageId;
+          productPayload.imagen_url = isDirectImageUrl(targetImageId) ? targetImageId : null;
         }
 
         try {
           store.saveProduct(productPayload, targetId);
         } catch (saveErr) {
           if (createdImageId) {
-            await deleteImage(createdImageId);
+            if (store.isDemo()) {
+              await deleteImage(createdImageId);
+            } else if (store.supabase && typeof createdImageId === "string" && createdImageId.includes("/product-images/")) {
+              try {
+                const pathPart = createdImageId.split("/product-images/")[1];
+                if (pathPart) await store.supabase.storage.from("product-images").remove([pathPart]);
+              } catch {}
+            }
           }
           throw saveErr;
         }
 
         // Cleanup previo best-effort: no convierte éxito en fallo
         if (oldImageId && (shouldRemove || (createdImageId && createdImageId !== oldImageId))) {
-          await deleteImage(oldImageId);
+          if (store.isDemo()) {
+            await deleteImage(oldImageId);
+          } else if (store.supabase && typeof oldImageId === "string" && oldImageId.includes("/product-images/")) {
+            try {
+              const pathPart = oldImageId.split("/product-images/")[1];
+              if (pathPart) await store.supabase.storage.from("product-images").remove([pathPart]);
+            } catch {}
+          }
         }
 
         isSaving = false;
         ++formSessionToken;
-        if (stagedPreviewUrl) {
+        if (stagedPreviewUrl && !isDirectImageUrl(stagedPreviewUrl)) {
           try { URL.revokeObjectURL(stagedPreviewUrl); } catch {}
-          stagedPreviewUrl = null;
         }
+        stagedPreviewUrl = null;
         stagedImageBlob = null;
         removeImageFlag = false;
         productDraft = null;
@@ -663,7 +740,39 @@ export function renderAdminView(container) {
       showCloudSettings = !showCloudSettings;
       configSavedToast = false;
       pinError = "";
+      comercioSavedToast = false;
+      comercioError = "";
       update();
+    });
+
+    container.querySelector("#comercio-config-form")?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const nombre = container.querySelector("#cfg-nombre")?.value?.trim() || "";
+      const alias = container.querySelector("#cfg-alias")?.value?.trim() || "";
+      const whatsapp = container.querySelector("#cfg-whatsapp")?.value?.trim() || "";
+      const costo_envio = Number(container.querySelector("#cfg-costo-envio")?.value) || 0;
+      const compra_minima = Number(container.querySelector("#cfg-compra-minima")?.value) || 0;
+      const horarios = container.querySelector("#cfg-horarios")?.value?.trim() || "";
+      const staffPin = container.querySelector("#cfg-staff-pin")?.value?.trim() || "";
+
+      try {
+        await store.saveComercioConfig({
+          nombre,
+          alias,
+          whatsapp,
+          costo_envio,
+          compra_minima,
+          horarios,
+          staffPin
+        });
+        comercioSavedToast = true;
+        comercioError = "";
+        update();
+      } catch (error) {
+        comercioSavedToast = false;
+        comercioError = (error && error.message) || "Error al guardar la configuración.";
+        update();
+      }
     });
 
     container.querySelector("#cloud-config-form")?.addEventListener("submit", async event => {

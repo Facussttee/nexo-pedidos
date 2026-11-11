@@ -2,11 +2,11 @@
 
 Estado detallado canónico en cada ticket. Solo el coordinador actualiza este índice.
 
-- [x] [00 — Consolidar estado y trazabilidad](../coordination/tasks/AUD-00.md) — P1; depende de ninguna; IN_REVIEW.
+- [x] [00 — Consolidar estado y trazabilidad](../coordination/tasks/AUD-00.md) — P1; depende de ninguna; DONE.
 - [ ] [01 — Rúbrica y regresiones reproducibles](../coordination/tasks/AUD-01.md) — P1; depende de AUD-00; READY.
-- [ ] [02 — Backend descartable](../coordination/tasks/AUD-02.md) — P1; depende de AUD-00; READY.
+- [x] [02 — Backend descartable](../coordination/tasks/AUD-02.md) — P1; depende de AUD-00; IN_REVIEW.
 - [ ] [03 — Cerrar XSS en pedidos](../coordination/tasks/AUD-03.md) — P0; depende de AUD-01; BACKLOG.
-- [ ] [04 — Autenticación individual de personal](../coordination/tasks/AUD-04.md) — P0; depende de AUD-02; BACKLOG.
+- [ ] [04 — Autenticación individual de personal](../coordination/tasks/AUD-04.md) — P0; depende de AUD-02; READY.
 - [ ] [05 — Autorización por rol](../coordination/tasks/AUD-05.md) — P0; depende de AUD-04; BACKLOG.
 - [ ] [06 — Seguimiento privado por pedido](../coordination/tasks/AUD-06.md) — P0; depende de AUD-05; BACKLOG.
 - [ ] [07 — Checkout autoritativo e idempotente](../coordination/tasks/AUD-07.md) — P0; depende de AUD-06; BACKLOG.

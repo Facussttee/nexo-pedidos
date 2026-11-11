@@ -2,9 +2,9 @@
 
 Estado detallado canónico en cada ticket. Solo el coordinador actualiza este índice.
 
-- [ ] [00 — Consolidar estado y trazabilidad](../coordination/tasks/AUD-00.md) — P1; depende de ninguna; BACKLOG.
-- [ ] [01 — Rúbrica y regresiones reproducibles](../coordination/tasks/AUD-01.md) — P1; depende de AUD-00; BACKLOG.
-- [ ] [02 — Backend descartable](../coordination/tasks/AUD-02.md) — P1; depende de AUD-00; BACKLOG.
+- [x] [00 — Consolidar estado y trazabilidad](../coordination/tasks/AUD-00.md) — P1; depende de ninguna; IN_REVIEW.
+- [ ] [01 — Rúbrica y regresiones reproducibles](../coordination/tasks/AUD-01.md) — P1; depende de AUD-00; READY.
+- [ ] [02 — Backend descartable](../coordination/tasks/AUD-02.md) — P1; depende de AUD-00; READY.
 - [ ] [03 — Cerrar XSS en pedidos](../coordination/tasks/AUD-03.md) — P0; depende de AUD-01; BACKLOG.
 - [ ] [04 — Autenticación individual de personal](../coordination/tasks/AUD-04.md) — P0; depende de AUD-02; BACKLOG.
 - [ ] [05 — Autorización por rol](../coordination/tasks/AUD-05.md) — P0; depende de AUD-04; BACKLOG.

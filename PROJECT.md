@@ -126,3 +126,13 @@ Cada tarea está diseñada para ejecutarse en un worktree aislado siguiendo la f
   - **Alcance**: `supabase/schema.sql`, `bot/index.js`, `js/views/operator.js`.
   - **Implementación**: Tabla `public.whatsapp_outbox` con estado (`PENDING`, `PROCESSING`, `SENT`, `FAILED`), contador de intentos, último error visible en la tarjeta del pedido en `operator.js` y botón de reintento manual.
 
+
+
+## Auditoría inicial — 2026-11-11
+
+Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
+
+
+## Tickets para Antigravity — 2026-11-11
+
+[Plan de mejora](tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.

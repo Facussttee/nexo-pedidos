@@ -2,7 +2,7 @@
 
 Nexo Pedidos es una solución móvil integral de toma de pedidos, preparación en balanza y administración de catálogo para comercios de cercanía (verdulerías, carnicerías, dietéticas, fiambrerías y afines).
 
-Diseñado bajo la premisa de **una instalación por comercio con costo cero de mantenimiento fijo**: opera como una Progressive Web App (PWA) serverless alojada en **Vercel** con backend en **Supabase** (PostgreSQL + Realtime).
+Diseñado bajo la premisa de **una instalación por comercio con costos y límites que dependen de los servicios utilizados**: opera como una Progressive Web App (PWA) serverless alojada en **Vercel** con backend en **Supabase** (PostgreSQL + Realtime).
 
 ---
 
@@ -55,7 +55,7 @@ Diseñado bajo la premisa de **una instalación por comercio con costo cero de m
 
 - **Vercel Serverless**: Servidor estático confinado sirviendo exclusivamente los archivos de `dist/public`.
 - **Configuración pública sin secretos**: La configuración del navegador (`js/public-config.js`) solo contiene URLs y claves públicas anon; los secretos (`service_role`, contraseñas de DB) están estrictamente prohibidos y fallan el inicio si son detectados.
-- **Modo Demo Aislado**: Capacidad de operar 100% desconectado con datos sintéticos (`mode: "demo"`) para demostraciones comerciales o entornos de pruebas sin red.
+- **Modo Demo Aislado**: Uso de datos sintéticos (`mode: "demo"`) sin Supabase; Tailwind y fuentes visuales todavía dependen de recursos externos.
 
 ---
 
@@ -79,3 +79,13 @@ Diseñado bajo la premisa de **una instalación por comercio con costo cero de m
 | **V2-06** | Inventario Cuantitativo y Reservas (ex NP-007) | **PENDIENTE (P3)** | Stock numérico opcional por producto (`stock_actual`, `stock_reservado`), descuento al pedir, ajuste en balanza y liberación única al cancelar. |
 | **V2-07** | Outbox Durable de WhatsApp (ex NP-010) | **PENDIENTE (P3)** | Cola `public.whatsapp_outbox` con claim atómico, reintentos con backoff y estado de envío/error visible en la tarjeta del pedido. |
 
+
+
+## Auditoría inicial — 2026-11-11
+
+Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](../coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
+
+
+## Tickets para Antigravity — 2026-11-11
+
+[Plan de mejora](../tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.

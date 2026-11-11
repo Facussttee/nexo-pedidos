@@ -147,3 +147,13 @@ node tests/test-html-escaping.test.mjs              # Mitigación de XSS en rend
 
 Nexo Pedidos es una evolución independiente derivada del proyecto original [MiHuerta](https://github.com/Facussttee/MiHuerta) de Facundo Argüello.
 Repositorio oficial: [Facussttee/nexo-pedidos](https://github.com/Facussttee/nexo-pedidos).
+
+
+## Auditoría inicial — 2026-11-11
+
+Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
+
+
+## Tickets para Antigravity — 2026-11-11
+
+[Plan de mejora](tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.

@@ -1,142 +1,214 @@
 {
-  "timestamp": "2026-11-11T19:41:53.928Z",
-  "totalScore": 83,
+  "timestamp": "2026-11-14T01:48:17.995Z",
+  "environment": {
+    "commit": "a519e65c0f67e6824ead714cc5aef8f835325ada",
+    "shortCommit": "a519e65",
+    "branch": "main",
+    "node": "v26.13.0",
+    "platform": "win32/x64",
+    "docker": null,
+    "supabase": null,
+    "psql": null,
+    "brave": true
+  },
+  "summary": {
+    "verifiedScore": 26,
+    "failedPoints": 65,
+    "unverifiedPoints": 9,
+    "totalPossible": 100
+  },
   "rubricResults": {
     "seguridad": {
       "max": 25,
-      "scored": 25,
+      "scored": 0,
+      "failed": 20,
+      "unverified": 5,
       "items": [
         {
-          "name": "XSS Mitigation en renderizado HTML (escapeHtml)",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "XSS Mitigation en pedidos (escapeHtml + AUD-03 tests)",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Interpolaciones sin escape en operator.js/client.js"
         },
         {
-          "name": "Escape estricto de item.cantidad en preparación (AUD-03 pre-check)",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "Autenticación individual staff sin PIN estático '1234' en API/producción",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Sigue presente PIN estático '1234' o falta Supabase Auth + staff_members"
         },
         {
-          "name": "Políticas RLS en PostgreSQL para clientes y pedidos",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "Autorización RBAC en SQL sin USING(true) público ni headers spoofables",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Políticas RLS permisivas USING(true) o falta RBAC owner/operator"
         },
         {
-          "name": "Eliminación de PIN estático en texto plano '1234'",
-          "points": 5,
+          "name": "Verificación real de RLS en PostgreSQL descartable",
+          "points": 0,
           "max": 5,
-          "status": "PASS"
+          "status": "UNVERIFIED",
+          "reason": "Sin docker/supabase/psql en host para ejecutar RLS real"
         },
         {
-          "name": "Timestamp del servidor en rate limiting (ignorar fecha cliente)",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "Seguimiento privado por token opaco (hash SHA-256 + fragment #track=)",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Falta tracking_token_hash / RPC o aún consulta pedidos por teléfono"
+        },
+        {
+          "name": "Timestamp servidor forzado NOW() y rate limit atómico fail-closed",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Trigger/RPC no fuerza NEW.fecha := NOW() con límites configurables fail-closed"
         }
       ]
     },
     "integridad": {
       "max": 25,
-      "scored": 19,
+      "scored": 6,
+      "failed": 19,
+      "unverified": 0,
       "items": [
         {
-          "name": "Suite demo-isolation en verde (17/17)",
-          "points": 7,
-          "max": 7,
-          "status": "PASS"
-        },
-        {
-          "name": "Suite test-store-state de estados de pedido (72/72)",
+          "name": "Suites base aisladas (demo-isolation 17/17 + store-state 72/72)",
           "points": 6,
           "max": 6,
-          "status": "PASS"
+          "status": "PASS",
+          "reason": ""
         },
         {
-          "name": "Sanitización numérica de teléfonos (18/18)",
-          "points": 6,
-          "max": 6,
-          "status": "PASS"
-        },
-        {
-          "name": "Checkout autoritativo RPC e idempotencia",
+          "name": "Checkout autoritativo RPC, idempotencia con conflicto y confirmación durable",
           "points": 0,
-          "max": 6,
-          "status": "FAIL"
+          "max": 5,
+          "status": "FAIL",
+          "reason": "Falta create_order_atomic completo o persiste fallback upsert con ID local"
+        },
+        {
+          "name": "Concurrencia optimista en preparación (version) y preservación de 0",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Falta versionado optimista y RPCs de preparación"
+        },
+        {
+          "name": "Identidad telefónica local completa (sin slice(-8) en isSameCustomer)",
+          "points": 0,
+          "max": 5,
+          "status": "FAIL",
+          "reason": "isSameCustomer sigue comparando .slice(-8) o falta suite AUD-10/11"
+        },
+        {
+          "name": "Catálogo remoto vacío reemplaza caché local y expone errores de red",
+          "points": 0,
+          "max": 5,
+          "status": "FAIL",
+          "reason": "pullFromSupabase ignora prodRes.data=[] y deja catálogo obsoleto"
         }
       ]
     },
     "ux": {
       "max": 20,
-      "scored": 15,
+      "scored": 4,
+      "failed": 12,
+      "unverified": 4,
       "items": [
         {
-          "name": "Etiqueta accesible en buscador de catálogo",
+          "name": "Etiquetas accesibles en buscador, teléfono y entrega",
           "points": 0,
-          "max": 5,
-          "status": "FAIL"
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Faltan etiquetas for/aria-label en buscador, teléfono o dirección"
         },
         {
-          "name": "Controles de cantidad con nombre de producto accesible",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "Controles de cantidad con nombre de producto y suite a11y",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Botones de cantidad genéricos o falta suite AUD-13"
         },
         {
-          "name": "Touch targets mínimos de 44x44px en controles interactivos",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "Ergonomía táctil mínima (>=44px y >=16px en inputs)",
+          "points": 4,
+          "max": 4,
+          "status": "PASS",
+          "reason": ""
         },
         {
-          "name": "Prevención de zoom iOS (inputs font-size >= 16px)",
-          "points": 5,
-          "max": 5,
-          "status": "PASS"
+          "name": "Regresión móvil/visual Chromium/Brave (360-1024px)",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Falta suite tests/test-aud-14-mobile-visual.test.mjs"
+        },
+        {
+          "name": "Validación en navegador iOS Safari físico y captura HEIC",
+          "points": 0,
+          "max": 4,
+          "status": "UNVERIFIED",
+          "reason": "Sin dispositivo iOS/macOS Safari físico en este host Windows"
         }
       ]
     },
     "rendimiento": {
       "max": 10,
-      "scored": 10,
+      "scored": 0,
+      "failed": 10,
+      "unverified": 0,
       "items": [
         {
-          "name": "Bundle compilado sin BOM y sintaxis JavaScript válida",
-          "points": 5,
+          "name": "Bundle válido sin BOM (<400 KB) y sin CSS @import bloqueante",
+          "points": 0,
           "max": 5,
-          "status": "PASS"
+          "status": "FAIL",
+          "reason": "css/style.css mantiene @import bloqueante"
         },
         {
-          "name": "Tamaño de bundle optimizado (< 400 KB sin minificar)",
-          "points": 5,
+          "name": "Medición reproducible 5 corridas en navegador headless (AUD-15)",
+          "points": 0,
           "max": 5,
-          "status": "PASS"
+          "status": "FAIL",
+          "reason": "Falta suite reproducible tests/test-aud-15-performance.test.mjs"
         }
       ]
     },
     "operacion": {
       "max": 20,
-      "scored": 14,
+      "scored": 16,
+      "failed": 4,
+      "unverified": 0,
       "items": [
         {
-          "name": "Servidor estático confinado y tests de traversal (24/24)",
-          "points": 7,
-          "max": 7,
-          "status": "PASS"
-        },
-        {
-          "name": "Generación de distribución estática pública en dist/public",
-          "points": 7,
-          "max": 7,
-          "status": "PASS"
-        },
-        {
-          "name": "Aislamiento total y fail-closed de producción sin secretos",
-          "points": 0,
+          "name": "Servidor estático confinado (dist/public + traversals 24/24)",
+          "points": 6,
           "max": 6,
-          "status": "FAIL"
+          "status": "PASS",
+          "reason": ""
+        },
+        {
+          "name": "Aislamiento config pública sin secretos runtime y fail-closed producción",
+          "points": 6,
+          "max": 6,
+          "status": "PASS",
+          "reason": ""
+        },
+        {
+          "name": "Runner descartable y guardias contra endpoints remotos/MiHuerta (AUD-02)",
+          "points": 4,
+          "max": 4,
+          "status": "PASS",
+          "reason": ""
+        },
+        {
+          "name": "CI actualizado con suites AUD, lockfile presente y auditoría deps",
+          "points": 0,
+          "max": 4,
+          "status": "FAIL",
+          "reason": "Falta cobertura de suites AUD en .github/workflows/ci.yml"
         }
       ]
     }

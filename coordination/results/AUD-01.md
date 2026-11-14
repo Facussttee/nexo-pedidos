@@ -1,57 +1,48 @@
-# Resultado AUD-01 — Rúbrica y pruebas de regresión reproducibles
+# Resultado AUD-01 — Rúbrica y regresiones reproducibles
 
-- **Fecha:** 11 de noviembre de 2026
-- **Agente Ejecutor:** Antigravity (Quality & Test Engineering)
-- **Worktree:** `D:\Escritorio\nexo-pedidos-worktrees\aud-01`
-- **Rama:** `feature/aud-01-rubric-regression`
-- **Commit Base:** `d99dff863fa67540fba104a3f47c3e1c6b1b70d8` (sobre `main` tras merge AUD-00)
-- **Estado:** IN_REVIEW
+- **Fecha:** 2026-11-13
+- **Rama / Commit:** `main` (tras remediación del runner de rúbrica; reemplaza el falso positivo inicial `83/100`)
+- **Estado:** DONE (integrado y corregido en `main`)
 
 ---
 
-## 1. Objetivo y Alcance
+## 1. Objetivo y Correcciones Realizadas
 
-Se construyó la suite automatizada e independiente `tests/test-aud-01-rubric.test.mjs` para medir objetivamente la calidad del sistema bajo las cinco categorías acordadas:
-- **Seguridad (25 pts)**
-- **Integridad Funcional (25 pts)**
-- **UX & Accesibilidad (20 pts)**
-- **Rendimiento (10 pts)**
-- **Preparación Operativa (20 pts)**
-- **Total: 100 puntos**
+Se corrigió `tests/test-aud-01-rubric.test.mjs` para eliminar falsos positivos por coincidencia de subcadenas y separar estrictamente:
+- **`PASS`**: controles verificados en el entorno actual.
+- **`FAIL`**: brechas abiertas reproducibles sobre `main`.
+- **`UNVERIFIED`**: controles que requieren infraestructura o hardware ausente (`docker`/`supabase`/`psql` para RLS PostgreSQL real: 5 pts; dispositivo físico iOS Safari / HEIC: 4 pts).
 
-Cada control posee una comprobación automatizada (código de retorno, inspección de AST/fuente o ejecución de suite aislada).
-
----
-
-## 2. Resultado de la Evaluación Baseline
-
-Al ejecutar `node tests/test-aud-01-rubric.test.mjs`, se obtiene:
-
-- **Puntaje Global:** **83 / 100**
-  - **Seguridad:** 25 / 25
-  - **Integridad Funcional:** 19 / 25 (Falta RPC `create_order_atomic` en `main` -> abordado en AUD-07)
-  - **UX & Accesibilidad:** 15 / 20 (Falta label accesible en input de búsqueda -> abordado en AUD-13)
-  - **Rendimiento:** 10 / 10 (Bundle 266 KB, sin BOM, compilación correcta)
-  - **Operación:** 14 / 20 (Aislamiento de producción estricto con secrets guard -> abordado en AUD-16)
-
-Artefacto generado con el detalle máquina de cada ítem: `coordination/results/rubric-score.json`.
+Distribución de pesos (total **100 puntos**):
+- **Seguridad:** 25 pts (4 + 4 + 4 + 5 + 4 + 4)
+- **Integridad Funcional:** 25 pts (6 + 5 + 4 + 5 + 5)
+- **UX & Accesibilidad:** 20 pts (4 + 4 + 4 + 4 + 4)
+- **Rendimiento:** 10 pts (5 + 5)
+- **Preparación Operativa:** 20 pts (6 + 6 + 4 + 4)
 
 ---
 
-## 3. Pruebas de Regresión Integradas al Runner
+## 2. Evaluación Baseline Honesta (antes de AUD-03..16)
 
-El runner ejecuta y valida directamente:
-1. `tests/test-demo-isolation.test.mjs` (17/17 PASS)
-2. `tests/test-static-server.test.mjs` (24/24 PASS)
-3. `tests/test-phone-numeric-validation.test.mjs` (18/18 PASS)
-4. `bot/test-store-state.js` (72/72 PASS)
-5. `scripts/build-public.mjs` (Generación confinada en `dist/public`)
-6. Chequeo sintáctico estricto de bundle (`node --check js/bundle.js`)
+Comando ejecutado:
+```powershell
+node tests/test-aud-01-rubric.test.mjs
+```
+- **Salida:** código `0`, generado `coordination/results/rubric-score.json`.
+- **Puntaje Verificado:** **26 / 100** | **Fallido:** **65 / 100** | **No verificado:** **9 / 100**
+  - Seguridad: **0 / 25** (20 fail, 5 unverified)
+  - Integridad: **6 / 25** (19 fail)
+  - UX / A11y: **4 / 20** (12 fail, 4 unverified)
+  - Rendimiento: **0 / 10** (10 fail)
+  - Operación: **16 / 20** (4 fail)
+
+Principales errores corregidos respecto al borrador previo de `AUD-01`:
+- `operator.js:169` usa `i.cantidad_solicitada` (antes se buscaba `${item.cantidad_solicitada}`, dando falso PASS).
+- `schema.sql` usa `USING (true)` en `FOR SELECT`/`FOR UPDATE` (antes se buscaba `FOR ALL USING (true)`, dando falso PASS).
+- `js/public-config.js` sólo mencionaba `service_role` en comentario, no en `window.NEXO_PUBLIC_CONFIG` (ahora se evalúa el objeto en sandbox VM).
 
 ---
 
-## 4. Estado de los Tickets Dependientes
+## 3. Limitaciones
 
-Con AUD-01 completado:
-- Queda desbloqueado **AUD-03** (Cerrar XSS en pedidos).
-- Se genera la base de comparación cuantitativa para **AUD-17** (Reauditoría y cierre final).
+- La validación en vivo de RLS contra PostgreSQL real y Safari iOS físico se reporta explícitamente como `UNVERIFIED` hasta disponer de Docker/Supabase CLI y hardware iOS.

@@ -3,9 +3,9 @@
 Estado detallado canónico en cada ticket. Solo el coordinador actualiza este índice.
 
 - [x] [00 — Consolidar estado y trazabilidad](../coordination/tasks/AUD-00.md) — P1; depende de ninguna; DONE.
-- [x] [01 — Rúbrica y regresiones reproducibles](../coordination/tasks/AUD-01.md) — P1; depende de AUD-00; IN_REVIEW.
-- [x] [02 — Backend descartable](../coordination/tasks/AUD-02.md) — P1; depende de AUD-00; IN_REVIEW.
-- [ ] [03 — Cerrar XSS en pedidos](../coordination/tasks/AUD-03.md) — P0; depende de AUD-01; READY.
+- [x] [01 — Rúbrica y regresiones reproducibles](../coordination/tasks/AUD-01.md) — P1; depende de AUD-00; DONE.
+- [x] [02 — Backend descartable](../coordination/tasks/AUD-02.md) — P1; depende de AUD-00; DONE.
+- [ ] [03 — Cerrar XSS en pedidos](../coordination/tasks/AUD-03.md) — P0; depende de AUD-01; IN_PROGRESS.
 - [ ] [04 — Autenticación individual de personal](../coordination/tasks/AUD-04.md) — P0; depende de AUD-02; READY.
 - [ ] [05 — Autorización por rol](../coordination/tasks/AUD-05.md) — P0; depende de AUD-04; BACKLOG.
 - [ ] [06 — Seguimiento privado por pedido](../coordination/tasks/AUD-06.md) — P0; depende de AUD-05; BACKLOG.
@@ -22,6 +22,6 @@ Estado detallado canónico en cada ticket. Solo el coordinador actualiza este í
 - [ ] [17 — Reauditoría y cierre](../coordination/tasks/AUD-17.md) — P1; depende de AUD-00 a AUD-16; BACKLOG.
 
 ## Checkpoints
-- [ ] A: AUD-00–02, baseline y entorno verificables.
+- [x] A: AUD-00–02, baseline y entorno verificables.
 - [ ] B: seguridad y checkout con pruebas reales aisladas.
 - [ ] Final: regresiones, rúbrica y Git verificados.

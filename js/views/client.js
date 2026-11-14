@@ -1248,6 +1248,7 @@ export function renderClientView(container) {
 
       try {
         const result = await store.submitOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
+        isSubmittingCheckout = false;
         if (result?.ok && result.order) {
           isCartOpen = false;
           isDrawerFirstOpen = true;
@@ -1265,6 +1266,7 @@ export function renderClientView(container) {
         };
         renderCatalog();
       } catch (error) {
+        isSubmittingCheckout = false;
         checkoutStatus = {
           status: "failed",
           error: error.message || "No se pudo guardar el pedido. Reintentá."

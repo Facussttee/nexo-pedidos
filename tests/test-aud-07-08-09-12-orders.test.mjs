@@ -386,6 +386,84 @@ test("AUD-07 / AUD-08 / AUD-09 / AUD-12 — Atomic Orders, Idempotency, Concurre
     harness.db.rateLimitConfig = savedCfg;
   });
 
+  await t.test("AUD-09.3 Single-operator rapid saveItemWeightAsync serializes cleanly & aborts queued ops on external CONFLICT", async () => {
+    await clientStore.pullFromSupabase();
+    clientStore.clearCart();
+    clientStore.addToCart("tomate-kg", 1);
+    const created = await clientStore.submitOrder({
+      cliente: { nombre: "Cliente Pesaje Rapido", telefono: "1188887777", direccion: "" },
+      tipo_entrega: "RETIRO"
+    });
+    assert.equal(created.ok, true);
+    const orderId = created.order.id;
+
+    await op1Store.pullFromSupabase();
+    const taken = await op1Store.takeOrderAsync(orderId);
+    const baseVersion = taken.version;
+
+    // Rapid same-operator weight adjustments without awaiting each one sequentially
+    const [r1, r2, r3] = await Promise.all([
+      op1Store.saveItemWeightAsync(orderId, 0, 1.1),
+      op1Store.saveItemWeightAsync(orderId, 0, 1.2),
+      op1Store.saveItemWeightAsync(orderId, 0, 1.35)
+    ]);
+
+    assert.equal(r1.version, baseVersion + 1);
+    assert.equal(r2.version, baseVersion + 2);
+    assert.equal(r3.version, baseVersion + 3);
+    assert.equal(r3.items[0].peso_real, 1.35);
+
+    // Cross-operator conflict while op2Store still holds stale version: queued finalize must abort too
+    await op2Store.pullFromSupabase();
+    await op1Store.saveItemWeightAsync(orderId, 0, 1.5); // advances server version to baseVersion + 4
+
+    const [op2WeightRes, op2FinalizeRes] = await Promise.allSettled([
+      op2Store.saveItemWeightAsync(orderId, 0, 1.25),
+      op2Store.finalizeOrderWeighingAsync(orderId)
+    ]);
+
+    assert.equal(op2WeightRes.status, "rejected");
+    assert.equal(op2FinalizeRes.status, "rejected");
+    assert.match(op2WeightRes.reason.message, /actualizado simultáneamente/i);
+    assert.match(op2FinalizeRes.reason.message, /actualizado simultáneamente/i);
+    const refreshedOrder = op2Store.getOrders().find((o) => o.id === orderId);
+    assert.equal(refreshedOrder.estado, "EN_PREPARACION", "Conflicted queued finalize must NOT transition order");
+    assert.equal(refreshedOrder.version, baseVersion + 4);
+  });
+
+  await t.test("AUD-09.4 updateOrderDetailsAsync clears delivery address on DELIVERY->RETIRO & validates blank DELIVERY", async () => {
+    await clientStore.pullFromSupabase();
+    clientStore.clearCart();
+    clientStore.addToCart("tomate-kg", 1);
+    const created = await clientStore.submitOrder({
+      cliente: { nombre: "Cliente Delivery Switch", telefono: "1188886666", direccion: "Calle Falsa 123" },
+      tipo_entrega: "DELIVERY",
+      direccion_entrega: "Calle Falsa 123"
+    });
+    assert.equal(created.ok, true);
+    const orderId = created.order.id;
+
+    await op1Store.pullFromSupabase();
+    await assert.rejects(
+      () => op1Store.updateOrderDetailsAsync(orderId, { tipo_entrega: "DELIVERY", direccion_entrega: "   " }),
+      /dirección de entrega es obligatoria/i
+    );
+
+    const switched = await op1Store.updateOrderDetailsAsync(orderId, {
+      tipo_entrega: "RETIRO",
+      direccion_entrega: ""
+    });
+    assert.equal(switched.tipo_entrega, "RETIRO");
+    assert.equal(switched.direccion_entrega, "");
+    const customerRow =
+      harness.db.clientes instanceof Map
+        ? harness.db.clientes.get("1188886666")
+        : Array.isArray(harness.db.clientes)
+        ? harness.db.clientes.find((c) => c.telefono === "1188886666")
+        : harness.db.clientes?.["1188886666"];
+    assert.equal(customerRow?.direccion, "Calle Falsa 123", "Customer directory address must not be wiped on RETIRO switch");
+  });
+
   await t.test("AUD-07/08/09/12 Static SQL migration contract check", () => {
     const migSql = fs.readFileSync(
       path.resolve("supabase/migrations/202611130002_aud_07_09_12_atomic_orders_ratelimit.sql"),
@@ -397,5 +475,6 @@ test("AUD-07 / AUD-08 / AUD-09 / AUD-12 — Atomic Orders, Idempotency, Concurre
     assert.ok(migSql.includes("FOR UPDATE"));
     assert.ok(migSql.includes("version = version + 1"));
     assert.ok(migSql.includes("NEW.fecha := NOW()"));
+    assert.ok(migSql.includes("La dirección de entrega es obligatoria"));
   });
 });

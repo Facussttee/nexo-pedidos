@@ -119,13 +119,15 @@ evaluateControl("seguridad", "Autenticación individual staff sin PIN estático 
   const storeSrc = fs.readFileSync("js/store.js", "utf8");
   const appSrc = fs.readFileSync("js/app.js", "utf8");
   const schemaSql = fs.readFileSync("supabase/schema.sql", "utf8");
-  const hasPinFallback = /staffPin\s*:\s*.*["']1234["']/.test(storeSrc) || /verify_staff_pin_header/.test(schemaSql);
+  const guardsProdPin = /getLocalSettings\(\)\s*\{\s*if\s*\(\s*!this\.isDemo\(\)\s*\)\s*\{\s*return\s*\{\s*staffPin:\s*null\s*\};?\s*\}/.test(storeSrc);
+  const hasLegacyPinHeader = /x-nexo-staff-pin/i.test(storeSrc) || /verify_staff_pin_header/.test(schemaSql);
   const hasSqlDefaultPin = /'staff_pin'\s*,\s*'1234'/.test(schemaSql);
   const hasUiDefault1234 = /Por defecto:\s*<strong>1234<\/strong>/.test(appSrc);
   const hasSupabaseAuthSignIn = /signInWithPassword/.test(storeSrc) && /staff_members/.test(schemaSql);
-  if (hasPinFallback || hasSqlDefaultPin || hasUiDefault1234 || !hasSupabaseAuthSignIn) {
-    return { status: "FAIL", reason: "Sigue presente PIN estático '1234' o falta Supabase Auth + staff_members" };
+  if (!guardsProdPin || hasLegacyPinHeader || hasSqlDefaultPin || hasUiDefault1234 || !hasSupabaseAuthSignIn) {
+    return { status: "FAIL", reason: "Sigue presente PIN estático '1234' en producción o falta Supabase Auth + staff_members" };
   }
+  execSync("node tests/test-aud-04-06-auth-rbac-tracking.test.mjs", { stdio: "ignore" });
   return true;
 });
 
@@ -193,10 +195,12 @@ evaluateControl("integridad", "Checkout autoritativo RPC, idempotencia con confl
   if (!hasAtomicRpc || !hasForShare || !hasConflictCheck || hasUpsertFallback) {
     return { status: "FAIL", reason: "Falta create_order_atomic completo o persiste fallback upsert con ID local" };
   }
-  if (!fs.existsSync("tests/test-aud-07-08-09-12-orders.test.mjs")) {
-    return { status: "FAIL", reason: "Falta suite tests/test-aud-07-08-09-12-orders.test.mjs" };
+  if (!fs.existsSync("tests/test-aud-07-08-09-12-orders.test.mjs") || !fs.existsSync("tests/test-aud-08-checkout-ui-retry.test.mjs")) {
+    return { status: "FAIL", reason: "Faltan suites AUD-07/08/09/12 o AUD-08 UI retry" };
   }
+  execSync("node scripts/build-public.mjs", { stdio: "ignore" });
   execSync("node tests/test-aud-07-08-09-12-orders.test.mjs", { stdio: "ignore" });
+  execSync("node tests/test-aud-08-checkout-ui-retry.test.mjs", { stdio: "ignore" });
   return true;
 });
 

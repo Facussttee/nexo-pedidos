@@ -22,7 +22,7 @@
 ## Cierre de remediación `AUD-00–17` — 2026-11-13
 
 - Evidencia de cierre en [coordination/results/AUD-17.md](../coordination/results/AUD-17.md) e índice en [tasks/todo.md](../tasks/todo.md).
-- Puntuación automática: `87/100` en `tests/test-aud-01-rubric.test.mjs` (`4 fail` por heurística regex sobre la rama demo-only de `getLocalSettings()`; `test-aud-04-06` aprueba `10/10` el aislamiento productivo), con `9 pts UNVERIFIED` (5 pts RLS real sobre PostgreSQL/Docker ausente + 4 pts Safari iOS físico/HEIC).
+- Puntuación automática: `91/100` en `tests/test-aud-01-rubric.test.mjs` (`0 fail`; valida `getLocalSettings().staffPin === null` en producción + `test-aud-04-06` `10/10` + `test-aud-08-checkout-ui-retry` `3/3`), con `9 pts UNVERIFIED` (5 pts RLS real sobre PostgreSQL/Docker ausente + 4 pts Safari iOS físico/HEIC).
 
 ---
 

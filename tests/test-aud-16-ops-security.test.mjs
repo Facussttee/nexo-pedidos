@@ -104,23 +104,41 @@ test("AUD-16 — Dependency Lockfile, Security Headers, Public Root Confinement 
     assert.ok(dockerfile.includes("bot/serve-demo.js"));
   });
 
-  await t.test("4. CI workflow covers all local + browser AUD suites and dist/public check", () => {
+  await t.test("4. CI workflow covers all local + browser AUD suites without Playwright in validate-local", () => {
     const ciYml = fs.readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
     const requiredSuites = [
       "test-aud-02",
       "test-aud-03",
       "test-aud-04-06",
       "test-aud-07-08-09-12",
+      "test-aud-08-checkout-ui-retry",
       "test-aud-10-11",
       "test-aud-13",
       "test-aud-14",
       "test-aud-15",
       "test-aud-16",
       "test-demo-isolation",
-      "test-static-server"
+      "test-static-server",
+      "test-xss-rendering",
+      "test-navigation-scroll",
+      "test-iphone-13-pro-layout"
     ];
     for (const suite of requiredSuites) {
       assert.ok(ciYml.includes(suite), `Missing ${suite} in .github/workflows/ci.yml`);
+    }
+    const localBlock = ciYml.split("validate-browser:")[0];
+    for (const browserSuite of [
+      "test-aud-03",
+      "test-aud-04-06",
+      "test-aud-08-checkout-ui-retry",
+      "test-aud-13",
+      "test-aud-14",
+      "test-aud-15",
+      "test-xss-rendering",
+      "test-navigation-scroll",
+      "test-iphone-13-pro-layout"
+    ]) {
+      assert.equal(localBlock.includes(browserSuite), false, `Browser suite ${browserSuite} must not run in validate-local`);
     }
     assert.equal(/bot\/index\.js|seed\.js|test-mock\.js|test-order-flow\.js/.test(ciYml), false, "CI must never invoke forbidden scripts");
   });

@@ -11,8 +11,9 @@
   - Wrappers `*Async` para todas las operaciones de mostrador con recuperación ante `CONFLICT`, debounce/sincronización en `change` y finalización evitando ráfagas RPC por tecla en `.input-weight`, preservación estricta de `total_real === 0` e snapshots históricos intactos ante cambios de catálogo.
 
 ## 2. Verificación Ejecutada
-- `node tests/test-aud-07-08-09-12-orders.test.mjs` (`AUD-09.1`, `AUD-09.2`): PASS (`exit 0`).
-- `node tests/test-preparation-input.test.mjs`: verificar nuevamente al cierre global.
+- `js/store.js`, `js/views/operator.js`, `supabase/schema.sql`, `supabase/migrations/202611130002_aud_07_09_12_atomic_orders_ratelimit.sql`, `tests/helpers/disposable-supabase-harness.mjs`: cola serializada por pedido (`orderMutationQueues` con aborto de operaciones encoladas tras `isVersionConflict`), debounce en clics rápidos `.btn-adjust-weight` en producción, limpieza explícita de `pedidos.direccion_entrega` al pasar `DELIVERY -> RETIRO` preservando `clientes.direccion`, y validación SQL de `p_tipo_entrega` / dirección no vacía en `DELIVERY`.
+- `node tests/test-aud-07-08-09-12-orders.test.mjs` (`AUD-09.1`–`AUD-09.4`): PASS (`exit 0`, 10/10).
+- `node tests/test-preparation-input.test.mjs`: PASS (`exit 0`, 2/2).
 - `node bot/test-store-state.js`: PASS (`exit 0`, 72/72).
 
 ## 3. Limitaciones Honestamente Reportadas

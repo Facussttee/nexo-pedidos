@@ -619,15 +619,34 @@ Alias para transferir: ${businessAlias}
       });
     });
 
+    const pendingAdjustTimers = new Map();
+    const clearOrderAdjustTimers = (orderId) => {
+      const prefix = `${orderId}:`;
+      for (const [key, timerId] of pendingAdjustTimers.entries()) {
+        if (key.startsWith(prefix)) {
+          clearTimeout(timerId);
+          pendingAdjustTimers.delete(key);
+        }
+      }
+    };
+
     container.querySelectorAll(".btn-adjust-weight").forEach(btn => {
       btn.addEventListener("click", () => {
-        const input = findPreparationInput(Number(btn.dataset.adjustOrder), Number(btn.dataset.itemIdx));
+        const orderId = Number(btn.dataset.adjustOrder);
+        const itemIdx = Number(btn.dataset.itemIdx);
+        const input = findPreparationInput(orderId, itemIdx);
         const isWeight = input.dataset.unit === "KG";
         const current = parseOperatorWeight(input.value, isWeight) ?? 0;
         input.value = Math.max(isWeight ? 0.001 : 1, Number((current + Number(btn.dataset.delta)).toFixed(3)));
         input.dispatchEvent(new Event("input", { bubbles: true }));
         if (!store.isDemo()) {
-          input.dispatchEvent(new Event("change", { bubbles: true }));
+          const timerKey = `${orderId}:${itemIdx}`;
+          input.dataset.unsaved = "true";
+          if (pendingAdjustTimers.has(timerKey)) clearTimeout(pendingAdjustTimers.get(timerKey));
+          pendingAdjustTimers.set(timerKey, setTimeout(() => {
+            pendingAdjustTimers.delete(timerKey);
+            if (input.isConnected) input.dispatchEvent(new Event("change", { bubbles: true }));
+          }, 220));
         }
       });
     });
@@ -733,6 +752,11 @@ Alias para transferir: ${businessAlias}
       if (!store.isDemo()) {
         input.addEventListener("change", async () => {
           const id = Number(input.dataset.orderId), index = Number(input.dataset.itemIdx);
+          const timerKey = `${id}:${index}`;
+          if (pendingAdjustTimers.has(timerKey)) {
+            clearTimeout(pendingAdjustTimers.get(timerKey));
+            pendingAdjustTimers.delete(timerKey);
+          }
           const value = parseOperatorWeight(input.value, input.dataset.unit === "KG");
           try {
             await store.saveItemWeightAsync(id, index, value, { notify: false });
@@ -770,6 +794,7 @@ Alias para transferir: ${businessAlias}
     container.querySelectorAll(".btn-finish-weighing").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.finishOrderId);
+        clearOrderAdjustTimers(id);
         try {
           const inputs = Array.from(container.querySelectorAll(".input-weight")).filter(input => Number(input.dataset.orderId) === id);
           if (inputs.some(input => parseOperatorWeight(input.value, input.dataset.unit === "KG") === null)) {

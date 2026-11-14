@@ -12,7 +12,9 @@
   - Ante timeout o error de red/5xx (`status: "unknown"`), conserva carrito y clave de intento para reintentar tras recarga sin duplicar pedido; ante rechazo determinista conserva carrito para corrección y deshabilita doble click en `#btn-confirm-order`.
 
 ## 2. Verificación Ejecutada
-- `node tests/test-aud-07-08-09-12-orders.test.mjs` (`AUD-08.1` simulando `timeout_after_commit`, recarga de instancia `Store` y replay idempotente vs `CONFLICT`): PASS (`exit 0`).
+- `js/views/client.js`: desbloqueo explícito de `isSubmittingCheckout = false` antes de `renderCatalog()` tras `!result?.ok` o excepción, evitando que `#btn-confirm-order` quede trabado en `"Enviando al comercio..."`.
+- `node tests/test-aud-07-08-09-12-orders.test.mjs` (`AUD-08.1` simulando `timeout_after_commit`, recarga de instancia `Store` y replay idempotente vs `CONFLICT`): PASS (`exit 0`, 10/10).
+- `node tests/test-aud-08-checkout-ui-retry.test.mjs` (browser headless sobre `dist/public/js/bundle.js` en modo producción mockeado: verifica desbloqueo UI y reintento idempotente/determinista tras timeout y fallo): PASS (`exit 0`, 3/3).
 - `node tests/test-demo-isolation.test.mjs`: PASS (`exit 0`).
 
 ## 3. Limitaciones Honestamente Reportadas

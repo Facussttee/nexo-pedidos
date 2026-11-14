@@ -10,18 +10,18 @@ Estado detallado canónico en cada ticket. Solo el coordinador actualiza este í
 - [x] [05 — Autorización por rol](../coordination/tasks/AUD-05.md) — P0; depende de AUD-04; DONE (RBAC SQL `owner`/`operator`; RLS PostgreSQL vivo `UNVERIFIED` sin Docker/psql).
 - [x] [06 — Seguimiento privado por pedido](../coordination/tasks/AUD-06.md) — P0; depende de AUD-05; DONE (token opaco SHA-256 + `#track=` + revocación staff).
 - [x] [07 — Checkout autoritativo e idempotente](../coordination/tasks/AUD-07.md) — P0; depende de AUD-06; DONE (`create_order_atomic` + idempotencia y precios servidor).
-- [x] [08 — Confirmación durable y recuperación](../coordination/tasks/AUD-08.md) — P0; depende de AUD-07; DONE (sin upsert por ID local ni limpieza prematura).
-- [x] [09 — Preparación y concurrencia](../coordination/tasks/AUD-09.md) — P1; depende de AUD-08; DONE (versionado optimista + preservación de total `$0`).
+- [x] [08 — Confirmación durable y recuperación](../coordination/tasks/AUD-08.md) — P0; depende de AUD-07; DONE (sin upsert por ID local, desbloqueo de `#btn-confirm-order` tras timeout/error y prueba E2E `test-aud-08-checkout-ui-retry.test.mjs`).
+- [x] [09 — Preparación y concurrencia](../coordination/tasks/AUD-09.md) — P1; depende de AUD-08; DONE (versionado optimista, cola serializada por pedido, preservación de total `$0`, limpieza de dirección en `RETIRO` y validación `DELIVERY`).
 - [x] [10 — Identidad telefónica local](../coordination/tasks/AUD-10.md) — P1; depende de AUD-08; DONE (comparación exacta sin `slice(-8)` + códigos AR).
 - [x] [11 — Catálogo remoto vacío](../coordination/tasks/AUD-11.md) — P1; depende de AUD-10; DONE (catálogo remoto vacío reemplaza caché local + expone error).
 - [x] [12 — Límites de pedidos robustos](../coordination/tasks/AUD-12.md) — P1; depende de AUD-07; DONE (timestamp servidor `NOW()` + `rate_limit_config` fail-closed).
 - [x] [13 — Accesibilidad de flujos principales](../coordination/tasks/AUD-13.md) — P2; depende de AUD-03, AUD-08; DONE (`<label for>`, `role="alert"`, `aria-label` por producto, focus trap y Escape).
 - [x] [14 — Regresión visual y móvil](../coordination/tasks/AUD-14.md) — P1; depende de AUD-09, AUD-13; DONE (360–1024px light/dark en Brave headless; Safari iOS físico/HEIC `UNVERIFIED`).
 - [x] [15 — Medición y optimización de carga](../coordination/tasks/AUD-15.md) — P2; depende de AUD-14; DONE (sin CSS `@import` bloqueante; 5 corridas locales medidas).
-- [x] [16 — Dependencias, aislamiento y CI](../coordination/tasks/AUD-16.md) — P1; depende de AUD-02; DONE (`bot/package-lock.json` auditado `0 vulns`, headers y CI en dos jobs).
-- [x] [17 — Reauditoría y cierre](../coordination/tasks/AUD-17.md) — P1; depende de AUD-00 a AUD-16; DONE (rúbrica `87/100`, `4 fail` por heurística regex demo en `AUD-01`, `9 unverified`).
+- [x] [16 — Dependencias, aislamiento y CI](../coordination/tasks/AUD-16.md) — P1; depende de AUD-02; DONE (`bot/package-lock.json` auditado `0 vulns`, headers y CI en dos jobs `validate-local` + `validate-browser` con Playwright portable).
+- [x] [17 — Reauditoría y cierre](../coordination/tasks/AUD-17.md) — P1; depende de AUD-00 a AUD-16; DONE (rúbrica `91/100`, `0 fail`, `9 unverified`).
 
 ## Checkpoints
 - [x] A: AUD-00–02, baseline y entorno verificables.
 - [x] B: seguridad y checkout con pruebas aisladas y simulación descartable (RLS PostgreSQL real `UNVERIFIED`).
-- [x] Final: regresiones, rúbrica (`87/100` con `9 unverified`), bundle, `dist/public`, docs y Git verificados.
+- [x] Final: regresiones, rúbrica (`91/100`, `0 fail`, `9 unverified`), bundle, `dist/public`, docs y Git verificados.

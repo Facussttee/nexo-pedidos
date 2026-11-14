@@ -46,7 +46,6 @@ jobs:
           node tests/test-phone-numeric-validation.test.mjs
           node bot/test-store-state.js
           node tests/test-html-escaping.test.mjs
-          node tests/test-xss-rendering.test.mjs
           node tests/test-preparation-input.test.mjs
 
   validate-browser:
@@ -77,6 +76,10 @@ jobs:
         run: |
           node tests/test-aud-03-xss-orders.test.mjs
           node tests/test-aud-04-06-auth-rbac-tracking.test.mjs
+          node tests/test-aud-08-checkout-ui-retry.test.mjs
           node tests/test-aud-13-a11y.test.mjs
           node tests/test-aud-14-mobile-visual.test.mjs
           node tests/test-aud-15-performance.test.mjs
+          node tests/test-xss-rendering.test.mjs
+          node tests/test-navigation-scroll.test.mjs
+          node tests/test-iphone-13-pro-layout.test.mjs

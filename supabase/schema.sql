@@ -636,16 +636,22 @@ DECLARE
     v_order RECORD;
     v_updated RECORD;
     v_clean_phone TEXT;
+    v_clean_delivery TEXT;
+    v_clean_address TEXT;
 BEGIN
     IF NOT public.is_active_staff() THEN RAISE EXCEPTION 'FORBIDDEN: Sólo personal activo puede editar datos de entrega.'; END IF;
     v_clean_phone := regexp_replace(COALESCE(p_telefono, ''), '\D', '', 'g');
+    v_clean_delivery := upper(trim(COALESCE(p_tipo_entrega, '')));
+    v_clean_address := trim(COALESCE(p_direccion_entrega, ''));
     IF v_clean_phone !~ '^[0-9]{8,15}$' OR char_length(trim(COALESCE(p_nombre, ''))) < 2 THEN RAISE EXCEPTION 'VALIDATION_ERROR: Datos inválidos.'; END IF;
+    IF v_clean_delivery NOT IN ('RETIRO', 'DELIVERY') THEN RAISE EXCEPTION 'VALIDATION_ERROR: Tipo de entrega inválido.'; END IF;
+    IF v_clean_delivery = 'DELIVERY' AND char_length(v_clean_address) = 0 THEN RAISE EXCEPTION 'VALIDATION_ERROR: La dirección de entrega es obligatoria.'; END IF;
     SELECT * INTO v_order FROM public.pedidos WHERE id = p_order_id FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'NOT_FOUND: Pedido no encontrado.'; END IF;
     IF v_order.version IS DISTINCT FROM p_expected_version THEN RAISE EXCEPTION 'CONFLICT: Conflicto de versión concurrente (actual %).', v_order.version; END IF;
-    INSERT INTO public.clientes (telefono, nombre, direccion, updated_at) VALUES (v_clean_phone, trim(p_nombre), trim(COALESCE(p_direccion_entrega, '')), NOW())
-    ON CONFLICT (telefono) DO UPDATE SET nombre = EXCLUDED.nombre, direccion = EXCLUDED.direccion, updated_at = NOW();
-    UPDATE public.pedidos SET cliente_nombre = trim(p_nombre), cliente_telefono = v_clean_phone, tipo_entrega = p_tipo_entrega, direccion_entrega = trim(COALESCE(p_direccion_entrega, '')), version = version + 1, updated_at = NOW()
+    INSERT INTO public.clientes (telefono, nombre, direccion, updated_at) VALUES (v_clean_phone, trim(p_nombre), v_clean_address, NOW())
+    ON CONFLICT (telefono) DO UPDATE SET nombre = EXCLUDED.nombre, direccion = CASE WHEN char_length(EXCLUDED.direccion) > 0 THEN EXCLUDED.direccion ELSE public.clientes.direccion END, updated_at = NOW();
+    UPDATE public.pedidos SET cliente_nombre = trim(p_nombre), cliente_telefono = v_clean_phone, tipo_entrega = v_clean_delivery, direccion_entrega = v_clean_address, version = version + 1, updated_at = NOW()
     WHERE id = p_order_id RETURNING * INTO v_updated;
     RETURN to_jsonb(v_updated) - 'tracking_token_hash';
 END;

@@ -1,9 +1,26 @@
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { createHash } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
-const { chromium } = require('C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+
+function resolveChromium() {
+  for (const cand of [
+    'playwright',
+    process.env.PLAYWRIGHT_PATH || '',
+    '/tmp/pw/node_modules/playwright',
+    'C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'
+  ].filter(Boolean)) {
+    try {
+      const m = require(cand);
+      if (m && m.chromium) return m.chromium;
+    } catch {}
+  }
+  throw new Error('Playwright no disponible');
+}
+
+const chromium = resolveChromium();
 const assert = (value, message) => { if (!value) throw new Error(message); };
 const arg = name => process.argv[process.argv.indexOf(name) + 1];
 
@@ -34,7 +51,10 @@ async function main() {
       report.root = root;
     } else origin = new URL(arg('--url')).origin;
     report.origin = origin;
-    browser = await chromium.launch({ executablePath: 'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe', headless: true });
+    const launchOpts = { headless: true };
+    const braveExe = 'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe';
+    if (fsSync.existsSync(braveExe)) launchOpts.executablePath = braveExe;
+    browser = await chromium.launch(launchOpts);
     const customer = { telefono: '1100000071', nombre: 'Cliente sintético QA', direccion: 'Dirección ficticia QA' };
     const products = Array.from({length:18},(_,i)=>({ id:`qa-${i}`,nombre:i===0?'Unidad sintética QA':i===1?'Producto por kilo QA':`Producto sintético ${i}`,categoria:i%2?'Verduras':'Frutas',codigo:`000${i}`,precio:100+i,unidad_medida:i===1?'KG':'UNIDAD',paso:i===1?.25:1,disponible:true,archivado:false,detalle:'Detalle sintético' }));
     const stored = (page, key) => page.evaluate(key=>JSON.parse(localStorage.getItem('nexo_demo_v1_'+key)),key);

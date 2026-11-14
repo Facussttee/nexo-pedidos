@@ -826,24 +826,33 @@ export function createDisposableSupabaseHarness({
           }
           const cleanPhone = String(params.p_telefono || "").replace(/\D/g, "");
           const cleanName = String(params.p_nombre || "").trim();
+          const cleanDelivery = String(params.p_tipo_entrega || "").trim().toUpperCase();
+          const cleanAddress = String(params.p_direccion_entrega || "").trim();
           if (!/^[0-9]{8,15}$/.test(cleanPhone) || cleanName.length < 2) {
             return { data: null, error: { message: "VALIDATION_ERROR: Datos de cliente inválidos.", status: 400 } };
+          }
+          if (!["RETIRO", "DELIVERY"].includes(cleanDelivery)) {
+            return { data: null, error: { message: "VALIDATION_ERROR: Tipo de entrega inválido.", status: 400 } };
+          }
+          if (cleanDelivery === "DELIVERY" && !cleanAddress) {
+            return { data: null, error: { message: "VALIDATION_ERROR: La dirección de entrega es obligatoria.", status: 400 } };
           }
           const order = db.pedidos.find((o) => o.id === Number(params.p_order_id));
           if (!order) return { data: null, error: { message: "NOT_FOUND: Pedido no encontrado.", status: 404 } };
           if (order.version !== params.p_expected_version) {
             return { data: null, error: { message: `CONFLICT: Conflicto de versión concurrente (actual ${order.version}).`, status: 409 } };
           }
+          const prevCust = db.clientes.get(cleanPhone);
           db.clientes.set(cleanPhone, {
             telefono: cleanPhone,
             nombre: cleanName,
-            direccion: String(params.p_direccion_entrega || "").trim(),
+            direccion: cleanAddress || prevCust?.direccion || "",
             updated_at: nowIso()
           });
           order.cliente_nombre = cleanName;
           order.cliente_telefono = cleanPhone;
-          order.tipo_entrega = params.p_tipo_entrega;
-          order.direccion_entrega = String(params.p_direccion_entrega || "").trim();
+          order.tipo_entrega = cleanDelivery;
+          order.direccion_entrega = cleanAddress;
           order.version += 1;
           order.updated_at = nowIso();
           return { data: sanitizeOrderPublic(order), error: null };

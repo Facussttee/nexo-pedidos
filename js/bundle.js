@@ -1041,6 +1041,7 @@ class Store {
     this.staffSession = null;
     this.staffMember = null;
     this.authError = null;
+    this.orderMutationQueues = new Map();
 
     // En demo se bloquean las APIs de datos JS y apertura de enlaces externos (WhatsApp) antes de inicializar.
     if (this.isDemo() && typeof window !== "undefined") {
@@ -2851,6 +2852,10 @@ class Store {
     let targetOrder = null;
     const orders = this.getOrders().map((order) => {
       if (order.id === orderId) {
+        const nextTipo = details.tipo_entrega || order.tipo_entrega;
+        const nextDireccion = details.direccion_entrega !== undefined
+          ? details.direccion_entrega
+          : (nextTipo === "RETIRO" ? "" : order.direccion_entrega);
         targetOrder = {
           ...order,
           cliente: {
@@ -2858,8 +2863,8 @@ class Store {
             nombre: details.nombre !== undefined ? details.nombre : order.cliente.nombre,
             telefono: details.telefono !== undefined ? details.telefono : order.cliente.telefono
           },
-          tipo_entrega: details.tipo_entrega || order.tipo_entrega,
-          direccion_entrega: details.direccion_entrega || order.direccion_entrega,
+          tipo_entrega: nextTipo,
+          direccion_entrega: nextDireccion,
           version: (order.version || 1) + 1
         };
         return targetOrder;
@@ -2872,6 +2877,29 @@ class Store {
   }
 
   // --- Operaciones autoritativas y concurrencia optimista para personal (AUD-09) ---
+  enqueueOrderMutation(orderId, task) {
+    const key = Number(orderId);
+    const prev = this.orderMutationQueues.get(key);
+    const run = prev
+      ? prev.promise.then(
+          () => task(),
+          (prevErr) => {
+            if (prevErr && prevErr.isVersionConflict) throw prevErr;
+            return task();
+          }
+        )
+      : Promise.resolve().then(() => task());
+    const marker = { promise: run };
+    this.orderMutationQueues.set(key, marker);
+    const cleanup = () => {
+      if (this.orderMutationQueues.get(key) === marker) {
+        this.orderMutationQueues.delete(key);
+      }
+    };
+    run.then(cleanup, cleanup);
+    return run;
+  }
+
   applyServerOrderResult(rawRow) {
     const mapped = this.mapRemoteOrderRow(rawRow);
     this.validateOrderRecord(mapped);
@@ -2892,7 +2920,9 @@ class Store {
       const msg = String(res.error.message || "Error al actualizar el pedido.");
       if (/CONFLICT/i.test(msg)) {
         try { await this.pullFromSupabase(); } catch {}
-        throw new Error(msg.replace(/^CONFLICT:\s*/i, "") + " Recargamos los datos actuales.");
+        const err = new Error(msg.replace(/^CONFLICT:\s*/i, "") + " Recargamos los datos actuales.");
+        err.isVersionConflict = true;
+        throw err;
       }
       throw new Error(msg.replace(/^(FORBIDDEN|NOT_FOUND|INVALID_TRANSITION|VALIDATION_ERROR):\s*/i, ""));
     }
@@ -2904,50 +2934,58 @@ class Store {
 
   async takeOrderAsync(orderId) {
     if (this.isDemo()) return this.updateOrderStatus(orderId, "EN_PREPARACION");
-    const order = this.getOrders().find((o) => o.id === orderId);
-    if (!order) throw new Error("No se encontró el pedido.");
-    return this.invokeStaffOrderRpc("take_order", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      if (!order) throw new Error("No se encontró el pedido.");
+      return this.invokeStaffOrderRpc("take_order", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1
+      });
     });
   }
 
   async saveItemWeightAsync(orderId, itemIndex, pesoReal, opts = {}) {
     if (this.isDemo()) return this.updateItemWeight(orderId, itemIndex, pesoReal, opts);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    const { items, totalReal } = this.computeWeightUpdateOrder(order, itemIndex, pesoReal, opts);
-    return this.invokeStaffOrderRpc("update_order_preparation", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_items: items,
-      p_total_real: totalReal
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      const { items, totalReal } = this.computeWeightUpdateOrder(order, itemIndex, pesoReal, opts);
+      return this.invokeStaffOrderRpc("update_order_preparation", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_items: items,
+        p_total_real: totalReal
+      });
     });
   }
 
   async toggleItemOutOfStockAsync(orderId, itemIndex) {
     if (this.isDemo()) return this.toggleItemOutOfStock(orderId, itemIndex);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    const { items, totalReal } = this.computeOutOfStockOrder(order, itemIndex);
-    return this.invokeStaffOrderRpc("update_order_preparation", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_items: items,
-      p_total_real: totalReal
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      const { items, totalReal } = this.computeOutOfStockOrder(order, itemIndex);
+      return this.invokeStaffOrderRpc("update_order_preparation", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_items: items,
+        p_total_real: totalReal
+      });
     });
   }
 
   async finalizeOrderWeighingAsync(orderId, weightsMap = null) {
     if (this.isDemo()) return this.finalizeOrderWeighing(orderId, weightsMap);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    const { alreadyFinalized, items } = this.computeFinalizeItems(order, weightsMap);
-    if (alreadyFinalized) return order;
-    const saved = await this.invokeStaffOrderRpc("finalize_order_preparation", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_items: items
+    return this.enqueueOrderMutation(orderId, async () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      const { alreadyFinalized, items } = this.computeFinalizeItems(order, weightsMap);
+      if (alreadyFinalized) return order;
+      const saved = await this.invokeStaffOrderRpc("finalize_order_preparation", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_items: items
+      });
+      this.notify("order_ready", orderId);
+      return saved;
     });
-    this.notify("order_ready", orderId);
-    return saved;
   }
 
   async transitionOrderStatusAsync(orderId, newStatus) {
@@ -2957,12 +2995,14 @@ class Store {
       if (order?.estado === "PENDIENTE") return this.takeOrderAsync(orderId);
     }
     if (this.isDemo()) return this.updateOrderStatus(orderId, newStatus);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    if (!order) throw new Error("No se encontró el pedido.");
-    return this.invokeStaffOrderRpc("transition_order_status", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_new_status: newStatus
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      if (!order) throw new Error("No se encontró el pedido.");
+      return this.invokeStaffOrderRpc("transition_order_status", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_new_status: newStatus
+      });
     });
   }
 
@@ -2975,39 +3015,49 @@ class Store {
 
   async removeItemFromOrderAsync(orderId, itemIndex) {
     if (this.isDemo()) return this.removeItemFromOrder(orderId, itemIndex);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    const { items, totalReal } = this.computeRemoveItemState(order, itemIndex);
-    return this.invokeStaffOrderRpc("update_order_preparation", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_items: items,
-      p_total_real: totalReal
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      const { items, totalReal } = this.computeRemoveItemState(order, itemIndex);
+      return this.invokeStaffOrderRpc("update_order_preparation", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_items: items,
+        p_total_real: totalReal
+      });
     });
   }
 
   async addProductToOrderAsync(orderId, productId, cantidad) {
     if (this.isDemo()) return this.addProductToOrder(orderId, productId, cantidad);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    const { items, totalReal } = this.computeAddItemState(order, productId, cantidad);
-    return this.invokeStaffOrderRpc("update_order_preparation", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_items: items,
-      p_total_real: totalReal
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      const { items, totalReal } = this.computeAddItemState(order, productId, cantidad);
+      return this.invokeStaffOrderRpc("update_order_preparation", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_items: items,
+        p_total_real: totalReal
+      });
     });
   }
 
   async updateOrderDetailsAsync(orderId, details) {
     if (this.isDemo()) return this.updateOrderDetails(orderId, details);
-    const order = this.getOrders().find((o) => o.id === orderId);
-    if (!order) throw new Error("No se encontró el pedido.");
-    return this.invokeStaffOrderRpc("update_order_details_staff", {
-      p_order_id: orderId,
-      p_expected_version: order.version || 1,
-      p_nombre: details.nombre !== undefined ? details.nombre : order.cliente.nombre,
-      p_telefono: details.telefono !== undefined ? details.telefono : order.cliente.telefono,
-      p_tipo_entrega: details.tipo_entrega || order.tipo_entrega,
-      p_direccion_entrega: details.direccion_entrega || order.direccion_entrega
+    return this.enqueueOrderMutation(orderId, () => {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      if (!order) throw new Error("No se encontró el pedido.");
+      const nextTipo = details.tipo_entrega || order.tipo_entrega;
+      const nextDireccion = details.direccion_entrega !== undefined
+        ? details.direccion_entrega
+        : (nextTipo === "RETIRO" ? "" : order.direccion_entrega);
+      return this.invokeStaffOrderRpc("update_order_details_staff", {
+        p_order_id: orderId,
+        p_expected_version: order.version || 1,
+        p_nombre: details.nombre !== undefined ? details.nombre : order.cliente.nombre,
+        p_telefono: details.telefono !== undefined ? details.telefono : order.cliente.telefono,
+        p_tipo_entrega: nextTipo,
+        p_direccion_entrega: nextDireccion
+      });
     });
   }
 
@@ -4341,6 +4391,7 @@ function renderClientView(container) {
 
       try {
         const result = await store.submitOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
+        isSubmittingCheckout = false;
         if (result?.ok && result.order) {
           isCartOpen = false;
           isDrawerFirstOpen = true;
@@ -4358,6 +4409,7 @@ function renderClientView(container) {
         };
         renderCatalog();
       } catch (error) {
+        isSubmittingCheckout = false;
         checkoutStatus = {
           status: "failed",
           error: error.message || "No se pudo guardar el pedido. Reintentá."
@@ -5454,15 +5506,34 @@ Alias para transferir: ${businessAlias}
       });
     });
 
+    const pendingAdjustTimers = new Map();
+    const clearOrderAdjustTimers = (orderId) => {
+      const prefix = `${orderId}:`;
+      for (const [key, timerId] of pendingAdjustTimers.entries()) {
+        if (key.startsWith(prefix)) {
+          clearTimeout(timerId);
+          pendingAdjustTimers.delete(key);
+        }
+      }
+    };
+
     container.querySelectorAll(".btn-adjust-weight").forEach(btn => {
       btn.addEventListener("click", () => {
-        const input = findPreparationInput(Number(btn.dataset.adjustOrder), Number(btn.dataset.itemIdx));
+        const orderId = Number(btn.dataset.adjustOrder);
+        const itemIdx = Number(btn.dataset.itemIdx);
+        const input = findPreparationInput(orderId, itemIdx);
         const isWeight = input.dataset.unit === "KG";
         const current = parseOperatorWeight(input.value, isWeight) ?? 0;
         input.value = Math.max(isWeight ? 0.001 : 1, Number((current + Number(btn.dataset.delta)).toFixed(3)));
         input.dispatchEvent(new Event("input", { bubbles: true }));
         if (!store.isDemo()) {
-          input.dispatchEvent(new Event("change", { bubbles: true }));
+          const timerKey = `${orderId}:${itemIdx}`;
+          input.dataset.unsaved = "true";
+          if (pendingAdjustTimers.has(timerKey)) clearTimeout(pendingAdjustTimers.get(timerKey));
+          pendingAdjustTimers.set(timerKey, setTimeout(() => {
+            pendingAdjustTimers.delete(timerKey);
+            if (input.isConnected) input.dispatchEvent(new Event("change", { bubbles: true }));
+          }, 220));
         }
       });
     });
@@ -5568,6 +5639,11 @@ Alias para transferir: ${businessAlias}
       if (!store.isDemo()) {
         input.addEventListener("change", async () => {
           const id = Number(input.dataset.orderId), index = Number(input.dataset.itemIdx);
+          const timerKey = `${id}:${index}`;
+          if (pendingAdjustTimers.has(timerKey)) {
+            clearTimeout(pendingAdjustTimers.get(timerKey));
+            pendingAdjustTimers.delete(timerKey);
+          }
           const value = parseOperatorWeight(input.value, input.dataset.unit === "KG");
           try {
             await store.saveItemWeightAsync(id, index, value, { notify: false });
@@ -5605,6 +5681,7 @@ Alias para transferir: ${businessAlias}
     container.querySelectorAll(".btn-finish-weighing").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.finishOrderId);
+        clearOrderAdjustTimers(id);
         try {
           const inputs = Array.from(container.querySelectorAll(".input-weight")).filter(input => Number(input.dataset.orderId) === id);
           if (inputs.some(input => parseOperatorWeight(input.value, input.dataset.unit === "KG") === null)) {

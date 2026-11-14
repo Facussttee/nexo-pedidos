@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-11-14T02:42:10.755Z",
+  "timestamp": "2026-11-14T03:11:25.968Z",
   "environment": {
-    "commit": "dfe8b736d818051ad3e0cda56de39dd5e55d8cda",
-    "shortCommit": "dfe8b73",
+    "commit": "0553e663dd6d5456e1f05532ad498a40a89e4179",
+    "shortCommit": "0553e66",
     "branch": "main",
     "node": "v26.13.0",
     "platform": "win32/x64",
@@ -12,16 +12,16 @@
     "brave": true
   },
   "summary": {
-    "verifiedScore": 87,
-    "failedPoints": 4,
+    "verifiedScore": 91,
+    "failedPoints": 0,
     "unverifiedPoints": 9,
     "totalPossible": 100
   },
   "rubricResults": {
     "seguridad": {
       "max": 25,
-      "scored": 16,
-      "failed": 4,
+      "scored": 20,
+      "failed": 0,
       "unverified": 5,
       "items": [
         {
@@ -33,10 +33,10 @@
         },
         {
           "name": "Autenticación individual staff sin PIN estático '1234' en API/producción",
-          "points": 0,
+          "points": 4,
           "max": 4,
-          "status": "FAIL",
-          "reason": "Sigue presente PIN estático '1234' o falta Supabase Auth + staff_members"
+          "status": "PASS",
+          "reason": ""
         },
         {
           "name": "Autorización RBAC en SQL sin USING(true) público ni headers spoofables",

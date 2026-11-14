@@ -30,3 +30,9 @@ dist/
 
 # Respaldos locales
 respaldo-local-*.zip
+
+# Caché intermedia de Graphify (se conservan GRAPH_REPORT.md, graph.json y graph.html)
+graphify-out/cache/
+graphify-out/.graphify_*
+graphify-out/generate_chunk_*.py
+graphify-out/manifest.json

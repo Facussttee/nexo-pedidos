@@ -1,8 +1,36 @@
-# Mapa real del repositorio — Nexo Pedidos (E0)
+# Mapa del repositorio — Nexo Pedidos (`main`, post-AUD-17)
 
-Base: commit `169247d`, rama `codex/experiment-E0`. Mapa por lectura estática local; no se ejecutó código, ni red, ni Supabase, ni WhatsApp. Lo que sigue describe lo que el código *hace*, no que esté desplegado ni que sea seguro.
+## Componentes actuales en `main` (`2026-11-13`)
 
-## Componentes
+| Ruta | Rol |
+|---|---|
+| `index.html`, `css/style.css` | Shell web / PWA sin `@import` bloqueante; preconnect + `<link>` de tipografía |
+| `js/config.js`, `js/public-config.js` | Validación fail-closed de configuración pública (`demo` vs `production`), sin secretos |
+| `js/html.js` | Escape contextual (`escapeHtml`, `escapeAttr`) contra XSS |
+| `js/images.js` | Compresión cliente 512px y almacenamiento local en IndexedDB |
+| `js/app.js` | Router de vistas, compuerta Auth RBAC (producción) / PIN demo (`1234`), ruta segura `#track=` |
+| `js/store.js` | Estado reactivo, Supabase Auth/RPC (`create_order_atomic`, preparación optimista, catálogo vacío autoritativo), caché local |
+| `js/views/client.js` / `operator.js` / `admin.js` | Vistas cliente (accesibilidad WCAG, seguimiento opaco), mostrador/balanza optimista, administración |
+| `js/bundle.js` | Bundle compilado vía `build-bundle.ps1` y copiado a `dist/public` |
+| `supabase/schema.sql` | Tablas `staff_members`, `clientes`, `productos`, `pedidos`, `rate_limit_config`, RPCs, triggers `NOW()`, RLS RBAC |
+| `bot/static-server.js`, `bot/serve-demo.js`, `bot/package-lock.json` | Servidor estático confinado a `dist/public` con headers de seguridad, ETag y dependencias bloqueadas |
+| `scripts/build-public.mjs`, `scripts/audit-git.mjs` | Builder allowlist-only hacia `dist/public` y auditoría de ramas/PRs |
+| `tests/test-aud-*.test.mjs`, `tests/helpers/disposable-supabase-harness.mjs` | Suites `AUD-01`–`AUD-16` con backend descartable simulado y navegador headless Brave/Playwright |
+| `tests/load/` | Pruebas de carga k6 sobre servidor estático confinado (`127.0.0.1:3000`) |
+| `.github/workflows/ci.yml`, `Dockerfile`, `vercel.json` | CI en 2 jobs (`validate-local`, `validate-browser`), contenedor non-root `USER node` y deploy `dist/public` |
+
+## Cierre de remediación `AUD-00–17` — 2026-11-13
+
+- Evidencia de cierre en [coordination/results/AUD-17.md](../coordination/results/AUD-17.md) e índice en [tasks/todo.md](../tasks/todo.md).
+- Puntuación automática: `87/100` en `tests/test-aud-01-rubric.test.mjs` (`4 fail` por heurística regex sobre la rama demo-only de `getLocalSettings()`; `test-aud-04-06` aprueba `10/10` el aislamiento productivo), con `9 pts UNVERIFIED` (5 pts RLS real sobre PostgreSQL/Docker ausente + 4 pts Safari iOS físico/HEIC).
+
+---
+
+## Referencia histórica conservada — Corte inicial `E0` (`169247d`)
+
+> Nota histórica: el bloque siguiente registra el mapa inicial previo a NP-002/V2/AUD-00–17 y se conserva únicamente como trazabilidad.
+
+### Componentes (histórico `169247d`)
 
 | Ruta | Rol |
 |---|---|
@@ -40,14 +68,4 @@ Observación adicional: los ids de pedido se calculan en el cliente (`store.js` 
 - Sin Auth, idempotencia, transacciones ni outbox; la notificación depende de un bot activo y del flag `notificado_whatsapp` (no es entrega exactamente-una-vez).
 - No hay stock cuantitativo: `disponible` y `sin_stock` son booleanos.
 - No se copiaron claves, endpoints, teléfonos ni direcciones; sólo referencias a línea.
-- Números de línea válidos para `169247d`.
-
-
-## Auditoría inicial — 2026-11-11
-
-Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](../coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
-
-
-## Tickets para Antigravity — 2026-11-11
-
-[Plan de mejora](../tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.
+- Números de línea válidos para `169247d`. (Sección histórica; el estado vigente en `main` tras `AUD-00–17` figura arriba y en [coordination/results/AUD-17.md](../coordination/results/AUD-17.md)).

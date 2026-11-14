@@ -27,7 +27,7 @@ Desarrollado como una Progressive Web App (PWA) de una sola instalación por com
 * **Fotos de productos**: Carga de imágenes desde cámara o galería móvil, optimizadas automáticamente en IndexedDB (512x512 px) para máximo rendimiento sin saturar almacenamiento.
 * **Códigos SKU y categorías**: Organización por códigos comerciales y categorías configurables según el rubro del negocio.
 * **Sincronización en la nube**: Cualquier cambio de precio o producto se actualiza inmediatamente en Supabase y se refleja en los clientes conectados.
-* **PIN de seguridad**: Bloqueo de acceso local para proteger la vista de precios y configuración en dispositivos compartidos.
+* **Autenticación y seguridad**: En producción, acceso de personal (`owner`/`operator`) mediante **Supabase Auth** individual (`staff_members`, RBAC por rol) y seguimiento privado de cliente vía token opaco (`#track=...`, hash SHA-256). En modo `demo`, PIN local aislado (`1234`, modificable solo en almacenamiento local demo).
 
 ### 4. Mensajería WhatsApp (2 modalidades de operación)
 * **Opción A — Web Asistida (Sin instalación ni backend)**: Al marcar un pedido como *Listo*, el operador toca "Enviar WhatsApp" y se abre la conversación con el cliente conteniendo el desglose detallado de balanza, total exacto, dirección/retiro y alias de transferencia bancaria.
@@ -42,10 +42,11 @@ Desarrollado como una Progressive Web App (PWA) de una sola instalación por com
 [ Operador Kanban ] <───┼──> (Supabase Realtime WebSockets)
 [ Administrador ] <─────┘         │
                                   ▼
-                     [ Supabase PostgreSQL ]
-                     ├── public.clientes
-                     ├── public.productos
-                     └── public.pedidos (id SERIAL #101+)
+                     [ Supabase PostgreSQL + Auth ]
+                     ├── public.clientes (acceso staff RBAC / sin anon directo)
+                     ├── public.productos (escritura owner / lectura pública controlada)
+                     ├── public.pedidos (id SERIAL #101+, tracking_token_hash, version, create_order_atomic)
+                     └── public.staff_members (owner / operator, auth.uid())
                                   ▲
                                   │ (WebSocket Listener)
                      [ Bot WhatsApp / Baileys ] (Opcional)
@@ -101,24 +102,38 @@ Escaneá el código QR que aparece en la terminal desde WhatsApp (**Dispositivos
 
 ## 🧪 Verificación y Tests Automatizados
 
-La suite de pruebas valida integridad de estado, aislamiento de demo, seguridad contra inyección y sincronización en la nube:
+La suite de pruebas valida integridad de estado, aislamiento de demo, seguridad contra inyección, simulación backend descartable y regresiones de auditoría (`AUD-01`–`AUD-16`):
 
 ```powershell
 # Compilar bundle y chequear sintaxis:
 powershell -ExecutionPolicy Bypass -File .\build-bundle.ps1
 node --check js/bundle.js
 
-# Construir directorio público:
+# Construir directorio público confinado:
 node scripts/build-public.mjs
 
-# Ejecutar suites de test:
-node tests/test-production-supabase-sync.test.mjs    # Sincronización completa con Supabase
-node tests/test-demo-isolation.test.mjs             # Aislamiento y fail-closed de demo
-node tests/test-static-server.test.mjs              # Servidor estático y confinamiento
-node tests/test-delivery-store.mjs                  # Lógica de pesaje, balanza y subtotales
-node tests/test-phone-numeric-validation.test.mjs   # Sanitización de teléfonos de clientes
-node bot/test-store-state.js                        # Máquina de estados de pedidos
-node tests/test-html-escaping.test.mjs              # Mitigación de XSS en renderizado
+# Suites base de aislamiento, dominio, servidor estático y XSS:
+node tests/test-production-supabase-sync.test.mjs
+node tests/test-demo-isolation.test.mjs
+node tests/test-static-server.test.mjs
+node tests/test-delivery-store.mjs
+node tests/test-phone-numeric-validation.test.mjs
+node bot/test-store-state.js
+node tests/test-html-escaping.test.mjs
+node tests/test-xss-rendering.test.mjs
+node tests/test-preparation-input.test.mjs
+
+# Suites de remediación AUD-02..AUD-16 y rúbrica AUD-01:
+node tests/test-aud-02-disposable-backend.test.mjs
+node tests/test-aud-03-xss-orders.test.mjs
+node tests/test-aud-04-06-auth-rbac-tracking.test.mjs
+node tests/test-aud-07-08-09-12-orders.test.mjs
+node tests/test-aud-10-11-identity-catalog.test.mjs
+node tests/test-aud-13-a11y.test.mjs
+node tests/test-aud-14-mobile-visual.test.mjs
+node tests/test-aud-15-performance.test.mjs
+node tests/test-aud-16-ops-security.test.mjs
+node tests/test-aud-01-rubric.test.mjs
 ```
 
 ---
@@ -126,20 +141,22 @@ node tests/test-html-escaping.test.mjs              # Mitigación de XSS en rend
 ## 📁 Estructura del Repositorio
 
 * `js/`
-  * `app.js`: Enrutador de vistas y eventos de navegación.
+  * `app.js`: Enrutador de vistas, compuerta Auth de personal (producción) / PIN demo (`#track=` seguro).
   * `config.js`: Resolución y validación estricta de configuración pública (demo vs producción).
   * `public-config.js`: Declaración de configuración pública para el navegador (sin secretos).
-  * `store.js`: Gestor central reactivo de estado, almacenamiento local y cliente Supabase Realtime.
+  * `html.js`: Escape contextual (`escapeHtml`, `escapeAttr`) contra XSS.
+  * `store.js`: Gestor central reactivo de estado, Auth/RPC Supabase y caché local.
   * `images.js`: Procesamiento, compresión y almacenamiento IndexedDB de fotos de productos.
   * `bundle.js`: Archivo compilado unificado para producción y ejecución universal.
   * `views/`: Vistas de interfaz (`client.js`, `operator.js`, `admin.js`).
 * `supabase/`
-  * `schema.sql`: Script DDL completo de PostgreSQL, tablas, RLS, Realtime y semilla.
-  * `001_pilot.sql`: Migración de base de datos piloto.
-* `bot/`: Servicio de mensajería Baileys WhatsApp con escucha de eventos de balanza.
-* `scripts/`: Scripts de build y generación de raíz pública estática (`build-public.mjs`).
-* `tests/`: Suites de pruebas unitarias, de integración y seguridad.
-* `docs/`: Documentación de producto, comparativas de UX y arquitectura.
+  * `schema.sql`: Script DDL completo de PostgreSQL, tablas (`staff_members`, `clientes`, `productos`, `pedidos`, `rate_limit_config`), RPCs atómicas (`create_order_atomic`, `get_order_by_tracking_token`, `take_order`, `update_order_preparation`, `finalize_order_preparation`, `transition_order_status`), RLS RBAC, triggers `NOW()` y semilla.
+  * `001_pilot.sql`: Migración piloto inicial.
+* `bot/`: Servicio de mensajería Baileys WhatsApp (`index.js`), servidor demo (`serve-demo.js`), servidor estático confinado (`static-server.js`) y `package-lock.json` bloqueado con hashes SRI.
+* `scripts/`: `build-public.mjs` (allowlist estricto hacia `dist/public`) y `audit-git.mjs` (auditoría de ramas/PRs).
+* `tests/`: Suites unitarias, simulación descartable (`tests/helpers/disposable-supabase-harness.mjs`), navegador headless Brave/Playwright (`AUD-03..15`), seguridad operativa (`AUD-16`) y pruebas de carga k6 (`tests/load/`).
+* `.github/workflows/ci.yml`: Pipeline CI en dos jobs (`validate-local` + `validate-browser`).
+* `docs/`: Documentación de producto, mapas del repositorio y arquitectura.
 
 ---
 
@@ -148,12 +165,8 @@ node tests/test-html-escaping.test.mjs              # Mitigación de XSS en rend
 Nexo Pedidos es una evolución independiente derivada del proyecto original [MiHuerta](https://github.com/Facussttee/MiHuerta) de Facundo Argüello.
 Repositorio oficial: [Facussttee/nexo-pedidos](https://github.com/Facussttee/nexo-pedidos).
 
+## Cierre de Remediación de Auditoría (AUD-00–17) — 2026-11-13
 
-## Auditoría inicial — 2026-11-11
-
-Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
-
-
-## Tickets para Antigravity — 2026-11-11
-
-[Plan de mejora](tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.
+- **Baseline inicial (2026-11-11):** [revisión preliminar](coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md) (36/100 orientativo).
+- **Remediación ejecutada (`AUD-00` a `AUD-17`):** Ver índice en [tasks/todo.md](tasks/todo.md) y evidencia final en [coordination/results/AUD-17.md](coordination/results/AUD-17.md).
+- **Cobertura y límites vigentes:** Suites automatizadas locales, simulación backend descartable y pruebas en Brave headless verificadas en Windows (`87/100` en el runner estático `test-aud-01-rubric.test.mjs`, donde 4 pts corresponden a heurística regex sobre la rama demo-only de `getLocalSettings()` mientras `test-aud-04-06` verifica 10/10 el aislamiento productivo). Permanecen explícitamente **`UNVERIFIED` (9 pts)**: verificación de RLS en vivo sobre PostgreSQL/Docker real (5 pts, ausente en el host) y Safari iOS físico / captura HEIC nativa (4 pts).

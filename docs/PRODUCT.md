@@ -43,11 +43,12 @@ Diseñado bajo la premisa de **una instalación por comercio con costos y límit
 
 ## 🗄️ Modelo de Datos en Supabase (Producción)
 
-1. **`public.clientes`**: Registro de clientes (`telefono` PK, `nombre`, `direccion`, `updated_at`).
-2. **`public.productos`**: Catálogo comercial (`id` PK, `nombre`, `categoria`, `unidad_medida`, `precio`, `disponible`, `paso`, `codigo`, `detalle`, `archivado`, `imagen_id`, `updated_at`).
-3. **`public.pedidos`**: Cabecera y detalle de pedidos (`id SERIAL` PK iniciando en 101, `cliente_telefono`, `cliente_nombre`, `tipo_entrega`, `direccion_entrega`, `estado`, `total_estimado`, `total_real`, `items JSONB`, `checkout_cart_key`, `notificado_whatsapp`, `fecha`, `updated_at`).
-4. **Seguridad y Políticas**: Row Level Security (RLS) activo con políticas de acceso público controladas para la clave `anon`/`publishable`.
-5. **Publicación Realtime**: `ALTER PUBLICATION supabase_realtime ADD TABLE public.pedidos, public.productos;` con `REPLICA IDENTITY FULL`.
+1. **`public.staff_members`**: Membresías individuales de personal vinculadas a `auth.users` (`role`: `owner` / `operator`, `active`).
+2. **`public.clientes`**: Registro de clientes (`telefono` PK, `nombre`, `direccion`, `updated_at`), restringido por RLS a staff activo.
+3. **`public.productos`**: Catálogo comercial (`id` PK, `nombre`, `categoria`, `unidad_medida`, `precio`, `disponible`, `paso`, `codigo`, `detalle`, `archivado`, `imagen_id`, `updated_at`), lectura controlada y escritura exclusiva de `owner`.
+4. **`public.pedidos`**: Cabecera y detalle de pedidos (`id SERIAL` PK iniciando en 101, `cliente_telefono`, `cliente_nombre`, `tipo_entrega`, `direccion_entrega`, `estado`, `total_estimado`, `total_real`, `items JSONB`, `checkout_cart_key`, `tracking_token_hash`, `version`, `tomado_por`, `notificado_whatsapp`, `fecha`, `updated_at`).
+5. **RPCs autoritativas y Seguridad**: Checkout atómico e idempotente (`create_order_atomic`), seguimiento opaco por token (`get_order_by_tracking_token`, `revoke_order_tracking_token`), toma/pesaje optimista (`take_order`, `update_order_preparation`, `finalize_order_preparation`, `transition_order_status`), trigger `NOW()` y `rate_limit_config` fail-closed.
+6. **Publicación Realtime**: `ALTER PUBLICATION supabase_realtime ADD TABLE public.productos;` (excluido `public.pedidos` de publicación abierta para preservar privacidad entre clientes).
 
 ---
 
@@ -70,9 +71,9 @@ Diseñado bajo la premisa de **una instalación por comercio con costos y límit
 
 | ID | Paquete v2 | Estado | Qué resuelve / Criterio de aceptación |
 |---|---|---|---|
-| **V2-00** | Unificación Git, Deslop final y CI | **DONE** | Fusionados `quality-audit-remediation` (`d2fb02a`), deslop de vistas/bot y `Dockerfile`/CI en `main`; worktrees sincronizados y 8 suites en verde. |
-| **V2-01** | Privacidad de Pedidos y RLS de Staff (ex NP-004) | **PENDIENTE (P1)** | Cerrar `SELECT`/`UPDATE` abiertos en `public.pedidos` y `public.clientes`. Exigir `verify_staff_pin_header()` para mutaciones de operador y filtrar consulta de cliente por token/RPC propio. |
-| **V2-02** | Checkout Autoritativo y Toma Exclusiva (ex NP-005/008) | **PENDIENTE (P1)** | RPC transaccional en PostgreSQL que calcule precios desde `public.productos` (sin confiar en el cliente), valide idempotencia y bloquee la toma simultánea del mismo pedido por dos operarios (`version`/`tomado_por`). |
+| **V2-00** | Unificación Git, Deslop final y CI | **DONE** | Fusionados `quality-audit-remediation` (`d2fb02a`), deslop de vistas/bot y `Dockerfile`/CI en `main`; worktrees sincronizados y suites en verde. |
+| **V2-01** | Privacidad de Pedidos y RLS de Staff (ex NP-004) | **DONE EN `main` (`AUD-04..06`, RLS vivo `UNVERIFIED`)** | Cerrados `SELECT`/`UPDATE` públicos en `public.pedidos` y `public.clientes`; RBAC por `staff_members` (Supabase Auth) y seguimiento de cliente vía `get_order_by_tracking_token` + `#track=`. |
+| **V2-02** | Checkout Autoritativo y Toma Exclusiva (ex NP-005/008) | **DONE EN `main` (`AUD-07..09`)** | RPC transaccional `create_order_atomic` con precios en DB, idempotencia por `checkout_cart_key` + `payload_hash`, y bloqueo optimista (`version`/`tomado_por`) al tomar/pesar. |
 | **V2-03** | Imágenes Cloud (Supabase Storage) y Perfil en DB (ex NP-006) | **PENDIENTE (P2)** | Subir imágenes comprimidas (512px) a Supabase Storage en modo producción para que se vean en todos los dispositivos (conservando IndexedDB en demo) y persistir configuración del comercio en tabla `public.comercio_config`. |
 | **V2-04** | Separación de Entrega y Pago (ex NP-009) | **PENDIENTE (P2)** | Desacoplar estado de preparación/entrega (`PENDIENTE`, `EN_PREPARACION`, `LISTO`, `ENTREGADO`) del estado de cobro (`PENDIENTE`, `INFORMADO`, `COBRADO`) y medio de pago (`EFECTIVO`, `TRANSFERENCIA`). |
 | **V2-05** | Importador Masivo CSV/Planilla (ex Paquete D) | **PENDIENTE (P2)** | Carga masiva en Admin con mapeo de columnas, vista previa sin escritura, actualización por SKU y preservación de snapshots históricos. |
@@ -81,11 +82,7 @@ Diseñado bajo la premisa de **una instalación por comercio con costos y límit
 
 
 
-## Auditoría inicial — 2026-11-11
+## Cierre de Remediación de Auditoría (AUD-00–17) — 2026-11-13
 
-Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](../coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
-
-
-## Tickets para Antigravity — 2026-11-11
-
-[Plan de mejora](../tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.
+- **Baseline preliminar (2026-11-11):** **36/100** orientativo en [la revisión y sus límites](../coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md).
+- **Cierre ejecutado (`main`):** Completados `AUD-00`–`AUD-17` según [plan de mejora](../tasks/plan.md), [tasks/todo.md](../tasks/todo.md) y evidencias en [coordination/results/AUD-17.md](../coordination/results/AUD-17.md). El puntaje verificado en el runner estático es `87/100` (4 pts perdidos por regex heredado en `test-aud-01-rubric.test.mjs:122` sobre la rama demo-only, mientras `test-aud-04-06` aprueba 10/10 el aislamiento productivo) con `9 pts UNVERIFIED` (5 pts RLS en PostgreSQL vivo + 4 pts Safari iOS físico/HEIC). Base histórica conservada en `coordination/references/nexo-auditoria-tracker.xlsx`.

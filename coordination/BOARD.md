@@ -1,4 +1,25 @@
-# Tablero actual — demo local verificada, 2026-11-04
+# Tablero actual — Cierre de Auditoría AUD-00–17, 2026-11-13
+
+Estado consolidado en rama `main` tras remediación e integración completa de `AUD-00` a `AUD-17`. Trabajo local verificado sin conexión a bases reales ni WhatsApp real.
+
+| Rango / Ticket | Estado | Evidencia / Resultado |
+|---|---|---|
+| AUD-00 (Trazabilidad) | DONE | `coordination/results/AUD-00.md` (worktree `aud-00` fusionado y retirado) |
+| AUD-01 (Rúbrica) | DONE | `tests/test-aud-01-rubric.test.mjs`, `coordination/results/AUD-01.md` (worktree `aud-01` fusionado y retirado) |
+| AUD-02 (Backend descartable) | DONE | `tests/helpers/disposable-supabase-harness.mjs`, `tests/test-aud-02-disposable-backend.test.mjs`, `coordination/results/AUD-02.md` (worktree `aud-02` fusionado y retirado) |
+| AUD-03 (XSS pedidos) | DONE | `tests/test-aud-03-xss-orders.test.mjs`, `coordination/results/AUD-03.md` |
+| AUD-04..AUD-06 (Auth, RBAC, `#track=`) | DONE (RLS vivo `UNVERIFIED`) | `tests/test-aud-04-06-auth-rbac-tracking.test.mjs`, `coordination/results/AUD-04.md`–`AUD-06.md` |
+| AUD-07..AUD-09, AUD-12 (Checkout atómico, concurrencia, rate limit) | DONE | `tests/test-aud-07-08-09-12-orders.test.mjs`, `coordination/results/AUD-07.md`–`AUD-09.md`, `AUD-12.md` |
+| AUD-10..AUD-11 (Identidad teléfono, catálogo vacío) | DONE | `tests/test-aud-10-11-identity-catalog.test.mjs`, `coordination/results/AUD-10.md`–`AUD-11.md` |
+| AUD-13 (Accesibilidad WCAG) | DONE | `tests/test-aud-13-a11y.test.mjs`, `coordination/results/AUD-13.md` |
+| AUD-14 (Móvil / Visual 360–1024px) | DONE (Safari iOS físico/HEIC `UNVERIFIED`) | `tests/test-aud-14-mobile-visual.test.mjs`, `coordination/results/AUD-14.md` |
+| AUD-15 (Rendimiento sin `@import` bloqueante) | DONE | `tests/test-aud-15-performance.test.mjs`, `coordination/results/AUD-15.md` |
+| AUD-16 (Lockfile, headers, `dist/public`, CI 2 jobs) | DONE | `tests/test-aud-16-ops-security.test.mjs`, `.github/workflows/ci.yml`, `coordination/results/AUD-16.md` |
+| AUD-17 (Reauditoría y cierre) | DONE | `coordination/results/AUD-17.md`, `coordination/results/rubric-score.json` (`87/100` con `4 fail` por regex estático sobre rama demo en `AUD-01` y `9 unverified`) |
+
+---
+
+## Registro histórico — demo local verificada, 2026-11-04
 
 Fuente canónica: coordinador. Cambios sin commit; no publicados. Todos los escritores de implementación terminaron. Ver DELIVERY_STATUS.md para evidencia y atención requerida.
 

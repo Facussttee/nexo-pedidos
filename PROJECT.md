@@ -49,16 +49,13 @@
 
 ---
 
-## Estado Actual de Sincronización (Auditoría Arquitectónica — 2026-11-09)
+## Estado Actual de Sincronización (Cierre de Auditoría — 2026-11-13)
 
 > [!IMPORTANT]
-> **Aviso para todos los agentes y chats**:
-> Los documentos históricos en `coordination/` (`BOARD.md`, `ACTIVE_EXECUTION.md`, `DELIVERY_STATUS.md`) reflejan el corte del **2026-11-04** (demo local) y los documentos `docs/01` a `docs/05` conservan textos heredados de MiHuerta. **La referencia canónica actualizada del estado v1 vs. v2 es esta sección y `docs/PRODUCT.md`.**
->
-> **Estado de ramas y worktrees**:
-> - **Raíz canónica (`D:\Escritorio\nexo-pedidos`)**: Rama `quality-audit-remediation` (`d2fb02a`) está 1 commit adelante de `main` (`4a6f49a`), incorporando remediaciones de calidad (deslop, ETag en servidor estático, security headers, RLS con `nexo_secrets` + `verify_staff_pin_header()` y rate-limiting de pedidos en DB), además de archivos nuevos sin trackear (`Dockerfile`, `.github/workflows/ci.yml`, `tests/load/`).
-> - **Worktrees de Agent Orchestrator (`~/.ao/data/worktrees/nexo-pedidos/...`)**: Apuntan a `origin/main` (`4a6f49a`). Antes de despachar nuevas tareas v2, se debe fusionar `quality-audit-remediation` en `main` y actualizar los worktrees.
-> - **Worktree `quality` (`D:\Escritorio\nexo-pedidos-worktrees\quality`)**: Contiene un snapshot previo (`b3e5111`) con ajustes locales de deslop sin comitear.
+> **Estado canónico actual (`main` — Cierre de Auditoría AUD-00–17, 2026-11-13)**:
+> - **Remediación completa AUD-00 a AUD-17 integrada en `main`**: XSS en vistas/órdenes cerrado (`escapeHtml`), autenticación individual de personal por Supabase Auth (`staff_members`, RBAC `owner`/`operator`) separada del PIN local demo (`1234`), seguimiento privado de cliente por token opaco (`tracking_token_hash`, fragmento `#track=`), checkout autoritativo/idempotente (`create_order_atomic`), concurrencia optimista (`version`), identidad telefónica exacta sin `slice(-8)`, sincronización de catálogo vacío sin fallback mock, rate limit con `NOW()`, accesibilidad en vistas principales, regresión móvil 360–1024px en Brave headless, CSS sin `@import` bloqueante y CI en dos jobs (`validate-local` + `validate-browser`).
+> - **Límites honestos (`UNVERIFIED` = 9 pts)**: En este host Windows no están disponibles Docker, Supabase CLI ni `psql`, ni dispositivo físico iOS Safari; por lo tanto la ejecución de RLS contra PostgreSQL real (5 pts) y la validación física en Safari iOS / captura HEIC (4 pts) permanecen **`UNVERIFIED`**.
+> - **Rama `V2`**: Los módulos funcionales v2 adicionales (`V2-03` Storage/Comercio Config, `V2-04` Pagos, `V2-05` Importador CSV, `V2-06` Stock cuantitativo, `V2-07` Outbox WhatsApp) residen en rama `V2` (tag `v2.0.0`), mientras `main` consolida v1 endurecida + `AUD-00`–`17`.
 
 ---
 
@@ -86,20 +83,11 @@ Cada tarea está diseñada para ejecutarse en un worktree aislado siguiendo la f
   - **Resultado**: Rama `quality-audit-remediation` (`d2fb02a`) y mejoras de deslop/accesibilidad (`app.js`, `operator.js`, `bot/index.js`, `bot/package.json`), junto con `Dockerfile`, `.dockerignore` y `.github/workflows/ci.yml`, unificados en `main` y sincronizados en los worktrees activos.
   - **Verificación**: 8 suites aisladas en verde (`test-production-supabase-sync`, `test-demo-isolation`, `test-static-server`, `test-delivery-store`, `test-phone-numeric-validation`, `test-store-state`, `test-html-escaping`, `test-preparation-input`).
 
-### Fase 1 — Seguridad Autoritativa y Privacidad en Base de Datos (Prioridad Alta)
-- **`V2-01` (Privacidad de Pedidos y RLS de Operador — ex NP-004)**:
-  - **Problema**: En `supabase/schema.sql`, `pedidos_read_public` y `pedidos_update_valid` tienen `USING (true)` para `anon`. Cualquier cliente puede leer los últimos 50 pedidos o modificar estados vía API REST.
-  - **Alcance**: `supabase/schema.sql`, `js/store.js`, `tests/test-production-supabase-sync.test.mjs`.
-  - **Implementación**:
-    1. Restringir `UPDATE` en `public.pedidos` exclusivamente a peticiones con `public.verify_staff_pin_header() = true` (o RPC de cancelación del propio cliente con token).
-    2. Reemplazar lectura global de pedidos en vista cliente por consulta filtrada/token de seguimiento (`tracking_token` o RPC `get_customer_orders(telefono, token)`), permitiendo listado completo sólo cuando `verify_staff_pin_header()` sea válido.
-    3. Permitir cambio de PIN de staff desde la vista Admin invocando RPC segura.
-- **`V2-02` (Checkout Autoritativo en Servidor y Toma Exclusiva — ex NP-005 / NP-008)**:
-  - **Problema**: El cliente envía precios y subtotales desde el navegador; dos operarios pueden tomar el mismo pedido a la vez.
-  - **Alcance**: `supabase/schema.sql`, `js/store.js`, `js/views/operator.js`.
-  - **Implementación**:
-    1. Función RPC `create_order_atomic` que valide disponibilidad real en `public.productos`, tome el precio unitario de la base de datos (no del payload del cliente), garantice idempotencia por `checkout_cart_key` y calcule `total_estimado`.
-    2. Agregar columna `version INT DEFAULT 1` y `tomado_por VARCHAR(60)` en `public.pedidos` para bloqueo optimista al pasar a `EN_PREPARACION`.
+### Fase 1 — Seguridad Autoritativa y Privacidad en Base de Datos (`DONE` en `main` vía `AUD-04`..`AUD-09`)
+- **`V2-01` / `AUD-04`–`AUD-06` (Privacidad de Pedidos y RBAC — `DONE` local, RLS vivo `UNVERIFIED`)**:
+  - **Implementado en `main`**: Cerradas políticas abiertas `USING (true)` en `public.pedidos` y `public.clientes`; autenticación individual por `staff_members` (Supabase Auth, roles `owner`/`operator`, sin PIN en producción) y seguimiento privado de clientes vía `get_order_by_tracking_token` + fragmento `#track=`.
+- **`V2-02` / `AUD-07`–`AUD-09` (Checkout Autoritativo y Toma Exclusiva — `DONE`)**:
+  - **Implementado en `main`**: RPC `create_order_atomic` con `FOR SHARE`, precios calculados desde `public.productos`, idempotencia por `checkout_cart_key` + `payload_hash`, y versionado optimista (`version`, `tomado_por`) en `take_order`, `update_order_preparation` y `finalize_order_preparation`.
 
 ### Fase 2 — Operativa Comercial Real y Nube (Prioridad Media-Alta)
 - **`V2-03` (Imágenes en Supabase Storage y Perfil Comercial en DB — ex NP-006)**:
@@ -128,11 +116,7 @@ Cada tarea está diseñada para ejecutarse en un worktree aislado siguiendo la f
 
 
 
-## Auditoría inicial — 2026-11-11
+## Cierre de Auditoría (AUD-00–17) — 2026-11-13
 
-Línea de base preliminar: **36/100**, con riesgos críticos en XSS y políticas del esquema, además de fallas de confirmación de pedidos. Consultar [la revisión y sus límites](coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md). No equivale a una evaluación de una base desplegada.
-
-
-## Tickets para Antigravity — 2026-11-11
-
-[Plan de mejora](tasks/plan.md): 18 tickets AUD-00–17 preparados, implementación no iniciada. Índice en tasks/todo.md; especificaciones y evidencias en coordination/tasks y coordination/results. Base histórica conservada en coordination/references/nexo-auditoria-tracker.xlsx.
+- **Baseline inicial (2026-11-11):** `36/100` orientativo en [la revisión y sus límites](coordination/reviews/AUDITORIA-INICIAL-2026-11-11.md).
+- **Cierre post-remediación:** Ver [tasks/todo.md](tasks/todo.md) y [coordination/results/AUD-17.md](coordination/results/AUD-17.md) (todos los tickets `AUD-00`–`AUD-17` cerrados en `main`; `87/100` en `test-aud-01-rubric.test.mjs`, donde 4 pts fallan por regex estático heredado sobre la rama demo-only mientras `test-aud-04-06` verifica 10/10 la separación productiva, y 9 pts permanecen `UNVERIFIED` por falta de PostgreSQL/Docker local y Safari iOS físico). Base histórica conservada en `coordination/references/nexo-auditoria-tracker.xlsx`.

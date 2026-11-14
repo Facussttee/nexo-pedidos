@@ -3229,7 +3229,7 @@ function renderClientView(container) {
 
           <form id="phone-form" class="space-y-4">
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              <label for="phone-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Número de WhatsApp
               </label>
               <div class="relative flex items-center">
@@ -3249,7 +3249,7 @@ function renderClientView(container) {
                   class="w-full pl-20 pr-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white font-bold text-base outline-none transition"
                 />
               </div>
-              <p id="phone-error" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
+              <p id="phone-error" role="alert" aria-live="assertive" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
                 Ingresá un número de WhatsApp válido (sólo números, mín. 8 dígitos).
               </p>
               <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
@@ -3275,13 +3275,13 @@ function renderClientView(container) {
                   placeholder="${store.isDemo() ? "Ej: Ana Demo (sintética)" : "Ej: Tu nombre y apellido"}"
                   class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white text-base font-medium outline-none transition"
                 />
-                <p id="name-error" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
+                <p id="name-error" role="alert" aria-live="assertive" class="hidden text-xs text-rose-500 dark:text-rose-400 font-semibold mt-1.5">
                   Por favor ingresá tu nombre para que podamos identificar tu pedido.
                 </p>
               </div>
 
               <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                <label for="address-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Dirección de entrega (opcional)
                 </label>
                 <input
@@ -3575,6 +3575,7 @@ function renderClientView(container) {
             <input
               type="text"
               id="search-input"
+              aria-label="Buscar productos"
               placeholder="Buscar productos..."
               value="${escapeHtml(searchQuery)}"
               autocomplete="off"
@@ -3780,6 +3781,7 @@ function renderClientView(container) {
               <button
                 data-add-id="${escapeHtml(product.id)}"
                 data-step="${step}"
+                aria-label="Agregar ${escapeHtml(product.nombre)} al pedido"
                 class="btn-add-initial w-full min-h-[44px] bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border dark:border-slate-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition tap-feedback touch-target flex items-center justify-center gap-1.5 shadow-xs"
               >
                 <span>Agregar</span>
@@ -3792,8 +3794,8 @@ function renderClientView(container) {
                   data-dec-id="${escapeHtml(product.id)}"
                   data-step="${step}"
                   class="btn-qty-dec min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-lg hover:bg-emerald-700 active:scale-90 text-base font-black transition tap-feedback touch-target"
-                  title="Restar"
-                  aria-label="Restar cantidad"
+                  title="Restar ${escapeHtml(product.nombre)}"
+                  aria-label="Restar ${escapeHtml(product.nombre)}"
                 >
                   −
                 </button>
@@ -3805,8 +3807,8 @@ function renderClientView(container) {
                   data-inc-id="${escapeHtml(product.id)}"
                   data-step="${step}"
                   class="btn-qty-inc min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-lg hover:bg-emerald-700 active:scale-90 text-base font-black transition tap-feedback touch-target"
-                  title="Sumar"
-                  aria-label="Sumar cantidad"
+                  title="Sumar ${escapeHtml(product.nombre)}"
+                  aria-label="Sumar ${escapeHtml(product.nombre)}"
                 >
                   +
                 </button>
@@ -4073,7 +4075,7 @@ function renderClientView(container) {
 
               <!-- Campo Dirección de Envío -->
               <div id="delivery-address-container" class="${isDelivery ? "" : "hidden"} pt-1">
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                <label for="delivery-address-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Dirección exacta de entrega
                 </label>
                 <input

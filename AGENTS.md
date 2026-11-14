@@ -23,3 +23,8 @@ Producto derivado de Facussttee/MiHuerta. Leer docs/PRODUCT.md y coordination/ta
 - Probar con node bot/serve-demo.js --host 127.0.0.1 --port 3000; no iniciar bot/index.js para probar archivos web. El CLI valida la raíz también con --no-build.
 - La configuración demo bloquea APIs de datos/Supabase y simula WhatsApp; CDN visual y fuentes siguen como dependencia externa. No prometer cero red total ni offline autónomo.
 - No despachar NP-004 ni otra fase hasta mostrar el checkpoint y recibir las indicaciones de alcance de Facu.
+
+## Lecciones aprendidas de auditoría (AUD-00–17)
+- **UI locks y concurrencia optimista:** Restablecer banderas de envío (ej. `isSubmittingCheckout = false`) ANTES de llamar `render*()` tras fallo/timeout; serializar mutaciones sobre un mismo pedido (`orderMutationQueues`) cuando el backend exige `version` optimista y abortar la cola ante `CONFLICT`.
+- **CI y Playwright portable:** Separar suites Node puras (`validate-local`) de pruebas Chromium/Playwright (`validate-browser`); prohibido hardcodear rutas `C:/Users/...` o `brave.exe` sin fallback (`PLAYWRIGHT_PATH` -> `/tmp/pw` -> local).
+- **Rúbrica honesta e higiene post-check:** Mantener explícitos en `UNVERIFIED` controles sin entorno real (RLS PostgreSQL sin Docker/psql, Safari iOS físico/HEIC). Tras correr `node tests/test-aud-01-rubric.test.mjs` solo para verificar, restaurar `coordination/results/rubric-score.json` si únicamente cambió `timestamp`.

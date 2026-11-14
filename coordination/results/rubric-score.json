@@ -1,0 +1,144 @@
+{
+  "timestamp": "2026-11-11T19:41:53.928Z",
+  "totalScore": 83,
+  "rubricResults": {
+    "seguridad": {
+      "max": 25,
+      "scored": 25,
+      "items": [
+        {
+          "name": "XSS Mitigation en renderizado HTML (escapeHtml)",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Escape estricto de item.cantidad en preparación (AUD-03 pre-check)",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Políticas RLS en PostgreSQL para clientes y pedidos",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Eliminación de PIN estático en texto plano '1234'",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Timestamp del servidor en rate limiting (ignorar fecha cliente)",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        }
+      ]
+    },
+    "integridad": {
+      "max": 25,
+      "scored": 19,
+      "items": [
+        {
+          "name": "Suite demo-isolation en verde (17/17)",
+          "points": 7,
+          "max": 7,
+          "status": "PASS"
+        },
+        {
+          "name": "Suite test-store-state de estados de pedido (72/72)",
+          "points": 6,
+          "max": 6,
+          "status": "PASS"
+        },
+        {
+          "name": "Sanitización numérica de teléfonos (18/18)",
+          "points": 6,
+          "max": 6,
+          "status": "PASS"
+        },
+        {
+          "name": "Checkout autoritativo RPC e idempotencia",
+          "points": 0,
+          "max": 6,
+          "status": "FAIL"
+        }
+      ]
+    },
+    "ux": {
+      "max": 20,
+      "scored": 15,
+      "items": [
+        {
+          "name": "Etiqueta accesible en buscador de catálogo",
+          "points": 0,
+          "max": 5,
+          "status": "FAIL"
+        },
+        {
+          "name": "Controles de cantidad con nombre de producto accesible",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Touch targets mínimos de 44x44px en controles interactivos",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Prevención de zoom iOS (inputs font-size >= 16px)",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        }
+      ]
+    },
+    "rendimiento": {
+      "max": 10,
+      "scored": 10,
+      "items": [
+        {
+          "name": "Bundle compilado sin BOM y sintaxis JavaScript válida",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        },
+        {
+          "name": "Tamaño de bundle optimizado (< 400 KB sin minificar)",
+          "points": 5,
+          "max": 5,
+          "status": "PASS"
+        }
+      ]
+    },
+    "operacion": {
+      "max": 20,
+      "scored": 14,
+      "items": [
+        {
+          "name": "Servidor estático confinado y tests de traversal (24/24)",
+          "points": 7,
+          "max": 7,
+          "status": "PASS"
+        },
+        {
+          "name": "Generación de distribución estática pública en dist/public",
+          "points": 7,
+          "max": 7,
+          "status": "PASS"
+        },
+        {
+          "name": "Aislamiento total y fail-closed de producción sin secretos",
+          "points": 0,
+          "max": 6,
+          "status": "FAIL"
+        }
+      ]
+    }
+  }
+}

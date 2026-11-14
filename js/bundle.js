@@ -4199,6 +4199,7 @@ function renderClientView(container) {
       isDragging = true;
       startY = e.clientY;
       activePointerId = e.pointerId;
+      sheet.style.animation = "none";
       sheet.style.transition = "none";
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     }

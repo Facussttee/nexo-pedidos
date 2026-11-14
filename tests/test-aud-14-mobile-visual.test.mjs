@@ -7,10 +7,10 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(".");
-const pwPath = fs.existsSync("node_modules/playwright")
-  ? "playwright"
-  : "C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright";
-const { chromium } = require(pwPath);
+let chromium;
+for (const cand of ["playwright", process.env.PLAYWRIGHT_PATH || "", "/tmp/pw/node_modules/playwright", "C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"].filter(Boolean)) {
+  try { const m = require(cand); if (m?.chromium) { chromium = m.chromium; break; } } catch {}
+}
 const { startDemoServer } = await import(pathToFileURL(path.join(root, "bot/serve-demo.js")).href);
 
 const VIEWPORTS = [360, 375, 390, 430, 768, 1024];

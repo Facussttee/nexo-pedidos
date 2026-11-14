@@ -317,10 +317,11 @@ test("AUD-04 / AUD-05 / AUD-06 — Auth, RBAC & Private Order Tracking Isolation
   });
 
   await t.test("AUD-04/06 Browser Check: fragment routing does not leak token to query params & renders staff Auth gate", async () => {
-    const pwPath = fs.existsSync("node_modules/playwright")
-      ? "playwright"
-      : "C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright";
-    const { chromium } = require(pwPath);
+    let chromium;
+    for (const cand of ["playwright", process.env.PLAYWRIGHT_PATH || "", "/tmp/pw/node_modules/playwright", "C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"].filter(Boolean)) {
+      try { const m = require(cand); if (m?.chromium) { chromium = m.chromium; break; } } catch {}
+    }
+    assert.ok(chromium, "Playwright chromium required");
     const { startDemoServer } = await import(pathToFileURL(path.join(root, "bot/serve-demo.js")).href);
 
     const running = await startDemoServer({ sourceRoot: root, host: "127.0.0.1", port: 0 });

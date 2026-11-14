@@ -17,7 +17,13 @@ import { pathToFileURL } from "node:url";
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(".");
-const { chromium } = require("C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+function resolvePlaywrightChromium() {
+  for (const cand of ["playwright", process.env.PLAYWRIGHT_PATH || "", "/tmp/pw/node_modules/playwright", "C:/Users/Facu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"].filter(Boolean)) {
+    try { const m = require(cand); if (m?.chromium) return m.chromium; } catch {}
+  }
+  throw new Error("Playwright chromium no disponible");
+}
+const chromium = resolvePlaywrightChromium();
 const { startDemoServer } = await import(pathToFileURL(path.join(root, "bot/serve-demo.js")).href);
 
 console.log("===============================================================");
@@ -130,11 +136,10 @@ const moduleUrl = `http://127.0.0.1:${moduleServer.address().port}`;
 
 let browser;
 try {
-  browser = await chromium.launch({
-    executablePath: "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
-    headless: true,
-    args: ["--disable-background-networking", "--no-first-run", "--disable-gpu"]
-  });
+  const launchOpts = { headless: true, args: ["--disable-background-networking", "--no-first-run", "--disable-gpu"] };
+  const braveExe = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe";
+  if (fs.existsSync(braveExe)) launchOpts.executablePath = braveExe;
+  browser = await chromium.launch(launchOpts);
 
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.route("**/*", (route) => {

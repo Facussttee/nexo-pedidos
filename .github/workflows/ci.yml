@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  validate:
-    name: Lint, Test & Build Confinement
+  validate-local:
+    name: Syntax, Build Confinement & Node Test Suites
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -20,13 +20,25 @@ jobs:
           node-version: 20
           cache: ''
 
-      - name: 1. Syntax & Hygiene Check
+      - name: 1. Syntax, Lockfile & Hygiene Check
         run: |
+          test -f bot/package-lock.json
           node --check js/bundle.js
           node --check scripts/build-public.mjs
 
-      - name: 2. Run Isolation & Security Test Suites
+      - name: 2. Verify Public Build & Artifacts
         run: |
+          node scripts/build-public.mjs
+          test -f dist/public/index.html
+          test -f dist/public/js/bundle.js
+          test -f dist/public/css/style.css
+
+      - name: 3. Run Isolation, Security & Simulation Test Suites
+        run: |
+          node tests/test-aud-02-disposable-backend.test.mjs
+          node tests/test-aud-07-08-09-12-orders.test.mjs
+          node tests/test-aud-10-11-identity-catalog.test.mjs
+          node tests/test-aud-16-ops-security.test.mjs
           node tests/test-production-supabase-sync.test.mjs
           node tests/test-demo-isolation.test.mjs
           node tests/test-static-server.test.mjs
@@ -34,11 +46,37 @@ jobs:
           node tests/test-phone-numeric-validation.test.mjs
           node bot/test-store-state.js
           node tests/test-html-escaping.test.mjs
+          node tests/test-xss-rendering.test.mjs
           node tests/test-preparation-input.test.mjs
 
-      - name: 3. Verify Public Build & Artifacts
+  validate-browser:
+    name: Playwright Browser Security, A11y, Mobile & Perf Suites
+    needs: validate-local
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: ''
+
+      - name: Build Public Root for Browser Tests
+        run: node scripts/build-public.mjs
+
+      - name: Install Ephemeral Playwright & Chromium
         run: |
-          node scripts/build-public.mjs
-          test -f dist/public/index.html
-          test -f dist/public/js/bundle.js
-          test -f dist/public/css/style.css
+          npm install --no-save --prefix /tmp/pw playwright
+          /tmp/pw/node_modules/.bin/playwright install chromium --with-deps
+
+      - name: Run Playwright Browser Suites
+        env:
+          PLAYWRIGHT_PATH: /tmp/pw/node_modules/playwright
+        run: |
+          node tests/test-aud-03-xss-orders.test.mjs
+          node tests/test-aud-04-06-auth-rbac-tracking.test.mjs
+          node tests/test-aud-13-a11y.test.mjs
+          node tests/test-aud-14-mobile-visual.test.mjs
+          node tests/test-aud-15-performance.test.mjs

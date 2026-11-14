@@ -15,9 +15,16 @@ export function renderOperatorView(container) {
   let actionError = "";
   let addingProductOrderId = null; // ID del pedido que tiene abierto el desplegable de agregar ítem
 
+  function formatMoney(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toLocaleString("es-AR") : escapeHtml(String(value ?? 0));
+  }
+
   function update() {
     container.innerHTML = "";
     const orders = store.getOrders();
+    const ordersError = typeof store.getOrdersError === "function" ? store.getOrdersError() : null;
+    const bannerError = actionError || ordersError || "";
 
     const counts = {
       PENDIENTE: orders.filter((o) => o.estado === "PENDIENTE").length,
@@ -115,7 +122,7 @@ export function renderOperatorView(container) {
 
         <!-- Contenido según la pestaña activa -->
         <main class="p-4">
-          <p id="operator-error" role="alert" class="mb-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-sm ${actionError ? "" : "hidden"}">${escapeHtml(actionError)}</p>
+          <p id="operator-error" role="alert" class="mb-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-sm ${bannerError ? "" : "hidden"}">${escapeHtml(bannerError)}</p>
           ${renderTabContent(orders)}
         </main>
 
@@ -166,7 +173,7 @@ export function renderOperatorView(container) {
           ${tabOrders
             .map((order) => {
               const itemsList = order.items
-                .map((i) => `${i.cantidad_solicitada}${i.unidad_medida === "KG" ? "kg" : "u"} ${escapeHtml(i.nombre)}`)
+                .map((i) => `${escapeHtml(i.cantidad_solicitada)}${i.unidad_medida === "KG" ? "kg" : "u"} ${escapeHtml(i.nombre)}`)
                 .join(" · ");
 
               return `
@@ -174,7 +181,7 @@ export function renderOperatorView(container) {
                 <div class="flex items-start justify-between gap-2">
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="text-base font-black text-slate-900 dark:text-white">#${order.id}</span>
+                      <span class="text-base font-black text-slate-900 dark:text-white">#${escapeHtml(order.id)}</span>
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         order.tipo_entrega === "DELIVERY"
                           ? "bg-slate-900 dark:bg-slate-800 text-white"
@@ -184,24 +191,24 @@ export function renderOperatorView(container) {
                       </span>
                     </div>
                     <h3 class="font-extrabold text-slate-900 dark:text-white text-sm mt-1.5">${escapeHtml(order.cliente.nombre)}</h3>
-                    <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(order.cliente.telefono)} · ${timeAgo(order.fecha)}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(order.cliente.telefono)} · ${escapeHtml(timeAgo(order.fecha))}</p>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-slate-400 dark:text-slate-500 block font-bold uppercase tracking-wider">Estimado</span>
-                    <span class="font-black text-base text-slate-900 dark:text-white">$${order.total_estimado.toLocaleString("es-AR")}</span>
+                    <span class="font-black text-base text-slate-900 dark:text-white">$${formatMoney(order.total_estimado)}</span>
                   </div>
                 </div>
 
                 <!-- Resumen de productos solicitados -->
                 <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl text-xs text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
-                  <span class="font-bold text-slate-700 dark:text-slate-300 block mb-0.5 text-[11px] uppercase tracking-wider">Productos solicitados (${order.items.length}):</span>
+                  <span class="font-bold text-slate-700 dark:text-slate-300 block mb-0.5 text-[11px] uppercase tracking-wider">Productos solicitados (${escapeHtml(order.items.length)}):</span>
                   <p class="leading-relaxed">${itemsList || "Sin productos"}</p>
                 </div>
 
                 <!-- Acciones Principales y de Gestión -->
                 <div class="mt-3 space-y-2">
                   <button
-                    data-start-id="${order.id}"
+                    data-start-id="${escapeHtml(order.id)}"
                     class="btn-start-prep w-full min-h-[48px] bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-xs transition tap-feedback touch-target flex items-center justify-center gap-2"
                   >
                     <span>Comenzar preparación</span>
@@ -209,14 +216,14 @@ export function renderOperatorView(container) {
 
                   <div class="grid grid-cols-2 gap-2">
                     <button
-                      data-edit-order-id="${order.id}"
+                      data-edit-order-id="${escapeHtml(order.id)}"
                       class="btn-open-edit min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-slate-700"
                     >
                       <span>Editar datos</span>
                     </button>
                     <button
-                      data-cancel-order-id="${order.id}"
-                      data-delete-order-id="${order.id}"
+                      data-cancel-order-id="${escapeHtml(order.id)}"
+                      data-delete-order-id="${escapeHtml(order.id)}"
                       class="btn-cancel-order min-h-[44px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-rose-900/50"
                     >
                       <span>Cancelar pedido</span>
@@ -244,7 +251,7 @@ export function renderOperatorView(container) {
                 <p class="text-xs text-slate-500 dark:text-slate-400">${order.tipo_entrega === "DELIVERY" ? escapeHtml(order.direccion_entrega) : "Retiro por mostrador"}</p>
               </div>
               <div class="text-right text-xs text-slate-500 dark:text-slate-400">Estimado al pedir
-                <strong class="block text-base text-slate-900 dark:text-white">$${order.total_estimado.toLocaleString("es-AR")}</strong>
+                <strong class="block text-base text-slate-900 dark:text-white">$${formatMoney(order.total_estimado)}</strong>
               </div>
             </div>
             <div class="py-3 space-y-1">
@@ -260,7 +267,7 @@ export function renderOperatorView(container) {
                   <div class="min-w-0 flex-1">
                     <span class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">${escapeHtml(item.categoria || (isWeight ? "Por kilo" : "Por unidad"))}</span>
                     <h4 class="font-extrabold text-base text-slate-900 dark:text-white break-words">${escapeHtml(item.nombre)}</h4>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Solicitó ${escapeHtml(item.cantidad_solicitada)} ${isWeight ? "kg" : "u."} · $${item.precio_unitario.toLocaleString("es-AR")}/${isWeight ? "kg" : "u"}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Solicitó ${escapeHtml(item.cantidad_solicitada)} ${isWeight ? "kg" : "u."} · $${formatMoney(item.precio_unitario)}/${isWeight ? "kg" : "u"}</p>
                   </div>
                   <div class="flex gap-1">
                     <button data-toggle-stock-order="${escapeHtml(order.id)}" data-item-index="${idx}" class="btn-toggle-stock min-h-[44px] px-3 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200">${item.sin_stock ? "Restaurar" : "Sin Stock"}</button>
@@ -319,12 +326,12 @@ export function renderOperatorView(container) {
                     <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       Preparación completa
                     </span>
-                    <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">#${order.id} · ${escapeHtml(order.cliente.nombre)}</h3>
+                    <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">#${escapeHtml(order.id)} · ${escapeHtml(order.cliente.nombre)}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(order.cliente.telefono)} · ${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"}</p>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-slate-400 dark:text-slate-500 block font-bold uppercase tracking-wider">${order.total_real == null ? "Estimado · final no registrado" : "Total final"}</span>
-                    <span class="font-black text-2xl text-emerald-700 dark:text-emerald-400">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
+                    <span class="font-black text-2xl text-emerald-700 dark:text-emerald-400">$${formatMoney(order.total_real ?? order.total_estimado)}</span>
                   </div>
                 </div>
 
@@ -336,25 +343,25 @@ export function renderOperatorView(container) {
                 <div class="grid grid-cols-2 gap-2 mt-4">
                   <button
                     type="button"
-                    data-wa-order-id="${order.id}"
+                    data-wa-order-id="${escapeHtml(order.id)}"
                     class="btn-send-wa min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center tap-feedback touch-target"
                   >
                     <span>${store.isDemo() ? "Simular WhatsApp (Demo)" : "Enviar WhatsApp"}</span>
                   </button>
                   <button
-                    data-deliver-order-id="${order.id}"
+                    data-deliver-order-id="${escapeHtml(order.id)}"
                     class="btn-deliver-order min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-3 px-3 rounded-xl text-xs transition tap-feedback touch-target border border-transparent dark:border-slate-700 flex items-center justify-center"
                   >
                     Marcar Cobrado
                   </button>
                 </div>
-                <p id="wa-sim-feedback-${order.id}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
+                <p id="wa-sim-feedback-${escapeHtml(order.id)}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
 
                 <!-- Opción de Cancelar / Eliminar Pedido Listo -->
                 <div class="mt-2 text-right">
                   <button
-                    data-cancel-order-id="${order.id}"
-                    data-delete-order-id="${order.id}"
+                    data-cancel-order-id="${escapeHtml(order.id)}"
+                    data-delete-order-id="${escapeHtml(order.id)}"
                     class="btn-cancel-order min-h-[44px] px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition tap-feedback touch-target inline-flex items-center justify-center"
                   >
                     Cancelar / Anular pedido
@@ -377,12 +384,12 @@ export function renderOperatorView(container) {
               (order) => `
             <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
               <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${order.id}</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${escapeHtml(order.id)}</span>
                 <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${escapeHtml(order.cliente.nombre)}</h4>
-                <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${timeAgo(order.fecha)}</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${escapeHtml(timeAgo(order.fecha))}</p>
               </div>
               <div class="text-right">
-                <span class="font-black text-base text-slate-900 dark:text-white">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
+                <span class="font-black text-base text-slate-900 dark:text-white">$${formatMoney(order.total_real ?? order.total_estimado)}</span>
                 <span class="block text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">${order.total_real == null ? "Estimado · final no registrado" : "Cobrado"}</span>
               </div>
             </div>
@@ -411,7 +418,7 @@ export function renderOperatorView(container) {
           <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Modificar</span>
-              <h3 class="font-black text-base text-slate-900 dark:text-white">Pedido #${order.id}</h3>
+              <h3 class="font-black text-base text-slate-900 dark:text-white">Pedido #${escapeHtml(order.id)}</h3>
             </div>
             <div class="flex items-center gap-1.5">
               <button id="btn-close-edit-modal" class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold text-xs tap-feedback touch-target border border-transparent dark:border-slate-700">

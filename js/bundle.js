@@ -962,6 +962,7 @@ class Store {
     this.supabase = null;
     this.realtimeChannel = null;
     this.cloudError = null;
+    this.ordersError = null;
 
     // En demo se bloquean las APIs de datos JS y apertura de enlaces externos (WhatsApp) antes de inicializar.
     if (this.isDemo() && typeof window !== "undefined") {
@@ -1235,21 +1236,45 @@ class Store {
       }
 
       if (ordRes.data) {
-        const mappedOrders = ordRes.data.map((o) => ({
-          id: o.id,
-          cliente: {
-            nombre: o.cliente_nombre,
-            telefono: o.cliente_telefono,
-            direccion: o.direccion_entrega
-          },
-          tipo_entrega: o.tipo_entrega,
-          direccion_entrega: o.direccion_entrega,
-          estado: o.estado,
-          fecha: o.fecha || o.created_at || new Date().toISOString(),
-          total_estimado: Number(o.total_estimado),
-          total_real: o.total_real !== null ? Number(o.total_real) : null,
-          items: Array.isArray(o.items) ? o.items : []
-        }));
+        const mappedOrders = [];
+        let corruptRemoteCount = 0;
+        for (const o of ordRes.data) {
+          try {
+            const candidate = {
+              id: typeof o.id === "number" ? o.id : Number(o.id),
+              cliente: {
+                nombre: o.cliente_nombre,
+                telefono: o.cliente_telefono,
+                direccion: o.direccion_entrega || ""
+              },
+              tipo_entrega: o.tipo_entrega,
+              direccion_entrega: o.direccion_entrega || "",
+              estado: o.estado,
+              fecha: o.fecha || o.created_at || new Date().toISOString(),
+              total_estimado: this.parseStrictRemoteNumber(o.total_estimado),
+              total_real: o.total_real !== null && o.total_real !== undefined ? this.parseStrictRemoteNumber(o.total_real) : null,
+              items: Array.isArray(o.items)
+                ? o.items.map((item) => ({
+                    ...item,
+                    precio_unitario: this.parseStrictRemoteNumber(item?.precio_unitario),
+                    cantidad_solicitada: this.parseStrictRemoteNumber(item?.cantidad_solicitada),
+                    peso_real: item?.peso_real !== null && item?.peso_real !== undefined ? this.parseStrictRemoteNumber(item.peso_real) : null,
+                    subtotal: item?.subtotal !== undefined && item?.subtotal !== null ? this.parseStrictRemoteNumber(item.subtotal) : undefined
+                  }))
+                : null
+            };
+            this.validateOrderRecord(candidate);
+            mappedOrders.push(candidate);
+          } catch {
+            corruptRemoteCount++;
+          }
+        }
+        if (corruptRemoteCount > 0) {
+          this.ordersError = `Se omitieron ${corruptRemoteCount} registro(s) de pedido con formato o cantidades inválidas.`;
+          this.notify("orders_error", this.ordersError);
+        } else {
+          this.ordersError = null;
+        }
         this.persistOrders(mappedOrders);
         this.notify("orders_changed");
       }
@@ -1729,8 +1754,83 @@ class Store {
   }
 
   // --- Pedidos ---
+  parseStrictRemoteNumber(value) {
+    if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+    if (typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim())) return Number(value.trim());
+    return NaN;
+  }
+
+  validateOrderItem(item) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("Ítem de pedido inválido.");
+    if (typeof item.nombre !== "string" || !item.nombre.trim() || item.nombre.length > 120) {
+      throw new Error("Nombre de ítem inválido.");
+    }
+    if (!["KG", "UNIDAD"].includes(item.unidad_medida)) throw new Error("Unidad de ítem inválida.");
+    if (typeof item.precio_unitario !== "number" || !Number.isFinite(item.precio_unitario) || item.precio_unitario < 0) {
+      throw new Error("Precio de ítem inválido.");
+    }
+    if (typeof item.cantidad_solicitada !== "number" || !Number.isFinite(item.cantidad_solicitada) || item.cantidad_solicitada <= 0) {
+      throw new Error("Cantidad solicitada inválida.");
+    }
+    if (item.peso_real !== null && item.peso_real !== undefined && (typeof item.peso_real !== "number" || !Number.isFinite(item.peso_real) || item.peso_real < 0)) {
+      throw new Error("Peso real de ítem inválido.");
+    }
+    if (item.subtotal !== undefined && (typeof item.subtotal !== "number" || !Number.isFinite(item.subtotal) || item.subtotal < 0)) {
+      throw new Error("Subtotal de ítem inválido.");
+    }
+  }
+
+  validateOrderRecord(order) {
+    if (!order || typeof order !== "object" || Array.isArray(order)) throw new Error("Registro de pedido inválido.");
+    if (typeof order.id !== "number" || !Number.isSafeInteger(order.id) || order.id <= 0) {
+      throw new Error("Identificador de pedido inválido.");
+    }
+    if (!["PENDIENTE", "EN_PREPARACION", "LISTO", "ENTREGADO", "CANCELADO"].includes(order.estado)) {
+      throw new Error("Estado de pedido inválido.");
+    }
+    if (!["RETIRO", "DELIVERY"].includes(order.tipo_entrega)) {
+      throw new Error("Tipo de entrega inválido.");
+    }
+    if (!order.cliente || typeof order.cliente !== "object" || Array.isArray(order.cliente) || typeof order.cliente.nombre !== "string" || !order.cliente.nombre.trim() || typeof order.cliente.telefono !== "string") {
+      throw new Error("Datos de cliente inválidos en pedido.");
+    }
+    if (typeof order.total_estimado !== "number" || !Number.isFinite(order.total_estimado) || order.total_estimado < 0) {
+      throw new Error("Total estimado de pedido inválido.");
+    }
+    if (order.total_real !== null && order.total_real !== undefined && (typeof order.total_real !== "number" || !Number.isFinite(order.total_real) || order.total_real < 0)) {
+      throw new Error("Total real de pedido inválido.");
+    }
+    if (!Array.isArray(order.items)) throw new Error("Lista de ítems de pedido inválida.");
+    for (const item of order.items) {
+      this.validateOrderItem(item);
+    }
+  }
+
+  getOrdersError() {
+    this.getOrders();
+    return this.ordersError || null;
+  }
+
   getOrders() {
-    return safeGet(this.storageKeys.ORDERS, []);
+    const rawOrders = safeGet(this.storageKeys.ORDERS, []);
+    if (!Array.isArray(rawOrders)) {
+      this.ordersError = "Se detectó un formato corrupto en el historial de pedidos; los registros inválidos fueron bloqueados.";
+      return [];
+    }
+    const valid = [];
+    let corruptCount = 0;
+    for (const order of rawOrders) {
+      try {
+        this.validateOrderRecord(order);
+        valid.push(order);
+      } catch {
+        corruptCount++;
+      }
+    }
+    this.ordersError = corruptCount > 0
+      ? `Se bloquearon ${corruptCount} registro(s) de pedido con datos o cantidades corruptas.`
+      : null;
+    return valid;
   }
 
   getActiveOrderId() {
@@ -3494,16 +3594,16 @@ function renderClientView(container) {
     return `
       <button
         type="button"
-        data-customer-order-id="${order.id}"
+        data-customer-order-id="${escapeHtml(order.id)}"
         class="w-full text-left p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition tap-feedback touch-target flex items-center justify-between gap-3"
       >
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 mb-1 flex-wrap">
-            <span class="font-black text-sm text-slate-900 dark:text-white">Pedido #${order.id}</span>
+            <span class="font-black text-sm text-slate-900 dark:text-white">Pedido #${escapeHtml(order.id)}</span>
             <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusBadgeClasses}">
               ${escapeHtml(order.estado)}
             </span>
-            ${dateFormatted ? `<span class="text-[11px] text-slate-400">${dateFormatted}</span>` : ""}
+            ${dateFormatted ? `<span class="text-[11px] text-slate-400">${escapeHtml(dateFormatted)}</span>` : ""}
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
             ${order.tipo_entrega === "DELIVERY" ? `Envío a domicilio (${escapeHtml(order.direccion_entrega)})` : "Retiro en local"}
@@ -3511,9 +3611,9 @@ function renderClientView(container) {
         </div>
 
         <div class="text-right shrink-0">
-          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">${totalLabel}</span>
+          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">${escapeHtml(totalLabel)}</span>
           <span class="font-black text-base ${isOngoing ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-white"}">
-            ${totalValue}
+            ${escapeHtml(totalValue)}
           </span>
         </div>
       </button>
@@ -3613,7 +3713,7 @@ function renderClientView(container) {
           <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
               <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Comprobante Digital</span>
-              <h2 class="text-xl font-black text-slate-900 dark:text-white tracking-tight">Pedido #${currentOrder.id}</h2>
+              <h2 class="text-xl font-black text-slate-900 dark:text-white tracking-tight">Pedido #${escapeHtml(currentOrder.id)}</h2>
               ${store.getCheckoutWarning() ? `<p role="alert" class="mt-3 text-sm text-amber-800 dark:text-amber-300">${escapeHtml(store.getCheckoutWarning())}</p>` : ""}
             </div>
             <span class="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full ${
@@ -3627,7 +3727,7 @@ function renderClientView(container) {
                 ? "bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800 animate-pulse"
                 : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
             }">
-              ${currentOrder.estado}
+              ${escapeHtml(currentOrder.estado)}
             </span>
           </div>
 
@@ -3697,9 +3797,10 @@ function renderClientView(container) {
             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Detalle de Productos</h4>
             <div class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               ${currentOrder.items.map((item) => {
-                const pesoTexto = item.peso_real !== null
-                  ? `${item.peso_real} ${item.unidad_medida === "KG" ? "kg (pesado)" : `u. (${isReady || item.confirmado_preparacion ? "preparado" : "por confirmar"})`}`
-                  : `${item.cantidad_solicitada} ${item.unidad_medida === "KG" ? "kg" : "u."} (aprox)`;
+                const pesoTexto = item.peso_real !== null && item.peso_real !== undefined
+                  ? `${escapeHtml(item.peso_real)} ${item.unidad_medida === "KG" ? "kg (pesado)" : `u. (${isReady || item.confirmado_preparacion ? "preparado" : "por confirmar"})`}`
+                  : `${escapeHtml(item.cantidad_solicitada)} ${item.unidad_medida === "KG" ? "kg" : "u."} (aprox)`;
+                const itemSubtotal = Number.isFinite(Number(item.subtotal)) ? Number(item.subtotal).toLocaleString("es-AR") : escapeHtml(item.subtotal ?? 0);
                 return `
                   <div class="py-2.5 flex items-center justify-between gap-2 ${item.sin_stock ? "opacity-40 line-through" : ""}">
                     <div>
@@ -3710,7 +3811,7 @@ function renderClientView(container) {
                       <span class="text-[11px] text-slate-400 dark:text-slate-500 block">${pesoTexto}</span>
                     </div>
                     <strong class="text-slate-900 dark:text-white font-bold text-xs">
-                      $${(item.subtotal || 0).toLocaleString("es-AR")}
+                      $${itemSubtotal}
                     </strong>
                   </div>
                 `;
@@ -3816,9 +3917,16 @@ function renderOperatorView(container) {
   let actionError = "";
   let addingProductOrderId = null; // ID del pedido que tiene abierto el desplegable de agregar ítem
 
+  function formatMoney(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toLocaleString("es-AR") : escapeHtml(String(value ?? 0));
+  }
+
   function update() {
     container.innerHTML = "";
     const orders = store.getOrders();
+    const ordersError = typeof store.getOrdersError === "function" ? store.getOrdersError() : null;
+    const bannerError = actionError || ordersError || "";
 
     const counts = {
       PENDIENTE: orders.filter((o) => o.estado === "PENDIENTE").length,
@@ -3916,7 +4024,7 @@ function renderOperatorView(container) {
 
         <!-- Contenido según la pestaña activa -->
         <main class="p-4">
-          <p id="operator-error" role="alert" class="mb-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-sm ${actionError ? "" : "hidden"}">${escapeHtml(actionError)}</p>
+          <p id="operator-error" role="alert" class="mb-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-sm ${bannerError ? "" : "hidden"}">${escapeHtml(bannerError)}</p>
           ${renderTabContent(orders)}
         </main>
 
@@ -3967,7 +4075,7 @@ function renderOperatorView(container) {
           ${tabOrders
             .map((order) => {
               const itemsList = order.items
-                .map((i) => `${i.cantidad_solicitada}${i.unidad_medida === "KG" ? "kg" : "u"} ${escapeHtml(i.nombre)}`)
+                .map((i) => `${escapeHtml(i.cantidad_solicitada)}${i.unidad_medida === "KG" ? "kg" : "u"} ${escapeHtml(i.nombre)}`)
                 .join(" · ");
 
               return `
@@ -3975,7 +4083,7 @@ function renderOperatorView(container) {
                 <div class="flex items-start justify-between gap-2">
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="text-base font-black text-slate-900 dark:text-white">#${order.id}</span>
+                      <span class="text-base font-black text-slate-900 dark:text-white">#${escapeHtml(order.id)}</span>
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         order.tipo_entrega === "DELIVERY"
                           ? "bg-slate-900 dark:bg-slate-800 text-white"
@@ -3985,24 +4093,24 @@ function renderOperatorView(container) {
                       </span>
                     </div>
                     <h3 class="font-extrabold text-slate-900 dark:text-white text-sm mt-1.5">${escapeHtml(order.cliente.nombre)}</h3>
-                    <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(order.cliente.telefono)} · ${timeAgo(order.fecha)}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(order.cliente.telefono)} · ${escapeHtml(timeAgo(order.fecha))}</p>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-slate-400 dark:text-slate-500 block font-bold uppercase tracking-wider">Estimado</span>
-                    <span class="font-black text-base text-slate-900 dark:text-white">$${order.total_estimado.toLocaleString("es-AR")}</span>
+                    <span class="font-black text-base text-slate-900 dark:text-white">$${formatMoney(order.total_estimado)}</span>
                   </div>
                 </div>
 
                 <!-- Resumen de productos solicitados -->
                 <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl text-xs text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
-                  <span class="font-bold text-slate-700 dark:text-slate-300 block mb-0.5 text-[11px] uppercase tracking-wider">Productos solicitados (${order.items.length}):</span>
+                  <span class="font-bold text-slate-700 dark:text-slate-300 block mb-0.5 text-[11px] uppercase tracking-wider">Productos solicitados (${escapeHtml(order.items.length)}):</span>
                   <p class="leading-relaxed">${itemsList || "Sin productos"}</p>
                 </div>
 
                 <!-- Acciones Principales y de Gestión -->
                 <div class="mt-3 space-y-2">
                   <button
-                    data-start-id="${order.id}"
+                    data-start-id="${escapeHtml(order.id)}"
                     class="btn-start-prep w-full min-h-[48px] bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-xs transition tap-feedback touch-target flex items-center justify-center gap-2"
                   >
                     <span>Comenzar preparación</span>
@@ -4010,14 +4118,14 @@ function renderOperatorView(container) {
 
                   <div class="grid grid-cols-2 gap-2">
                     <button
-                      data-edit-order-id="${order.id}"
+                      data-edit-order-id="${escapeHtml(order.id)}"
                       class="btn-open-edit min-h-[44px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-slate-700"
                     >
                       <span>Editar datos</span>
                     </button>
                     <button
-                      data-cancel-order-id="${order.id}"
-                      data-delete-order-id="${order.id}"
+                      data-cancel-order-id="${escapeHtml(order.id)}"
+                      data-delete-order-id="${escapeHtml(order.id)}"
                       class="btn-cancel-order min-h-[44px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition tap-feedback touch-target border border-transparent dark:border-rose-900/50"
                     >
                       <span>Cancelar pedido</span>
@@ -4045,7 +4153,7 @@ function renderOperatorView(container) {
                 <p class="text-xs text-slate-500 dark:text-slate-400">${order.tipo_entrega === "DELIVERY" ? escapeHtml(order.direccion_entrega) : "Retiro por mostrador"}</p>
               </div>
               <div class="text-right text-xs text-slate-500 dark:text-slate-400">Estimado al pedir
-                <strong class="block text-base text-slate-900 dark:text-white">$${order.total_estimado.toLocaleString("es-AR")}</strong>
+                <strong class="block text-base text-slate-900 dark:text-white">$${formatMoney(order.total_estimado)}</strong>
               </div>
             </div>
             <div class="py-3 space-y-1">
@@ -4061,7 +4169,7 @@ function renderOperatorView(container) {
                   <div class="min-w-0 flex-1">
                     <span class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">${escapeHtml(item.categoria || (isWeight ? "Por kilo" : "Por unidad"))}</span>
                     <h4 class="font-extrabold text-base text-slate-900 dark:text-white break-words">${escapeHtml(item.nombre)}</h4>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Solicitó ${escapeHtml(item.cantidad_solicitada)} ${isWeight ? "kg" : "u."} · $${item.precio_unitario.toLocaleString("es-AR")}/${isWeight ? "kg" : "u"}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Solicitó ${escapeHtml(item.cantidad_solicitada)} ${isWeight ? "kg" : "u."} · $${formatMoney(item.precio_unitario)}/${isWeight ? "kg" : "u"}</p>
                   </div>
                   <div class="flex gap-1">
                     <button data-toggle-stock-order="${escapeHtml(order.id)}" data-item-index="${idx}" class="btn-toggle-stock min-h-[44px] px-3 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200">${item.sin_stock ? "Restaurar" : "Sin Stock"}</button>
@@ -4120,12 +4228,12 @@ function renderOperatorView(container) {
                     <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       Preparación completa
                     </span>
-                    <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">#${order.id} · ${escapeHtml(order.cliente.nombre)}</h3>
+                    <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">#${escapeHtml(order.id)} · ${escapeHtml(order.cliente.nombre)}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(order.cliente.telefono)} · ${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"}</p>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-slate-400 dark:text-slate-500 block font-bold uppercase tracking-wider">${order.total_real == null ? "Estimado · final no registrado" : "Total final"}</span>
-                    <span class="font-black text-2xl text-emerald-700 dark:text-emerald-400">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
+                    <span class="font-black text-2xl text-emerald-700 dark:text-emerald-400">$${formatMoney(order.total_real ?? order.total_estimado)}</span>
                   </div>
                 </div>
 
@@ -4137,25 +4245,25 @@ function renderOperatorView(container) {
                 <div class="grid grid-cols-2 gap-2 mt-4">
                   <button
                     type="button"
-                    data-wa-order-id="${order.id}"
+                    data-wa-order-id="${escapeHtml(order.id)}"
                     class="btn-send-wa min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center tap-feedback touch-target"
                   >
                     <span>${store.isDemo() ? "Simular WhatsApp (Demo)" : "Enviar WhatsApp"}</span>
                   </button>
                   <button
-                    data-deliver-order-id="${order.id}"
+                    data-deliver-order-id="${escapeHtml(order.id)}"
                     class="btn-deliver-order min-h-[48px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-3 px-3 rounded-xl text-xs transition tap-feedback touch-target border border-transparent dark:border-slate-700 flex items-center justify-center"
                   >
                     Marcar Cobrado
                   </button>
                 </div>
-                <p id="wa-sim-feedback-${order.id}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
+                <p id="wa-sim-feedback-${escapeHtml(order.id)}" class="hidden mt-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 text-center"></p>
 
                 <!-- Opción de Cancelar / Eliminar Pedido Listo -->
                 <div class="mt-2 text-right">
                   <button
-                    data-cancel-order-id="${order.id}"
-                    data-delete-order-id="${order.id}"
+                    data-cancel-order-id="${escapeHtml(order.id)}"
+                    data-delete-order-id="${escapeHtml(order.id)}"
                     class="btn-cancel-order min-h-[44px] px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition tap-feedback touch-target inline-flex items-center justify-center"
                   >
                     Cancelar / Anular pedido
@@ -4178,12 +4286,12 @@ function renderOperatorView(container) {
               (order) => `
             <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
               <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${order.id}</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">#${escapeHtml(order.id)}</span>
                 <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${escapeHtml(order.cliente.nombre)}</h4>
-                <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${timeAgo(order.fecha)}</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500">${order.tipo_entrega === "DELIVERY" ? "Envío" : "Retiro"} · ${escapeHtml(timeAgo(order.fecha))}</p>
               </div>
               <div class="text-right">
-                <span class="font-black text-base text-slate-900 dark:text-white">$${(order.total_real ?? order.total_estimado).toLocaleString("es-AR")}</span>
+                <span class="font-black text-base text-slate-900 dark:text-white">$${formatMoney(order.total_real ?? order.total_estimado)}</span>
                 <span class="block text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">${order.total_real == null ? "Estimado · final no registrado" : "Cobrado"}</span>
               </div>
             </div>
@@ -4212,7 +4320,7 @@ function renderOperatorView(container) {
           <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Modificar</span>
-              <h3 class="font-black text-base text-slate-900 dark:text-white">Pedido #${order.id}</h3>
+              <h3 class="font-black text-base text-slate-900 dark:text-white">Pedido #${escapeHtml(order.id)}</h3>
             </div>
             <div class="flex items-center gap-1.5">
               <button id="btn-close-edit-modal" class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold text-xs tap-feedback touch-target border border-transparent dark:border-slate-700">

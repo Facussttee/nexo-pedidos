@@ -62,6 +62,7 @@ class Store {
     this.supabase = null;
     this.realtimeChannel = null;
     this.cloudError = null;
+    this.ordersError = null;
 
     // En demo se bloquean las APIs de datos JS y apertura de enlaces externos (WhatsApp) antes de inicializar.
     if (this.isDemo() && typeof window !== "undefined") {
@@ -335,21 +336,45 @@ class Store {
       }
 
       if (ordRes.data) {
-        const mappedOrders = ordRes.data.map((o) => ({
-          id: o.id,
-          cliente: {
-            nombre: o.cliente_nombre,
-            telefono: o.cliente_telefono,
-            direccion: o.direccion_entrega
-          },
-          tipo_entrega: o.tipo_entrega,
-          direccion_entrega: o.direccion_entrega,
-          estado: o.estado,
-          fecha: o.fecha || o.created_at || new Date().toISOString(),
-          total_estimado: Number(o.total_estimado),
-          total_real: o.total_real !== null ? Number(o.total_real) : null,
-          items: Array.isArray(o.items) ? o.items : []
-        }));
+        const mappedOrders = [];
+        let corruptRemoteCount = 0;
+        for (const o of ordRes.data) {
+          try {
+            const candidate = {
+              id: typeof o.id === "number" ? o.id : Number(o.id),
+              cliente: {
+                nombre: o.cliente_nombre,
+                telefono: o.cliente_telefono,
+                direccion: o.direccion_entrega || ""
+              },
+              tipo_entrega: o.tipo_entrega,
+              direccion_entrega: o.direccion_entrega || "",
+              estado: o.estado,
+              fecha: o.fecha || o.created_at || new Date().toISOString(),
+              total_estimado: this.parseStrictRemoteNumber(o.total_estimado),
+              total_real: o.total_real !== null && o.total_real !== undefined ? this.parseStrictRemoteNumber(o.total_real) : null,
+              items: Array.isArray(o.items)
+                ? o.items.map((item) => ({
+                    ...item,
+                    precio_unitario: this.parseStrictRemoteNumber(item?.precio_unitario),
+                    cantidad_solicitada: this.parseStrictRemoteNumber(item?.cantidad_solicitada),
+                    peso_real: item?.peso_real !== null && item?.peso_real !== undefined ? this.parseStrictRemoteNumber(item.peso_real) : null,
+                    subtotal: item?.subtotal !== undefined && item?.subtotal !== null ? this.parseStrictRemoteNumber(item.subtotal) : undefined
+                  }))
+                : null
+            };
+            this.validateOrderRecord(candidate);
+            mappedOrders.push(candidate);
+          } catch {
+            corruptRemoteCount++;
+          }
+        }
+        if (corruptRemoteCount > 0) {
+          this.ordersError = `Se omitieron ${corruptRemoteCount} registro(s) de pedido con formato o cantidades inválidas.`;
+          this.notify("orders_error", this.ordersError);
+        } else {
+          this.ordersError = null;
+        }
         this.persistOrders(mappedOrders);
         this.notify("orders_changed");
       }
@@ -829,8 +854,83 @@ class Store {
   }
 
   // --- Pedidos ---
+  parseStrictRemoteNumber(value) {
+    if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+    if (typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim())) return Number(value.trim());
+    return NaN;
+  }
+
+  validateOrderItem(item) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("Ítem de pedido inválido.");
+    if (typeof item.nombre !== "string" || !item.nombre.trim() || item.nombre.length > 120) {
+      throw new Error("Nombre de ítem inválido.");
+    }
+    if (!["KG", "UNIDAD"].includes(item.unidad_medida)) throw new Error("Unidad de ítem inválida.");
+    if (typeof item.precio_unitario !== "number" || !Number.isFinite(item.precio_unitario) || item.precio_unitario < 0) {
+      throw new Error("Precio de ítem inválido.");
+    }
+    if (typeof item.cantidad_solicitada !== "number" || !Number.isFinite(item.cantidad_solicitada) || item.cantidad_solicitada <= 0) {
+      throw new Error("Cantidad solicitada inválida.");
+    }
+    if (item.peso_real !== null && item.peso_real !== undefined && (typeof item.peso_real !== "number" || !Number.isFinite(item.peso_real) || item.peso_real < 0)) {
+      throw new Error("Peso real de ítem inválido.");
+    }
+    if (item.subtotal !== undefined && (typeof item.subtotal !== "number" || !Number.isFinite(item.subtotal) || item.subtotal < 0)) {
+      throw new Error("Subtotal de ítem inválido.");
+    }
+  }
+
+  validateOrderRecord(order) {
+    if (!order || typeof order !== "object" || Array.isArray(order)) throw new Error("Registro de pedido inválido.");
+    if (typeof order.id !== "number" || !Number.isSafeInteger(order.id) || order.id <= 0) {
+      throw new Error("Identificador de pedido inválido.");
+    }
+    if (!["PENDIENTE", "EN_PREPARACION", "LISTO", "ENTREGADO", "CANCELADO"].includes(order.estado)) {
+      throw new Error("Estado de pedido inválido.");
+    }
+    if (!["RETIRO", "DELIVERY"].includes(order.tipo_entrega)) {
+      throw new Error("Tipo de entrega inválido.");
+    }
+    if (!order.cliente || typeof order.cliente !== "object" || Array.isArray(order.cliente) || typeof order.cliente.nombre !== "string" || !order.cliente.nombre.trim() || typeof order.cliente.telefono !== "string") {
+      throw new Error("Datos de cliente inválidos en pedido.");
+    }
+    if (typeof order.total_estimado !== "number" || !Number.isFinite(order.total_estimado) || order.total_estimado < 0) {
+      throw new Error("Total estimado de pedido inválido.");
+    }
+    if (order.total_real !== null && order.total_real !== undefined && (typeof order.total_real !== "number" || !Number.isFinite(order.total_real) || order.total_real < 0)) {
+      throw new Error("Total real de pedido inválido.");
+    }
+    if (!Array.isArray(order.items)) throw new Error("Lista de ítems de pedido inválida.");
+    for (const item of order.items) {
+      this.validateOrderItem(item);
+    }
+  }
+
+  getOrdersError() {
+    this.getOrders();
+    return this.ordersError || null;
+  }
+
   getOrders() {
-    return safeGet(this.storageKeys.ORDERS, []);
+    const rawOrders = safeGet(this.storageKeys.ORDERS, []);
+    if (!Array.isArray(rawOrders)) {
+      this.ordersError = "Se detectó un formato corrupto en el historial de pedidos; los registros inválidos fueron bloqueados.";
+      return [];
+    }
+    const valid = [];
+    let corruptCount = 0;
+    for (const order of rawOrders) {
+      try {
+        this.validateOrderRecord(order);
+        valid.push(order);
+      } catch {
+        corruptCount++;
+      }
+    }
+    this.ordersError = corruptCount > 0
+      ? `Se bloquearon ${corruptCount} registro(s) de pedido con datos o cantidades corruptas.`
+      : null;
+    return valid;
   }
 
   getActiveOrderId() {

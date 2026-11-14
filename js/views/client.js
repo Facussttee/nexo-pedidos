@@ -1311,16 +1311,16 @@ export function renderClientView(container) {
     return `
       <button
         type="button"
-        data-customer-order-id="${order.id}"
+        data-customer-order-id="${escapeHtml(order.id)}"
         class="w-full text-left p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition tap-feedback touch-target flex items-center justify-between gap-3"
       >
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 mb-1 flex-wrap">
-            <span class="font-black text-sm text-slate-900 dark:text-white">Pedido #${order.id}</span>
+            <span class="font-black text-sm text-slate-900 dark:text-white">Pedido #${escapeHtml(order.id)}</span>
             <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusBadgeClasses}">
               ${escapeHtml(order.estado)}
             </span>
-            ${dateFormatted ? `<span class="text-[11px] text-slate-400">${dateFormatted}</span>` : ""}
+            ${dateFormatted ? `<span class="text-[11px] text-slate-400">${escapeHtml(dateFormatted)}</span>` : ""}
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
             ${order.tipo_entrega === "DELIVERY" ? `Envío a domicilio (${escapeHtml(order.direccion_entrega)})` : "Retiro en local"}
@@ -1328,9 +1328,9 @@ export function renderClientView(container) {
         </div>
 
         <div class="text-right shrink-0">
-          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">${totalLabel}</span>
+          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">${escapeHtml(totalLabel)}</span>
           <span class="font-black text-base ${isOngoing ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-white"}">
-            ${totalValue}
+            ${escapeHtml(totalValue)}
           </span>
         </div>
       </button>
@@ -1430,7 +1430,7 @@ export function renderClientView(container) {
           <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
               <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Comprobante Digital</span>
-              <h2 class="text-xl font-black text-slate-900 dark:text-white tracking-tight">Pedido #${currentOrder.id}</h2>
+              <h2 class="text-xl font-black text-slate-900 dark:text-white tracking-tight">Pedido #${escapeHtml(currentOrder.id)}</h2>
               ${store.getCheckoutWarning() ? `<p role="alert" class="mt-3 text-sm text-amber-800 dark:text-amber-300">${escapeHtml(store.getCheckoutWarning())}</p>` : ""}
             </div>
             <span class="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full ${
@@ -1444,7 +1444,7 @@ export function renderClientView(container) {
                 ? "bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800 animate-pulse"
                 : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
             }">
-              ${currentOrder.estado}
+              ${escapeHtml(currentOrder.estado)}
             </span>
           </div>
 
@@ -1514,9 +1514,10 @@ export function renderClientView(container) {
             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Detalle de Productos</h4>
             <div class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               ${currentOrder.items.map((item) => {
-                const pesoTexto = item.peso_real !== null
-                  ? `${item.peso_real} ${item.unidad_medida === "KG" ? "kg (pesado)" : `u. (${isReady || item.confirmado_preparacion ? "preparado" : "por confirmar"})`}`
-                  : `${item.cantidad_solicitada} ${item.unidad_medida === "KG" ? "kg" : "u."} (aprox)`;
+                const pesoTexto = item.peso_real !== null && item.peso_real !== undefined
+                  ? `${escapeHtml(item.peso_real)} ${item.unidad_medida === "KG" ? "kg (pesado)" : `u. (${isReady || item.confirmado_preparacion ? "preparado" : "por confirmar"})`}`
+                  : `${escapeHtml(item.cantidad_solicitada)} ${item.unidad_medida === "KG" ? "kg" : "u."} (aprox)`;
+                const itemSubtotal = Number.isFinite(Number(item.subtotal)) ? Number(item.subtotal).toLocaleString("es-AR") : escapeHtml(item.subtotal ?? 0);
                 return `
                   <div class="py-2.5 flex items-center justify-between gap-2 ${item.sin_stock ? "opacity-40 line-through" : ""}">
                     <div>
@@ -1527,7 +1528,7 @@ export function renderClientView(container) {
                       <span class="text-[11px] text-slate-400 dark:text-slate-500 block">${pesoTexto}</span>
                     </div>
                     <strong class="text-slate-900 dark:text-white font-bold text-xs">
-                      $${(item.subtotal || 0).toLocaleString("es-AR")}
+                      $${itemSubtotal}
                     </strong>
                   </div>
                 `;

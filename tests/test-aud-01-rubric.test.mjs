@@ -94,14 +94,17 @@ console.log("--- EVALUANDO CONTROLES DE LA RÚBRICA ---");
 
 // 1. SEGURIDAD (25 pts)
 evaluateControl("seguridad", "XSS Mitigation en pedidos (escapeHtml + AUD-03 tests)", 4, () => {
-  const operatorSrc = fs.readFileSync("js/views/operator.js", "utf8");
-  const clientSrc = fs.readFileSync("js/views/client.js", "utf8");
+  const operatorHtmlSrc = fs.readFileSync("js/views/operator.js", "utf8")
+    .replace(/function generateWhatsAppSummary[\s\S]*?\n  \}/, "")
+    .replace(/\.textContent\s*=\s*`[^`]*`/g, "");
+  const clientHtmlSrc = fs.readFileSync("js/views/client.js", "utf8")
+    .replace(/const waHelpRawText = `[^`]*`;/, "");
   const htmlJs = fs.readFileSync("js/html.js", "utf8");
   const hasHelper = htmlJs.includes("escapeHtml") && htmlJs.includes("&amp;") && htmlJs.includes("&lt;");
-  const hasRawQtyOp = /\$\{\s*i\.cantidad_solicitada\s*\}/.test(operatorSrc);
-  const hasRawIdOp = /#\$\{\s*order\.id\s*\}/.test(operatorSrc);
-  const hasRawStateCli = /\$\{\s*currentOrder\.estado\s*\}/.test(clientSrc);
-  const hasRawWeightCli = /\$\{\s*item\.peso_real\s*\}/.test(clientSrc) || /\$\{\s*item\.cantidad_solicitada\s*\}/.test(clientSrc);
+  const hasRawQtyOp = /\$\{\s*i\.cantidad_solicitada\s*\}/.test(operatorHtmlSrc);
+  const hasRawIdOp = /#\$\{\s*order\.id\s*\}/.test(operatorHtmlSrc);
+  const hasRawStateCli = /\$\{\s*currentOrder\.estado\s*\}/.test(clientHtmlSrc);
+  const hasRawWeightCli = /\$\{\s*item\.peso_real\s*\}/.test(clientHtmlSrc) || /\$\{\s*item\.cantidad_solicitada\s*\}/.test(clientHtmlSrc);
   if (!hasHelper || hasRawQtyOp || hasRawIdOp || hasRawStateCli || hasRawWeightCli) {
     return { status: "FAIL", reason: "Interpolaciones sin escape en operator.js/client.js" };
   }

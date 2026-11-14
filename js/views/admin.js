@@ -49,14 +49,14 @@ export function renderAdminView(container) {
               <p class="text-xs text-slate-500 dark:text-slate-400">Productos, disponibilidad y valores del día.</p>
             </div>
             <div class="flex flex-wrap gap-1.5 items-center">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${store.isDemo() ? "Demo local" : store.isCloudConnected() ? "Conectado" : "Sin conexión"}</span>
-              <button id="btn-toggle-cloud" class="${buttonClass}">${showCloudSettings ? "Cerrar PIN" : "Config PIN"}</button>
+              <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${store.isDemo() ? "Demo local" : store.isCloudConnected() ? "Conectado (Dueño)" : "Sin conexión"}</span>
+              ${store.isDemo() ? `<button id="btn-toggle-cloud" class="${buttonClass}">${showCloudSettings ? "Cerrar PIN" : "Config PIN"}</button>` : ""}
               <button id="btn-admin-logout" class="${buttonClass}">Salir</button>
             </div>
           </div>
-          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2">
+          ${store.isDemo() && showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2">
             <label for="cfg-pin" class="block text-xs font-bold text-slate-700 dark:text-slate-200">PIN del negocio</label>
-            <input id="cfg-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin)}" class="${inputClass}" />
+            <input id="cfg-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin || "")}" class="${inputClass}" />
             <p class="text-xs text-slate-500 dark:text-slate-400">El PIN bloquea el acceso en este dispositivo.</p>
             <button class="${buttonClass}" type="submit">Guardar PIN Local</button>
             ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN guardado</p>' : ""}
@@ -583,7 +583,7 @@ export function renderAdminView(container) {
         }
 
         try {
-          store.saveProduct(productPayload, targetId);
+          await store.saveProductAsync(productPayload, targetId);
         } catch (saveErr) {
           if (createdImageId) {
             await deleteImage(createdImageId);
@@ -642,8 +642,8 @@ export function renderAdminView(container) {
     });
 
     container.querySelector("#btn-new-product")?.addEventListener("click", () => openProduct());
-    container.querySelector("#btn-admin-logout")?.addEventListener("click", () => {
-      store.lockStaff();
+    container.querySelector("#btn-admin-logout")?.addEventListener("click", async () => {
+      await store.logoutStaff();
       window.location.href = "?view=cliente";
     });
 
@@ -693,10 +693,12 @@ export function renderAdminView(container) {
 
   function attachProductListeners() {
     container.querySelectorAll(".input-price").forEach(input => {
-      input.addEventListener("change", () => {
+      input.addEventListener("change", async () => {
         try {
           if (input.value.trim() === "") throw new Error("Ingresá un precio. Puede ser cero.");
-          store.updateProductPrice(input.dataset.productId, Number(input.value));
+          const product = store.getAdminProducts().find(p => p.id === input.dataset.productId);
+          if (!product) throw new Error("No se encontró el producto.");
+          await store.saveProductAsync({ ...product, precio: Number(input.value) }, input.dataset.productId);
           showNotice("");
         } catch (error) {
           showNotice(error.message);

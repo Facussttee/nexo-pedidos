@@ -95,6 +95,8 @@ function buildStorageKeys(mode) {
     CURRENT_USER: `${prefix}current_user`,
     CART: `${prefix}cart`,
     ACTIVE_ORDER: `${prefix}active_order`,
+    OWN_TRACKING_REFS: `${prefix}tracking_refs`,
+    PENDING_CHECKOUT: `${prefix}pending_checkout`,
     LOCAL_SETTINGS: `${prefix}local_settings`,
     PIN_UNLOCKED: `${prefix}pin_unlocked`,
     SIMULATED_MESSAGES: `${prefix}simulated_messages`,

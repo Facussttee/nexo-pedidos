@@ -13,7 +13,13 @@ export function renderClientView(container) {
   let deliveryMode = "RETIRO"; // RETIRO | DELIVERY
   let deliveryAddress = "";
   let checkoutError = "";
+  let checkoutStatus = store.getPendingCheckout()?.status === "unknown"
+    ? { status: "unknown", error: "Hay un envío anterior pendiente de verificación. Reintentá para confirmar sin duplicar tu pedido." }
+    : null;
+  let isSubmittingCheckout = false;
   let catalogRecoveryError = "";
+  let trackingLookupError = "";
+  let lastTrackingHashAttempt = "";
 
   let catalogScrollBeforeCart = 0;
 
@@ -25,14 +31,38 @@ export function renderClientView(container) {
     selectedOrderId = initialActive.id;
   }
 
+  function maybeResolveHashTracking() {
+    const hash = typeof window !== "undefined" ? String(window.location.hash || "") : "";
+    if (!hash.startsWith("#track=")) return false;
+    if (hash !== lastTrackingHashAttempt) {
+      lastTrackingHashAttempt = hash;
+      trackingLookupError = "";
+      viewMode = "order_detail";
+      const parsed = store.parseTrackingHash(hash);
+      if (parsed) selectedOrderId = parsed.orderId;
+      store.resolvePrivateTrackingLink(hash).then((res) => {
+        if (res?.ok && res.order) {
+          selectedOrderId = res.order.id;
+          trackingLookupError = "";
+        } else {
+          selectedOrderId = null;
+          trackingLookupError = res?.error || "Pedido no disponible o enlace revocado.";
+        }
+        update();
+      });
+    }
+    return true;
+  }
+
   const imageLoader = createScopedImageLoader();
   let renderedUserKey = initialUser?.telefono ? String(initialUser.telefono).replace(/\D/g, "") : null;
 
   function update() {
     imageLoader.revokeAll();
+    const isTrackingHash = maybeResolveHashTracking();
     const user = store.getCurrentUser();
     const userKey = user?.telefono ? String(user.telefono).replace(/\D/g, "") : null;
-    if (!user || userKey !== renderedUserKey) {
+    if (!isTrackingHash && (!user || userKey !== renderedUserKey)) {
       isCartOpen = false;
       isDrawerFirstOpen = true;
       selectedOrderId = null;
@@ -48,20 +78,34 @@ export function renderClientView(container) {
       renderedUserKey = userKey;
       window.scrollTo(0, 0);
     }
-    if (!user) {
-      renderPhoneGate();
+
+    if (isTrackingHash || viewMode === "order_detail") {
+      if (trackingLookupError) {
+        renderOrderNotFound(trackingLookupError);
+        return;
+      }
+      const order = store.getOrders().find(o => o.id === selectedOrderId);
+      const hasTokenAccess = order && Boolean(store.getTrackingTokenForOrder(order.id));
+      const hasPhoneAccess = order && user && store.isSameCustomer(order.cliente?.telefono, user.telefono);
+      if (order && (hasTokenAccess || hasPhoneAccess)) {
+        renderOrderTracking(order);
+        return;
+      }
+      if (isTrackingHash) {
+        renderOrderNotFound("Verificando enlace de seguimiento...");
+        return;
+      }
+      if (!user) {
+        renderPhoneGate();
+        return;
+      }
+      renderOrderNotFound();
       return;
     }
 
-    if (viewMode === "order_detail") {
-      const order = store.getOrders().find(o => o.id === selectedOrderId);
-      if (order && store.isSameCustomer(order.cliente?.telefono, user.telefono)) {
-        renderOrderTracking(order);
-        return;
-      } else {
-        renderOrderNotFound();
-        return;
-      }
+    if (!user) {
+      renderPhoneGate();
+      return;
     }
 
     if (viewMode === "orders") {
@@ -317,6 +361,16 @@ export function renderClientView(container) {
         direccion: address
       });
 
+      if (!user) {
+        if (phoneError) {
+          phoneError.textContent = "Ingresá un número de WhatsApp válido con código de área (ej: 1100000001).";
+          phoneError.classList.remove("hidden");
+        }
+        phoneInput?.classList.add("border-rose-500", "focus:ring-rose-500");
+        phoneInput?.focus();
+        return;
+      }
+
       store.setCurrentUser(user);
       deliveryAddress = user.direccion || "";
       update();
@@ -342,7 +396,9 @@ export function renderClientView(container) {
     if (!categories.includes(selectedCategory)) selectedCategory = "Todos";
 
     const catalogError = catalogRecoveryError || store.getCatalogError();
+    const syncError = store.getSyncError();
     const storageWarning = store.getStorageWarning();
+    const cartIssues = store.getCartAvailabilityIssues();
     const cart = store.getCart();
     const { items: cartItems, totalEstimado, totalItems } = store.getCartSummary();
 
@@ -376,7 +432,9 @@ export function renderClientView(container) {
           <p>${escapeHtml(catalogError)}</p>
           ${store.isDemo() ? `<p class="mt-2">Recuperar conserva un respaldo del original y las filas válidas; si no hay filas válidas, usa el catálogo sintético.</p><button id="btn-recover-catalog" class="min-h-[44px] mt-2 px-4 py-2 rounded-xl bg-amber-900 text-white font-bold">Recuperar catálogo demo</button>` : ""}
         </div>` : ""}
+        ${syncError ? `<p id="client-sync-error" role="alert" class="m-4 p-3 rounded-xl border border-rose-300 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 text-sm font-medium">${escapeHtml(syncError)}</p>` : ""}
         ${storageWarning ? `<p role="alert" class="m-4 p-3 rounded-xl bg-amber-50 text-amber-950 text-sm">${escapeHtml(storageWarning)}</p>` : ""}
+        ${cartIssues.length > 0 && !isCartOpen ? `<p role="alert" class="m-4 p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 text-sm font-medium">${escapeHtml(cartIssues[0].message)} Abrí tu pedido para revisarlo.</p>` : ""}
         ${checkoutError && !isCartOpen ? `<p role="alert" class="m-4 p-3 rounded-xl bg-red-50 text-red-900 text-sm">${escapeHtml(checkoutError)}</p>` : ""}
 
         <!-- Área de Cabecera y Usuario FUERA del Sticky (Scrolla con la página) -->
@@ -772,6 +830,19 @@ export function renderClientView(container) {
   function renderCartModal(user, items, totalEstimado) {
     const isDelivery = deliveryMode === "DELIVERY";
     const isEmpty = items.length === 0;
+    const cartIssues = store.getCartAvailabilityIssues();
+    const hasSyncErr = Boolean(store.getSyncError());
+    const statusBox = checkoutStatus && checkoutStatus.status === "unknown"
+      ? `<div id="checkout-status-banner" data-checkout-status="unknown" role="alert" class="p-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 text-xs font-medium">${escapeHtml(checkoutStatus.error)}</div>`
+      : checkoutStatus && checkoutStatus.status === "failed"
+      ? `<div id="checkout-status-banner" data-checkout-status="failed" role="alert" class="p-3 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 text-xs font-medium">${escapeHtml(checkoutStatus.error)}</div>`
+      : "";
+    const confirmLabel = isSubmittingCheckout
+      ? "Enviando al comercio..."
+      : checkoutStatus?.status === "unknown"
+      ? "Reintentar verificación (sin duplicar)"
+      : "Confirmar Pedido";
+    const blockConfirm = isSubmittingCheckout || cartIssues.length > 0 || hasSyncErr;
 
     return `
       <!-- Backdrop Modal con z-index 70 (sobre cabecera demo z-50) -->
@@ -784,6 +855,7 @@ export function renderClientView(container) {
           class="cart-modal-dialog shadow-2xl ${isDrawerFirstOpen ? "animate-slide-up" : ""}"
         >
           ${checkoutError ? `<p role="alert" class="m-4 p-3 rounded-xl border border-red-300 bg-red-50 text-red-900 text-sm">${escapeHtml(checkoutError)}</p>` : ""}
+          ${cartIssues.length > 0 ? `<div id="cart-availability-warning" role="alert" class="m-4 p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 text-xs font-semibold">${escapeHtml(cartIssues.map(i => i.message).join(" "))} Quitá los ítems afectados antes de confirmar.</div>` : ""}
 
           <!-- Asa táctil exclusiva para arrastre y cierre downward >=80px -->
           <div id="cart-drag-handle" class="py-3 px-6 cursor-grab active:cursor-grabbing touch-none select-none flex flex-col items-center">
@@ -934,6 +1006,7 @@ export function renderClientView(container) {
 
           <!-- Footer con Safe Area Pad y Confirmación -->
           <div class="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-b-3xl space-y-3 safe-pb">
+            ${statusBox}
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-bold tracking-wider">Total Estimado</span>
@@ -953,9 +1026,10 @@ export function renderClientView(container) {
             ` : `
               <button
                 id="btn-confirm-order"
-                class="w-full min-h-[50px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-950/20 text-sm transition tap-feedback flex items-center justify-center gap-2 touch-target"
+                ${blockConfirm ? "disabled" : ""}
+                class="w-full min-h-[50px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-950/20 text-sm transition tap-feedback flex items-center justify-center gap-2 touch-target"
               >
-                <span>Confirmar Pedido</span>
+                <span>${confirmLabel}</span>
               </button>
             `}
           </div>
@@ -1144,7 +1218,8 @@ export function renderClientView(container) {
     });
 
     const btnConfirm = container.querySelector("#btn-confirm-order");
-    btnConfirm?.addEventListener("click", () => {
+    btnConfirm?.addEventListener("click", async () => {
+      if (isSubmittingCheckout) return;
       const { items } = store.getCartSummary();
       if (items.length === 0) {
         closeCartModal();
@@ -1155,28 +1230,45 @@ export function renderClientView(container) {
       const finalAddress = mode === "DELIVERY" ? deliveryAddress.trim() : "Retiro en Mostrador";
 
       if (mode === "DELIVERY" && !finalAddress) {
-        alert("Por favor ingresá tu dirección para coordinar el envío a domicilio.");
-        addressInput?.focus();
+        checkoutStatus = { status: "failed", error: "Ingresá tu dirección para coordinar el envío a domicilio." };
+        renderCatalog();
+        container.querySelector("#delivery-address-input")?.focus();
         return;
       }
 
       if (navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
 
+      isSubmittingCheckout = true;
+      checkoutError = "";
+      checkoutStatus = null;
+      btnConfirm.disabled = true;
+
       try {
-        checkoutError = "";
-        const newOrder = store.createOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
-        if (newOrder) {
+        const result = await store.submitOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
+        if (result?.ok && result.order) {
           isCartOpen = false;
           isDrawerFirstOpen = true;
+          checkoutStatus = null;
           document.getElementById("nexo-top-stack")?.removeAttribute("inert");
           document.body.style.overflow = "";
-          selectedOrderId = newOrder.id;
+          selectedOrderId = result.order.id;
           viewMode = "order_detail";
           update();
+          return;
         }
-      } catch (error) {
-        checkoutError = error.message || "No se pudo guardar el pedido. Reintentá.";
+        checkoutStatus = {
+          status: result?.status === "unknown" ? "unknown" : "failed",
+          error: result?.error || "No se pudo confirmar el pedido. Reintentá."
+        };
         renderCatalog();
+      } catch (error) {
+        checkoutStatus = {
+          status: "failed",
+          error: error.message || "No se pudo guardar el pedido. Reintentá."
+        };
+        renderCatalog();
+      } finally {
+        isSubmittingCheckout = false;
       }
     });
   }
@@ -1337,13 +1429,13 @@ export function renderClientView(container) {
     `;
   }
 
-  function renderOrderNotFound() {
+  function renderOrderNotFound(customMessage = null) {
     container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-12 text-center">
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
-          <h2 class="text-lg font-black text-slate-900 dark:text-white">Pedido no encontrado</h2>
+          <h2 class="text-lg font-black text-slate-900 dark:text-white">Pedido no disponible</h2>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            El pedido solicitado no existe o ya no está disponible en este dispositivo.
+            ${escapeHtml(customMessage || "El pedido solicitado no existe, fue revocado o ya no está disponible en este dispositivo.")}
           </p>
           <div class="flex gap-2">
             <button
@@ -1364,10 +1456,14 @@ export function renderClientView(container) {
     `;
 
     container.querySelector("#btn-not-found-orders")?.addEventListener("click", () => {
+      trackingLookupError = "";
       viewMode = "orders";
       update();
     });
     container.querySelector("#btn-not-found-catalog")?.addEventListener("click", () => {
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "catalog";
       update();
     });
@@ -1536,6 +1632,18 @@ export function renderClientView(container) {
             </div>
           </div>
 
+          ${(() => {
+            const trackFragment = store.getTrackingLink(currentOrder.id);
+            if (!trackFragment) return "";
+            return `
+              <div id="private-tracking-box" class="mt-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Enlace privado de seguimiento</span>
+                <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">Guardá este enlace privado (el token viaja sólo en el fragmento <code class="font-mono">#track=</code> y no se consulta historial remoto por teléfono si lo perdés):</p>
+                <a id="private-tracking-link" href="${escapeHtml(trackFragment)}" class="block text-[11px] font-mono text-emerald-700 dark:text-emerald-400 break-all underline">${escapeHtml(trackFragment)}</a>
+              </div>
+            `;
+          })()}
+
           <!-- Botón de consulta al local por WhatsApp (simulado en Modo Demo) -->
           <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
             <button
@@ -1561,11 +1669,17 @@ export function renderClientView(container) {
     `;
 
     container.querySelector("#btn-back-to-catalog")?.addEventListener("click", () => {
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "catalog";
       update();
     });
 
     container.querySelector("#btn-back-to-orders")?.addEventListener("click", () => {
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "orders";
       update();
     });
@@ -1586,6 +1700,9 @@ export function renderClientView(container) {
 
     container.querySelector("#btn-new-order")?.addEventListener("click", () => {
       store.setActiveOrderId(null);
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "catalog";
       update();
     });
@@ -1599,7 +1716,10 @@ export function renderClientView(container) {
       event === "orders_changed" ||
       event === "active_order_changed" ||
       event === "storage_sync" ||
-      event === "user_changed"
+      event === "user_changed" ||
+      event === "sync_error" ||
+      event === "catalog_error" ||
+      event === "pending_checkout_changed"
     ) {
       update();
     }

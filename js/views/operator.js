@@ -136,8 +136,8 @@ export function renderOperatorView(container) {
       store.playAudioAlert();
     });
 
-    container.querySelector("#btn-operator-logout")?.addEventListener("click", () => {
-      store.lockStaff();
+    container.querySelector("#btn-operator-logout")?.addEventListener("click", async () => {
+      await store.logoutStaff();
       window.location.href = "?view=cliente";
     });
 
@@ -526,11 +526,11 @@ Alias para transferir: ${businessAlias}
   function attachActions(orders) {
     // Tomar y pesar
     container.querySelectorAll(".btn-start-prep").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
         const id = Number(btn.dataset.startId);
         try {
-          store.updateOrderStatus(id, "EN_PREPARACION");
+          await store.takeOrderAsync(id);
           actionError = "";
           activeTab = "EN_PREPARACION";
           update();
@@ -540,14 +540,14 @@ Alias para transferir: ${businessAlias}
 
     // Cancelar Pedido (Cancelación lógica / soft cancellation preservando historial)
     container.querySelectorAll(".btn-cancel-order").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.cancelOrderId || btn.dataset.deleteOrderId);
         const order = orders.find((o) => o.id === id);
         const clientName = order ? order.cliente.nombre : "este cliente";
         const confirmCancel = confirm(`¿Estás seguro de que querés cancelar el pedido #${id} de ${clientName}?`);
         if (confirmCancel) {
           if (navigator.vibrate) { try { navigator.vibrate(25); } catch {} }
-          try { store.cancelOrder(id); update(); } catch (error) { showError(error.message); }
+          try { await store.cancelOrderAsync(id); update(); } catch (error) { showError(error.message); }
         }
       });
     });
@@ -589,7 +589,7 @@ Alias para transferir: ${businessAlias}
     }
     const btnConfirmAddItem = container.querySelector(".btn-confirm-add-item");
     if (btnConfirmAddItem) {
-      btnConfirmAddItem.addEventListener("click", () => {
+      btnConfirmAddItem.addEventListener("click", async () => {
         const orderId = Number(btnConfirmAddItem.dataset.confirmAddOrder);
         const select = container.querySelector("#select-new-product");
         const inputQty = container.querySelector("#input-new-quantity");
@@ -599,7 +599,7 @@ Alias para transferir: ${businessAlias}
             const isWeight = select.selectedOptions[0]?.dataset.unit === "KG";
             const qty = parseOperatorWeight(inputQty.value, isWeight);
             if (qty === null) throw new Error(isWeight ? "Ingresá kilos mayores a cero." : "Ingresá una cantidad entera mayor a cero.");
-            store.addProductToOrder(orderId, productId, qty);
+            await store.addProductToOrderAsync(orderId, productId, qty);
             addingProductOrderId = null;
             update();
           } catch (error) { showError(error.message); }
@@ -609,12 +609,12 @@ Alias para transferir: ${businessAlias}
 
     // Quitar un ítem específico del pedido
     container.querySelectorAll(".btn-remove-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const orderId = Number(btn.dataset.removeItemOrder);
         const itemIdx = Number(btn.dataset.itemIndex);
         const confirmRemove = confirm("¿Eliminar este producto de la lista?");
         if (confirmRemove) {
-          try { store.removeItemFromOrder(orderId, itemIdx); update(); } catch (error) { showError(error.message); }
+          try { await store.removeItemFromOrderAsync(orderId, itemIdx); update(); } catch (error) { showError(error.message); }
         }
       });
     });
@@ -626,6 +626,9 @@ Alias para transferir: ${businessAlias}
         const current = parseOperatorWeight(input.value, isWeight) ?? 0;
         input.value = Math.max(isWeight ? 0.001 : 1, Number((current + Number(btn.dataset.delta)).toFixed(3)));
         input.dispatchEvent(new Event("input", { bubbles: true }));
+        if (!store.isDemo()) {
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
       });
     });
 
@@ -683,7 +686,7 @@ Alias para transferir: ${businessAlias}
       });
 
       if (editForm) {
-        editForm.addEventListener("submit", (e) => {
+        editForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           const name = container.querySelector("#edit-name")?.value.trim() || "";
           const phone = (container.querySelector("#edit-phone")?.value || "").replace(/\D/g, "").trim();
@@ -692,7 +695,7 @@ Alias para transferir: ${businessAlias}
           const address = mode === "DELIVERY" ? container.querySelector("#edit-address")?.value.trim() || "" : "Retiro por mostrador";
 
           try {
-            store.updateOrderDetails(editingOrderId, { nombre: name, telefono: phone, tipo_entrega: mode, direccion_entrega: address });
+            await store.updateOrderDetailsAsync(editingOrderId, { nombre: name, telefono: phone, tipo_entrega: mode, direccion_entrega: address });
             editingOrderId = null;
             actionError = "";
             update();
@@ -709,26 +712,49 @@ Alias para transferir: ${businessAlias}
       input.addEventListener("input", () => {
         const id = Number(input.dataset.orderId), index = Number(input.dataset.itemIdx);
         const value = parseOperatorWeight(input.value, input.dataset.unit === "KG");
-        try {
-          store.updateItemWeight(id, index, value, { notify: false });
-          delete input.dataset.unsaved;
+        if (store.isDemo()) {
+          try {
+            store.updateItemWeight(id, index, value, { notify: false });
+            delete input.dataset.unsaved;
+            showError("");
+          } catch (error) {
+            input.dataset.unsaved = "true";
+            showError(error.message);
+          }
+        } else {
+          if (value === null) input.dataset.unsaved = "true";
+          else delete input.dataset.unsaved;
           showError("");
-        } catch (error) {
-          input.dataset.unsaved = "true";
-          showError(error.message);
         }
         input.setAttribute("aria-invalid", String(value === null));
         refreshPreparation(id);
       });
+
+      if (!store.isDemo()) {
+        input.addEventListener("change", async () => {
+          const id = Number(input.dataset.orderId), index = Number(input.dataset.itemIdx);
+          const value = parseOperatorWeight(input.value, input.dataset.unit === "KG");
+          try {
+            await store.saveItemWeightAsync(id, index, value, { notify: false });
+            delete input.dataset.unsaved;
+            showError("");
+          } catch (error) {
+            input.dataset.unsaved = "true";
+            showError(error.message);
+          }
+          input.setAttribute("aria-invalid", String(value === null));
+          refreshPreparation(id);
+        });
+      }
     });
     container.querySelectorAll(".btn-confirm-unit").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.confirmUnitOrder), index = Number(btn.dataset.itemIdx);
         const input = findPreparationInput(id, index);
         try {
           const value = parseOperatorWeight(input.value, false);
           if (value === null) throw new Error("Ingresá una cantidad entera mayor a cero o marcá Sin Stock.");
-          store.updateItemWeight(id, index, value, { notify: false, confirmUnit: true });
+          await store.saveItemWeightAsync(id, index, value, { notify: false, confirmUnit: true });
           delete input.dataset.unsaved;
           showError("");
         } catch (error) { showError(error.message); }
@@ -736,18 +762,25 @@ Alias para transferir: ${businessAlias}
       });
     });
     container.querySelectorAll(".btn-toggle-stock").forEach(btn => {
-      btn.addEventListener("click", () => {
-        try { store.toggleItemOutOfStock(Number(btn.dataset.toggleStockOrder), Number(btn.dataset.itemIndex)); update(); }
+      btn.addEventListener("click", async () => {
+        try { await store.toggleItemOutOfStockAsync(Number(btn.dataset.toggleStockOrder), Number(btn.dataset.itemIndex)); update(); }
         catch (error) { showError(error.message); }
       });
     });
     container.querySelectorAll(".btn-finish-weighing").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.finishOrderId);
         try {
           const inputs = Array.from(container.querySelectorAll(".input-weight")).filter(input => Number(input.dataset.orderId) === id);
-          if (inputs.some(input => input.dataset.unsaved || parseOperatorWeight(input.value, input.dataset.unit === "KG") === null)) throw new Error("Resolvé cada ítem antes de finalizar.");
-          store.finalizeOrderWeighing(id);
+          if (inputs.some(input => parseOperatorWeight(input.value, input.dataset.unit === "KG") === null)) {
+            throw new Error("Resolvé cada ítem antes de finalizar.");
+          }
+          const weightsMap = {};
+          inputs.forEach((input) => {
+            const idx = Number(input.dataset.itemIdx);
+            weightsMap[idx] = parseOperatorWeight(input.value, input.dataset.unit === "KG");
+          });
+          await store.finalizeOrderWeighingAsync(id, weightsMap);
           actionError = "";
           activeTab = "LISTO";
           update();
@@ -784,10 +817,10 @@ Alias para transferir: ${businessAlias}
     });
 
     container.querySelectorAll(".btn-deliver-order").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
         const id = Number(btn.dataset.deliverOrderId);
-        try { store.updateOrderStatus(id, "ENTREGADO"); update(); }
+        try { await store.transitionOrderStatusAsync(id, "ENTREGADO"); update(); }
         catch (error) { showError(error.message); }
       });
     });
@@ -808,10 +841,23 @@ Alias para transferir: ${businessAlias}
     const card = Array.from(container.querySelectorAll("[data-preparation-order]")).find(card => Number(card.dataset.preparationOrder) === id);
     if (!order || !card) return;
     const progress = store.getPreparationProgress(id);
-    card.querySelector("[data-preparation-progress]").textContent = `${progress.resolved} de ${progress.total} ítems preparados`;
-    card.querySelector("[data-preparation-bar]").value = progress.resolved;
+    let resolvedDom = 0;
+    order.items.forEach((item, idx) => {
+      if (item.sin_stock) { resolvedDom++; return; }
+      if (item.unidad_medida === "UNIDAD") {
+        if (store.preparationItemResolved(item)) resolvedDom++;
+        return;
+      }
+      const inp = findPreparationInput(id, idx);
+      const v = inp ? parseOperatorWeight(inp.value, true) : null;
+      if (v !== null || store.preparationItemResolved(item)) resolvedDom++;
+    });
+    const historical = ["LISTO", "ENTREGADO"].includes(order.estado);
+    const canFinishDom = !historical && order.estado !== "CANCELADO" && order.items.length > 0 && resolvedDom === order.items.length;
+    card.querySelector("[data-preparation-progress]").textContent = `${Math.max(progress.resolved, resolvedDom)} de ${progress.total} ítems preparados`;
+    card.querySelector("[data-preparation-bar]").value = Math.max(progress.resolved, resolvedDom);
     const inputs = Array.from(card.querySelectorAll(".input-weight"));
-    card.querySelector(".btn-finish-weighing").disabled = !progress.canFinalize || inputs.some(input => input.dataset.unsaved || parseOperatorWeight(input.value, input.dataset.unit === "KG") === null);
+    card.querySelector(".btn-finish-weighing").disabled = !(progress.canFinalize || canFinishDom) || inputs.some(input => input.dataset.unsaved || parseOperatorWeight(input.value, input.dataset.unit === "KG") === null);
     let total = 0;
     order.items.forEach((item, index) => {
       const input = findPreparationInput(id, index);

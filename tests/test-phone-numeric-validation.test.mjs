@@ -241,6 +241,13 @@ assert.ok(retrieved, "Customer must be retrievable with formatted phone");
 assert.strictEqual(retrieved.telefono, "1198765432");
 pass("5.3 Valid customer saved with clean numeric phone and retrieved successfully");
 
+// 5.4 Area-code isolation & canonical AR normalization (AUD-10)
+assert.strictEqual(store.isSameCustomer("1133334444", "2233334444"), false);
+assert.strictEqual(store.isSameCustomer("1133334444", "+54 9 11 3333-4444"), true);
+assert.strictEqual(store.isSameCustomer("0351-15-444-5566", "54 351 444 5566"), true);
+assert.strictEqual(store.isSameCustomer("33334444", "1133334444"), false);
+pass("5.4 AR phone normalization separates distinct area codes and rejects ambiguous local-only digits");
+
 // ---------------------------------------------------------------------------
 // SUITE 6: OPERATOR VIEW EDIT PHONE SANITIZATION
 // ---------------------------------------------------------------------------

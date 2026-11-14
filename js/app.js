@@ -81,8 +81,8 @@ class App {
     }
 
     if (this.btnLockPin) {
-      this.btnLockPin.addEventListener("click", () => {
-        store.lockStaff();
+      this.btnLockPin.addEventListener("click", async () => {
+        await store.logoutStaff();
         this.navigate("client");
       });
     }
@@ -117,7 +117,7 @@ class App {
       }
     });
 
-    // Actualización reactiva de etiquetas de tema
+    // Actualización reactiva de etiquetas de tema y bloqueos de sesión de personal
     store.subscribe((event) => {
       if (event === "theme_changed") {
         const isDark = store.getTheme() === "dark";
@@ -125,14 +125,25 @@ class App {
           el.textContent = isDark ? "Oscuro" : "Claro";
         });
       }
+      if (event === "staff_locked" && ["operator", "admin"].includes(this.currentView)) {
+        this.navigate(this.currentView);
+      }
     });
 
-    const initialView = urlParams.get("view") || window.location.hash.replace("#", "") || "client";
-    this.navigate(initialView);
+    const initialHash = String(window.location.hash || "");
+    const initialView = initialHash.startsWith("#track=")
+      ? "client"
+      : urlParams.get("view") || initialHash.replace("#", "") || "client";
+    this.navigate(initialView, { preserveHash: initialHash.startsWith("#track=") });
 
-    // Reaccionar a cambios manuales del hash (#operador, #admin) sin recargar
+    // Reaccionar a cambios manuales del hash (#operador, #admin, #track=...) sin recargar
     window.addEventListener("hashchange", () => {
-      const target = this.normalizeView(window.location.hash.replace("#", ""));
+      const h = String(window.location.hash || "");
+      if (h.startsWith("#track=")) {
+        this.navigate("client", { preserveHash: true });
+        return;
+      }
+      const target = this.normalizeView(h.replace("#", ""));
       if (target !== this.currentView) this.navigate(target);
     });
   }
@@ -164,6 +175,9 @@ class App {
   }
 
   renderPinGate(targetView) {
+    if (!store.isDemo()) {
+      return this.renderStaffAuthGate(targetView);
+    }
     const isOperario = targetView === "operator" || targetView === "operario";
     const roleLabel = isOperario ? "Puesto de Preparación (Operario)" : "Catálogo y Precios (Dueño)";
     this.container.innerHTML = `
@@ -171,13 +185,14 @@ class App {
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl text-center">
           <div class="flex items-center justify-between mb-3">
             <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-              Acceso Personal del Local
+              Acceso Personal del Local (Demo)
             </span>
-            </div>
+          </div>
           <h2 class="text-xl font-black text-slate-900 dark:text-white">${roleLabel}</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de 4 dígitos del comercio (Por defecto: <strong>1234</strong>)</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de demostración del comercio (Demo: <strong>1234</strong>)</p>
 
           <form id="pin-gate-form" class="space-y-4">
+            <label for="pin-input" class="sr-only">PIN del comercio</label>
             <input
               type="password"
               id="pin-input"
@@ -188,7 +203,7 @@ class App {
               required
               class="w-40 mx-auto block text-center tracking-[0.5em] py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-2xl font-black text-2xl text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition"
             />
-            <p id="pin-error" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400">PIN incorrecto. Intentá nuevamente.</p>
+            <p id="pin-error" role="alert" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400">PIN incorrecto. Intentá nuevamente.</p>
             <div class="flex gap-2 pt-1">
               <button
                 type="button"
@@ -240,6 +255,123 @@ class App {
     }
   }
 
+  renderStaffAuthGate(targetView) {
+    const isOperario = targetView === "operator" || targetView === "operario";
+    const roleLabel = isOperario ? "Puesto de Preparación (Operario)" : "Catálogo y Precios (Dueño)";
+    this.container.innerHTML = `
+      <div class="max-w-sm mx-auto p-4 pt-12">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl">
+          <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 mb-3">
+            Acceso Personal Autorizado
+          </span>
+          <h2 class="text-xl font-black text-slate-900 dark:text-white">${roleLabel}</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Iniciá sesión con tu cuenta individual habilitada por el comercio. Sin registro público.</p>
+
+          <form id="staff-auth-form" class="space-y-4">
+            <div>
+              <label for="staff-email-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Correo de personal</label>
+              <input
+                type="email"
+                id="staff-email-input"
+                autocomplete="username"
+                required
+                placeholder="operario@comercio.local"
+                class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-emerald-500 transition"
+              />
+            </div>
+            <div>
+              <label for="staff-password-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Contraseña</label>
+              <input
+                type="password"
+                id="staff-password-input"
+                autocomplete="current-password"
+                required
+                placeholder="••••••••"
+                class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-emerald-500 transition"
+              />
+            </div>
+            <p id="staff-auth-error" role="alert" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400"></p>
+            <div class="flex gap-2 pt-1">
+              <button
+                type="button"
+                id="btn-staff-auth-back"
+                class="flex-1 min-h-[48px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition touch-target"
+              >
+                Volver al Catálogo
+              </button>
+              <button
+                type="submit"
+                id="btn-staff-auth-submit"
+                class="flex-1 min-h-[48px] py-3 bg-slate-950 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md touch-target"
+              >
+                Iniciar Sesión
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    const emailInput = this.container.querySelector("#staff-email-input");
+    const passwordInput = this.container.querySelector("#staff-password-input");
+    const form = this.container.querySelector("#staff-auth-form");
+    const errorEl = this.container.querySelector("#staff-auth-error");
+    const submitBtn = this.container.querySelector("#btn-staff-auth-submit");
+    const btnBack = this.container.querySelector("#btn-staff-auth-back");
+
+    if (emailInput) emailInput.focus();
+    if (btnBack) btnBack.addEventListener("click", () => this.navigate("client"));
+
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (errorEl) {
+          errorEl.textContent = "";
+          errorEl.classList.add("hidden");
+        }
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          await store.signInStaff(emailInput?.value || "", passwordInput?.value || "");
+          this.navigate(targetView);
+        } catch (err) {
+          if (errorEl) {
+            errorEl.textContent = String(err?.message || "No se pudo iniciar sesión.");
+            errorEl.classList.remove("hidden");
+          }
+          if (passwordInput) passwordInput.value = "";
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  renderForbiddenStaffGate(targetView) {
+    const role = store.getStaffRole();
+    this.container.innerHTML = `
+      <div class="max-w-sm mx-auto p-4 pt-12">
+        <div id="staff-forbidden-card" role="alert" class="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-amber-300 dark:border-amber-800 shadow-xl space-y-4 text-center">
+          <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300">
+            Permisos insuficientes
+          </span>
+          <h2 class="text-xl font-black text-slate-900 dark:text-white">Acceso restringido al dueño</h2>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Tu sesión actual tiene rol <strong>${escapeHtml(role || "sin rol")}</strong> y no puede administrar <strong>${escapeHtml(targetView)}</strong>.
+          </p>
+          <div class="flex gap-2">
+            ${role === "operator" ? `<button id="btn-go-operator" class="flex-1 min-h-[48px] py-3 bg-slate-950 dark:bg-emerald-600 text-white font-bold rounded-xl text-xs touch-target">Ir a Preparación</button>` : ""}
+            <button id="btn-forbidden-logout" class="flex-1 min-h-[48px] py-3 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs touch-target">Cerrar Sesión</button>
+          </div>
+        </div>
+      </div>
+    `;
+    this.container.querySelector("#btn-go-operator")?.addEventListener("click", () => this.navigate("operator"));
+    this.container.querySelector("#btn-forbidden-logout")?.addEventListener("click", async () => {
+      await store.logoutStaff();
+      this.navigate("client");
+    });
+  }
+
   // Normaliza alias de URL (#operador, #precios, #administrador...) a vistas canónicas
   normalizeView(name) {
     const key = String(name || "").toLowerCase().trim();
@@ -253,7 +385,7 @@ class App {
     return aliases[key] || "client";
   }
 
-  navigate(viewName) {
+  navigate(viewName, { preserveHash = false } = {}) {
     if (store.getConfigErrors().length > 0) {
       this.renderConfigErrorGate(store.getConfigErrors());
       return;
@@ -266,7 +398,9 @@ class App {
     }
 
     this.currentView = viewName;
-    window.location.hash = viewName;
+    if (!preserveHash && !(viewName === "client" && String(window.location.hash || "").startsWith("#track="))) {
+      window.location.hash = viewName;
+    }
 
     this.navButtons.forEach((btn) => {
       const isActive = btn.dataset.view === viewName;
@@ -279,11 +413,17 @@ class App {
       }
     });
 
-    // Control estricto de acceso por PIN: si no está desbloqueado, exige PIN
     const isStaffView = ["operator", "operario", "admin", "dueno"].includes(viewName);
-    if (isStaffView && !store.isStaffUnlocked()) {
-      this.renderPinGate(viewName);
-      return;
+    if (isStaffView) {
+      if (!store.isStaffUnlocked()) {
+        if (store.isDemo()) this.renderPinGate(viewName);
+        else this.renderStaffAuthGate(viewName);
+        return;
+      }
+      if (!store.canAccessStaffView(viewName)) {
+        this.renderForbiddenStaffGate(viewName);
+        return;
+      }
     }
 
     switch (viewName) {

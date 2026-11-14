@@ -293,6 +293,8 @@ function buildStorageKeys(mode) {
     CURRENT_USER: `${prefix}current_user`,
     CART: `${prefix}cart`,
     ACTIVE_ORDER: `${prefix}active_order`,
+    OWN_TRACKING_REFS: `${prefix}tracking_refs`,
+    PENDING_CHECKOUT: `${prefix}pending_checkout`,
     LOCAL_SETTINGS: `${prefix}local_settings`,
     PIN_UNLOCKED: `${prefix}pin_unlocked`,
     SIMULATED_MESSAGES: `${prefix}simulated_messages`,
@@ -953,6 +955,78 @@ function safeRemove(key) {
   }
 }
 
+function normalizeArPhone(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (!digits) return { ok: false, normalized: null, ambiguous: false, digits: "" };
+
+  let d = digits;
+  let hadCountryCode = false;
+  if (d.startsWith("0054")) {
+    d = d.slice(4);
+    hadCountryCode = true;
+  } else if (d.startsWith("54") && d.length >= 12) {
+    d = d.slice(2);
+    hadCountryCode = true;
+  }
+
+  if (hadCountryCode && d.startsWith("9") && (d.length === 11 || d.length === 13)) {
+    d = d.slice(1);
+  }
+  if (d.startsWith("0") && (d.length === 11 || d.length === 13)) {
+    d = d.slice(1);
+  }
+
+  if (d.startsWith("15")) {
+    return { ok: false, normalized: null, ambiguous: true, digits };
+  }
+
+  if (d.length === 12) {
+    if (d.startsWith("11") && d.slice(2, 4) === "15") {
+      d = d.slice(0, 2) + d.slice(4);
+    } else if (d.startsWith("2") || d.startsWith("3")) {
+      const at3 = d.slice(3, 5) === "15";
+      const at4 = d.slice(4, 6) === "15";
+      if (at3 && !at4) {
+        d = d.slice(0, 3) + d.slice(5);
+      } else if (at4 && !at3) {
+        d = d.slice(0, 4) + d.slice(6);
+      } else {
+        return { ok: false, normalized: null, ambiguous: true, digits };
+      }
+    } else {
+      return { ok: false, normalized: null, ambiguous: true, digits };
+    }
+  }
+
+  if (/^[1-9]\d{9}$/.test(d) && !d.startsWith("15")) {
+    return { ok: true, normalized: d, ambiguous: false, digits };
+  }
+
+  return { ok: false, normalized: null, ambiguous: digits.length >= 8, digits };
+}
+
+function generateTrackingToken() {
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new Error("Este navegador no soporta generación criptográfica de tokens.");
+  }
+  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256Hex(text) {
+  if (!globalThis.crypto?.subtle?.digest) {
+    throw new Error("Web Crypto API no disponible para proteger el token de seguimiento.");
+  }
+  const encoded = new TextEncoder().encode(String(text || ""));
+  const hashBuf = await globalThis.crypto.subtle.digest("SHA-256", encoded);
+  return [...new Uint8Array(hashBuf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function extractRetryAfterSeconds(message) {
+  const match = String(message || "").match(/RETRY_AFTER:(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
 class Store {
   constructor(config = NEXO_CONFIG) {
     this.config = config;
@@ -962,7 +1036,11 @@ class Store {
     this.supabase = null;
     this.realtimeChannel = null;
     this.cloudError = null;
+    this.syncError = null;
     this.ordersError = null;
+    this.staffSession = null;
+    this.staffMember = null;
+    this.authError = null;
 
     // En demo se bloquean las APIs de datos JS y apertura de enlaces externos (WhatsApp) antes de inicializar.
     if (this.isDemo() && typeof window !== "undefined") {
@@ -1044,16 +1122,13 @@ class Store {
       }
     }
 
-    // 4. Detectar parámetro ?tel= en el link de acceso del cliente
+    // 4. Detectar parámetro ?tel= sólo para precompletar campo en alta manual (nunca autentica ni abre sesiones)
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const urlPhone = urlParams.get("tel");
       if (urlPhone) {
         const cleanPhone = String(urlPhone).replace(/\D/g, "");
-        const existingCustomer = this.getCustomer(cleanPhone);
-        if (existingCustomer) {
-          this.setCurrentUser(existingCustomer);
-        } else if (cleanPhone.length >= 8) {
+        if (cleanPhone.length >= 8 && cleanPhone.length <= 15) {
           this.prefilledPhone = cleanPhone;
         }
       }
@@ -1065,14 +1140,20 @@ class Store {
     }
   }
 
-  // --- Ajustes locales (PIN de UI) ---
+  // --- Ajustes locales (PIN de UI sólo en Demo; producción usa Supabase Auth + RBAC) ---
   getLocalSettings() {
+    if (!this.isDemo()) {
+      return { staffPin: null };
+    }
     const stored = safeGet(this.storageKeys.LOCAL_SETTINGS, null);
     const pin = stored && typeof stored.staffPin === "string" ? stored.staffPin.trim() : "";
     return { staffPin: pin || "1234" };
   }
 
   saveLocalSettings(newSettings = {}) {
+    if (!this.isDemo()) {
+      throw new Error("El PIN local sólo existe en modo demo. En producción usá tu cuenta de personal.");
+    }
     const current = this.getLocalSettings();
     const pin = String(newSettings.staffPin ?? current.staffPin).replace(/\D/g, "").slice(0, 8);
     const updated = { staffPin: pin.length >= 4 ? pin : current.staffPin };
@@ -1093,7 +1174,14 @@ class Store {
     return "connecting";
   }
 
+  getSyncError() {
+    return this.syncError || this.cloudError || null;
+  }
+
   verifyStaffPin(inputPin) {
+    if (!this.isDemo()) {
+      return false;
+    }
     if (this.isPinLockedOut()) {
       return false;
     }
@@ -1122,16 +1210,173 @@ class Store {
     return Math.ceil((this.pinLockoutUntil - Date.now()) / 1000);
   }
 
+  hasValidStaffSession() {
+    if (!this.staffSession || !this.staffSession.user || !this.staffMember || this.staffMember.active !== true) {
+      return false;
+    }
+    if (!["owner", "operator"].includes(this.staffMember.role)) {
+      return false;
+    }
+    if (this.staffSession.expires_at !== undefined && this.staffSession.expires_at !== null) {
+      const expMs = Number(this.staffSession.expires_at) > 1e12
+        ? Number(this.staffSession.expires_at)
+        : Number(this.staffSession.expires_at) * 1000;
+      if (!Number.isFinite(expMs) || expMs <= Date.now()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  getStaffRole() {
+    if (this.isDemo()) {
+      return safeGet(this.storageKeys.PIN_UNLOCKED, false) ? "owner" : null;
+    }
+    return this.hasValidStaffSession() ? this.staffMember.role : null;
+  }
+
+  getStaffSession() {
+    if (this.isDemo()) {
+      return this.isStaffUnlocked() ? { user: { email: "demo@nexo.local" }, role: "owner", demo: true } : null;
+    }
+    if (!this.hasValidStaffSession()) return null;
+    return {
+      user: this.staffSession.user,
+      role: this.staffMember.role,
+      expires_at: this.staffSession.expires_at || null
+    };
+  }
+
+  canAccessStaffView(viewName) {
+    const normalized = String(viewName || "").toLowerCase();
+    const role = this.getStaffRole();
+    if (!role) return false;
+    if (["admin", "dueno"].includes(normalized)) return role === "owner";
+    if (["operator", "operario"].includes(normalized)) return role === "owner" || role === "operator";
+    return false;
+  }
+
   isStaffUnlocked() {
-    return Boolean(safeGet(this.storageKeys.PIN_UNLOCKED, false));
+    if (this.isDemo()) {
+      return Boolean(safeGet(this.storageKeys.PIN_UNLOCKED, false));
+    }
+    return this.hasValidStaffSession();
+  }
+
+  async refreshStaffSession() {
+    if (this.isDemo()) {
+      return this.getStaffSession();
+    }
+    if (!this.supabase || !this.supabase.auth) {
+      this.staffSession = null;
+      this.staffMember = null;
+      return null;
+    }
+    try {
+      const { data, error } = await this.supabase.auth.getSession();
+      const session = data?.session || null;
+      if (error || !session || !session.user) {
+        this.staffSession = null;
+        this.staffMember = null;
+        return null;
+      }
+      if (session.expires_at !== undefined && session.expires_at !== null) {
+        const expMs = Number(session.expires_at) > 1e12
+          ? Number(session.expires_at)
+          : Number(session.expires_at) * 1000;
+        if (!Number.isFinite(expMs) || expMs <= Date.now()) {
+          this.staffSession = null;
+          this.staffMember = null;
+          this.authError = "Tu sesión expiró. Volvé a iniciar sesión.";
+          try { await this.supabase.auth.signOut(); } catch {}
+          this.notify("staff_locked");
+          return null;
+        }
+      }
+
+      const memberQuery = this.supabase
+        .from("staff_members")
+        .select("user_id, email, role, active")
+        .eq("user_id", session.user.id);
+      const memberRes = typeof memberQuery.maybeSingle === "function"
+        ? await memberQuery.maybeSingle()
+        : await memberQuery.single();
+
+      const member = memberRes?.data;
+      if (memberRes?.error || !member || member.active !== true || !["owner", "operator"].includes(member.role)) {
+        this.staffSession = null;
+        this.staffMember = null;
+        this.authError = "La cuenta no tiene membresía de personal activa.";
+        return null;
+      }
+
+      this.staffSession = session;
+      this.staffMember = member;
+      this.authError = null;
+      return this.getStaffSession();
+    } catch (err) {
+      this.staffSession = null;
+      this.staffMember = null;
+      this.authError = String(err?.message || err);
+      return null;
+    }
+  }
+
+  async signInStaff(email, password) {
+    if (this.isDemo()) {
+      throw new Error("En modo demo utilizá el PIN de demostración.");
+    }
+    if (!this.config.ok || !this.supabase || !this.supabase.auth) {
+      throw new Error("Conexión al servidor no disponible para autenticar personal.");
+    }
+    const cleanEmail = String(email || "").trim().toLowerCase();
+    const cleanPassword = String(password || "");
+    if (!cleanEmail || !cleanPassword) {
+      throw new Error("Ingresá tu correo y contraseña.");
+    }
+
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: cleanPassword
+    });
+    if (error || !data?.session?.user) {
+      this.staffSession = null;
+      this.staffMember = null;
+      throw new Error(error?.message || "Credenciales inválidas.");
+    }
+
+    const refreshed = await this.refreshStaffSession();
+    if (!refreshed) {
+      try { await this.supabase.auth.signOut(); } catch {}
+      throw new Error(this.authError || "Tu usuario no pertenece al personal activo del comercio.");
+    }
+
+    this.subscribeToSupabaseRealtime();
+    await this.pullFromSupabase();
+    this.notify("staff_authenticated", refreshed);
+    return refreshed;
+  }
+
+  async logoutStaff() {
+    safeRemove(this.storageKeys.PIN_UNLOCKED);
+    this.staffSession = null;
+    this.staffMember = null;
+    this.authError = null;
+    if (this.config.mode === "production" && this.supabase) {
+      try {
+        if (this.supabase.auth && typeof this.supabase.auth.signOut === "function") {
+          await this.supabase.auth.signOut();
+        }
+      } catch {}
+      safeRemove(this.storageKeys.ORDERS);
+      this.subscribeToSupabaseRealtime();
+      await this.pullFromSupabase();
+    }
+    this.notify("staff_locked");
   }
 
   lockStaff() {
-    safeRemove(this.storageKeys.PIN_UNLOCKED);
-    if (this.config.mode === "production" && this.supabase) {
-      this.pullFromSupabase();
-    }
-    this.notify("staff_locked");
+    return this.logoutStaff();
   }
 
   // Carga la librería oficial sólo en producción válida (nunca en demo).
@@ -1167,6 +1412,8 @@ class Store {
       }
       this.supabase = lib.createClient(supabaseUrl, supabaseAnonKey);
       this.cloudError = null;
+      this.syncError = null;
+      await this.refreshStaffSession();
       await this.pullFromSupabase();
       this.subscribeToSupabaseRealtime();
       this.notify("cloud_connected");
@@ -1174,38 +1421,54 @@ class Store {
       console.warn("No se pudo conectar a Supabase:", err);
       this.supabase = null;
       this.cloudError = String((err && err.message) || err);
+      this.syncError = this.cloudError;
       this.notify("cloud_error", this.cloudError);
     }
+  }
+
+  mapRemoteOrderRow(o) {
+    return {
+      id: typeof o.id === "number" ? o.id : Number(o.id),
+      cliente: {
+        nombre: o.cliente_nombre,
+        telefono: o.cliente_telefono || "",
+        direccion: o.direccion_entrega || ""
+      },
+      tipo_entrega: o.tipo_entrega,
+      direccion_entrega: o.direccion_entrega || "",
+      estado: o.estado,
+      fecha: o.fecha || o.created_at || new Date().toISOString(),
+      finalizado_at: o.finalizado_at || null,
+      cancelado_at: o.cancelado_at || null,
+      checkout_cart_key: o.checkout_cart_key || null,
+      version: Number.isSafeInteger(Number(o.version)) && Number(o.version) >= 1 ? Number(o.version) : 1,
+      total_estimado: this.parseStrictRemoteNumber(o.total_estimado),
+      total_real: o.total_real !== null && o.total_real !== undefined ? this.parseStrictRemoteNumber(o.total_real) : null,
+      items: Array.isArray(o.items)
+        ? o.items.map((item) => ({
+            ...item,
+            precio_unitario: this.parseStrictRemoteNumber(item?.precio_unitario),
+            cantidad_solicitada: this.parseStrictRemoteNumber(item?.cantidad_solicitada),
+            peso_real: item?.peso_real !== null && item?.peso_real !== undefined ? this.parseStrictRemoteNumber(item.peso_real) : null,
+            subtotal: item?.subtotal !== undefined && item?.subtotal !== null ? this.parseStrictRemoteNumber(item.subtotal) : undefined
+          }))
+        : null
+    };
   }
 
   async pullFromSupabase() {
     if (!this.supabase) return;
     try {
+      await this.refreshStaffSession();
       const isStaff = this.isStaffUnlocked();
-      const currentUser = this.getCurrentUser();
-      const cleanPhone = currentUser?.telefono
-        ? String(currentUser.telefono).replace(/\D/g, "")
-        : "";
 
-      const clientQuery = isStaff
-        ? null
-        : cleanPhone
-        ? this.supabase.from("clientes").select("*").eq("telefono", cleanPhone)
-        : null;
-
-      const orderQuery = isStaff
-        ? this.supabase.from("pedidos").select("*").order("id", { ascending: false }).limit(50)
-        : cleanPhone
-        ? this.supabase.from("pedidos").select("*").eq("cliente_telefono", cleanPhone).order("id", { ascending: false }).limit(20)
-        : Promise.resolve({ data: [] });
-
-      const [prodRes, cliRes, ordRes] = await Promise.all([
-        this.supabase.from("productos").select("*").order("id"),
-        clientQuery ? clientQuery : Promise.resolve({ data: [] }),
-        orderQuery
-      ]);
-
-      if (prodRes.data && prodRes.data.length > 0) {
+      const prodRes = await this.supabase.from("productos").select("*").order("id");
+      if (prodRes?.error) {
+        this.syncError = `No se pudo sincronizar el catálogo: ${prodRes.error.message || "error de red o permisos."}`;
+        this.cloudError = this.syncError;
+        this.notify("sync_error", this.syncError);
+        this.notify("catalog_error", this.syncError);
+      } else if (Array.isArray(prodRes?.data)) {
         const mappedProducts = prodRes.data.map((p) => ({
           id: p.id,
           nombre: p.nombre,
@@ -1220,181 +1483,108 @@ class Store {
           imagen_id: p.imagen_id || null
         }));
         safeSet(this.storageKeys.PRODUCTS, mappedProducts);
+        this.syncError = null;
+        this.cloudError = null;
+        this.catalogError = null;
+        this.revalidateCartAgainstCatalog();
         this.notify("products_changed");
       }
 
-      if (cliRes && cliRes.data && cliRes.data.length > 0) {
-        const customerMap = safeGet(this.storageKeys.CUSTOMERS, {}) || {};
-        cliRes.data.forEach((c) => {
-          customerMap[c.telefono] = {
-            telefono: c.telefono,
-            nombre: c.nombre,
-            direccion: c.direccion || ""
-          };
-        });
-        safeSet(this.storageKeys.CUSTOMERS, customerMap);
-      }
-
-      if (ordRes.data) {
-        const mappedOrders = [];
-        let corruptRemoteCount = 0;
-        for (const o of ordRes.data) {
-          try {
-            const candidate = {
-              id: typeof o.id === "number" ? o.id : Number(o.id),
-              cliente: {
-                nombre: o.cliente_nombre,
-                telefono: o.cliente_telefono,
-                direccion: o.direccion_entrega || ""
-              },
-              tipo_entrega: o.tipo_entrega,
-              direccion_entrega: o.direccion_entrega || "",
-              estado: o.estado,
-              fecha: o.fecha || o.created_at || new Date().toISOString(),
-              total_estimado: this.parseStrictRemoteNumber(o.total_estimado),
-              total_real: o.total_real !== null && o.total_real !== undefined ? this.parseStrictRemoteNumber(o.total_real) : null,
-              items: Array.isArray(o.items)
-                ? o.items.map((item) => ({
-                    ...item,
-                    precio_unitario: this.parseStrictRemoteNumber(item?.precio_unitario),
-                    cantidad_solicitada: this.parseStrictRemoteNumber(item?.cantidad_solicitada),
-                    peso_real: item?.peso_real !== null && item?.peso_real !== undefined ? this.parseStrictRemoteNumber(item.peso_real) : null,
-                    subtotal: item?.subtotal !== undefined && item?.subtotal !== null ? this.parseStrictRemoteNumber(item.subtotal) : undefined
-                  }))
-                : null
-            };
-            this.validateOrderRecord(candidate);
-            mappedOrders.push(candidate);
-          } catch {
-            corruptRemoteCount++;
-          }
-        }
-        if (corruptRemoteCount > 0) {
-          this.ordersError = `Se omitieron ${corruptRemoteCount} registro(s) de pedido con formato o cantidades inválidas.`;
+      if (isStaff) {
+        const ordRes = await this.supabase.from("pedidos").select("*").order("id", { ascending: false }).limit(50);
+        if (ordRes?.error) {
+          this.ordersError = `No se pudieron cargar pedidos: ${ordRes.error.message || "sin autorización."}`;
+          this.syncError = this.ordersError;
           this.notify("orders_error", this.ordersError);
-        } else {
-          this.ordersError = null;
+          this.notify("sync_error", this.ordersError);
+        } else if (Array.isArray(ordRes?.data)) {
+          const mappedOrders = [];
+          let corruptRemoteCount = 0;
+          for (const o of ordRes.data) {
+            try {
+              const candidate = this.mapRemoteOrderRow(o);
+              this.validateOrderRecord(candidate);
+              mappedOrders.push(candidate);
+            } catch {
+              corruptRemoteCount++;
+            }
+          }
+          if (corruptRemoteCount > 0) {
+            this.ordersError = `Se omitieron ${corruptRemoteCount} registro(s) de pedido con formato o cantidades inválidas.`;
+            this.notify("orders_error", this.ordersError);
+          } else {
+            this.ordersError = null;
+          }
+          this.persistOrders(mappedOrders);
+          this.notify("orders_changed");
         }
-        this.persistOrders(mappedOrders);
-        this.notify("orders_changed");
+      } else {
+        await this.refreshOwnTrackingOrders();
       }
 
       this.notify("storage_sync");
     } catch (err) {
-      console.warn("Error sincronizando datos desde Supabase:", err);
+      this.syncError = `Error de sincronización: ${String(err?.message || err)}`;
+      this.cloudError = this.syncError;
+      this.notify("sync_error", this.syncError);
     }
   }
 
   subscribeToSupabaseRealtime() {
-    if (!this.supabase) return;
-    if (this.realtimeChannel) {
+    if (!this.supabase || typeof this.supabase.channel !== "function") return;
+    if (this.realtimeChannel && typeof this.supabase.removeChannel === "function") {
       this.supabase.removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
     }
 
-    this.realtimeChannel = this.supabase
-      .channel("nexo-pedidos-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
-        if (payload.eventType === "INSERT" && this.isStaffUnlocked()) {
+    let channel = this.supabase.channel("nexo-pedidos-realtime");
+    if (this.isStaffUnlocked()) {
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
+        if (payload?.eventType === "INSERT" && this.isStaffUnlocked()) {
           this.playAudioAlert();
         }
         this.pullFromSupabase();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "productos" }, () => {
-        this.pullFromSupabase();
-      })
-      .subscribe();
+      });
+    }
+    channel = channel.on("postgres_changes", { event: "*", schema: "public", table: "productos" }, () => {
+      this.pullFromSupabase();
+    });
+    this.realtimeChannel = channel.subscribe();
   }
 
-  async syncOrderToSupabase(order) {
-    if (!this.supabase || !order) return;
-    try {
-      const cleanPhone = order.cliente && order.cliente.telefono
-        ? String(order.cliente.telefono).replace(/\D/g, "")
-        : "";
-
-      // Garantizar que el cliente exista en Supabase antes de insertar el pedido para satisfacer la Foreign Key
-      if (cleanPhone) {
-        await this.supabase.from("clientes").upsert({
-          telefono: cleanPhone,
-          nombre: order.cliente.nombre || "Cliente",
-          direccion: order.cliente.direccion || "",
-          updated_at: new Date().toISOString()
-        });
-      }
-
-      const orderPayload = {
-        cliente_telefono: cleanPhone || null,
-        cliente_nombre: order.cliente?.nombre || "Cliente",
-        tipo_entrega: order.tipo_entrega || "RETIRO",
-        direccion_entrega: order.direccion_entrega || (order.tipo_entrega === "DELIVERY" ? "" : "Retiro en Mostrador"),
-        estado: order.estado || "PENDIENTE",
-        total_estimado: Number(order.total_estimado || 0),
-        total_real: order.total_real !== null && order.total_real !== undefined ? Number(order.total_real) : null,
-        items: Array.isArray(order.items) ? order.items : [],
-        fecha: order.fecha || new Date().toISOString()
-      };
-
-      if (!order._isNew && order.id) {
-        orderPayload.id = order.id;
-      }
-
-      const res = order._isNew
-        ? await this.supabase.from("pedidos").insert(orderPayload).select()
-        : await this.supabase.from("pedidos").upsert(orderPayload).select();
-
-      if (res.error) {
-        if (order._isNew && order.id) {
-          await this.supabase.from("pedidos").upsert({ id: order.id, ...orderPayload });
-        }
-        console.warn("Error guardando pedido en Supabase:", res.error);
-        this.notify("cloud_error", res.error.message);
-      } else if (res.data && res.data[0] && res.data[0].id) {
-        order._isNew = false;
-        const dbId = res.data[0].id;
-        const oldId = order.id;
-        order.id = dbId;
-        const currentOrders = this.getOrders();
-        this.persistOrders(currentOrders.map((o) => (o.id === oldId || o.id === dbId ? { ...o, id: dbId, _isNew: false } : o)));
-        if (this.getActiveOrderId() === oldId) {
-          this.setActiveOrderId(dbId);
-        }
-        this.notify("orders_changed");
-      }
-    } catch (err) {
-      console.warn("Error guardando pedido en Supabase:", err);
-    }
+  async syncOrderToSupabase() {
+    return null;
   }
 
   async syncProductToSupabase(product) {
-    if (!this.supabase || !product) return;
-    try {
-      const payload = {
-        id: product.id,
-        nombre: product.nombre,
-        categoria: product.categoria,
-        unidad_medida: product.unidad_medida,
-        precio: Number(product.precio),
-        disponible: Boolean(product.disponible),
-        paso: Number(product.paso || 0.5),
-        codigo: product.codigo ? String(product.codigo).trim().toUpperCase() : "",
-        detalle: product.detalle ? String(product.detalle).trim() : "",
-        archivado: Boolean(product.archivado),
-        imagen_id: product.imagen_id || null,
-        updated_at: new Date().toISOString()
-      };
-      const query = this.supabase.from("productos").upsert(payload);
-      const { staffPin } = this.getLocalSettings();
-      if (staffPin && typeof query.setHeader === "function") {
-        query.setHeader("x-nexo-staff-pin", staffPin);
-      }
-      const { error } = await query;
-      if (error) {
-        console.warn("Error guardando producto en Supabase:", error);
-        this.notify("cloud_error", error.message);
-      }
-    } catch (err) {
-      console.warn("Error guardando producto en Supabase:", err);
+    if (!this.supabase || !product) return { ok: true };
+    if (!this.canAccessStaffView("admin")) {
+      const msg = "Sólo el dueño autenticado puede modificar productos en el servidor.";
+      this.cloudError = msg;
+      this.notify("cloud_error", msg);
+      throw new Error(msg);
     }
+    const payload = {
+      id: product.id,
+      nombre: product.nombre,
+      categoria: product.categoria,
+      unidad_medida: product.unidad_medida,
+      precio: Number(product.precio),
+      disponible: Boolean(product.disponible),
+      paso: Number(product.paso || 0.5),
+      codigo: product.codigo ? String(product.codigo).trim().toUpperCase() : "",
+      detalle: product.detalle ? String(product.detalle).trim() : "",
+      archivado: Boolean(product.archivado),
+      imagen_id: product.imagen_id || null,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await this.supabase.from("productos").upsert(payload);
+    if (error) {
+      this.cloudError = error.message;
+      this.notify("cloud_error", error.message);
+      throw new Error(error.message);
+    }
+    return { ok: true };
   }
 
   // --- Mensajería WhatsApp ---
@@ -1540,8 +1730,11 @@ class Store {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
-  saveProduct(draft, productId = null) {
+  saveProduct(draft, productId = null, { sync = true } = {}) {
     if (!this.config.ok) throw new Error("Configuración inválida.");
+    if (!this.isDemo() && !this.canAccessStaffView("admin")) {
+      throw new Error("Sólo el dueño autenticado puede administrar productos.");
+    }
     const products = this.getAdminProducts();
     if (this.catalogError) throw new Error(this.catalogError);
     const previous = productId === null ? null : products.find((p) => p.id === productId);
@@ -1568,12 +1761,25 @@ class Store {
     }
     writeCritical(this.storageKeys.PRODUCTS, previous ? products.map((p) => p.id === id ? saved : p) : [...products, saved]);
     this.notify("products_changed");
-    this.syncProductToSupabase(saved);
+    if (sync && !this.isDemo() && this.supabase) {
+      this.syncProductToSupabase(saved).catch(() => {});
+    }
     return saved;
   }
 
-  archiveProduct(id, archived = true) {
+  async saveProductAsync(draft, productId = null) {
+    const saved = this.saveProduct(draft, productId, { sync: false });
+    if (!this.isDemo() && this.supabase) {
+      await this.syncProductToSupabase(saved);
+    }
+    return saved;
+  }
+
+  archiveProduct(id, archived = true, { sync = true } = {}) {
     if (!this.config.ok) throw new Error("Configuración inválida.");
+    if (!this.isDemo() && !this.canAccessStaffView("admin")) {
+      throw new Error("Sólo el dueño autenticado puede archivar productos.");
+    }
     const products = this.getAdminProducts();
     if (this.catalogError) throw new Error(this.catalogError);
     const product = products.find((p) => p.id === id);
@@ -1581,7 +1787,17 @@ class Store {
     const saved = { ...product, archivado: archived };
     writeCritical(this.storageKeys.PRODUCTS, products.map((p) => p.id === id ? saved : p));
     this.notify("products_changed");
-    this.syncProductToSupabase(saved);
+    if (sync && !this.isDemo() && this.supabase) {
+      this.syncProductToSupabase(saved).catch(() => {});
+    }
+    return saved;
+  }
+
+  async archiveProductAsync(id, archived = true) {
+    const saved = this.archiveProduct(id, archived, { sync: false });
+    if (!this.isDemo() && this.supabase) {
+      await this.syncProductToSupabase(saved);
+    }
     return saved;
   }
 
@@ -1604,27 +1820,27 @@ class Store {
 
   getCustomer(phone) {
     if (!phone) return null;
-    const cleanPhone = String(phone).replace(/\D/g, "");
-    if (!cleanPhone) return null;
+    const norm = normalizeArPhone(phone);
+    if (!norm.ok) return null;
     const customers = this.getCustomers();
-    return customers[cleanPhone] || null;
+    if (customers[norm.normalized]) return customers[norm.normalized];
+    for (const candidate of Object.values(customers)) {
+      if (candidate && candidate.telefono && normalizeArPhone(candidate.telefono).normalized === norm.normalized) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   saveCustomer(customer) {
     if (!customer || !customer.telefono) return null;
-    const cleanPhone = String(customer.telefono).replace(/\D/g, "");
-    if (!cleanPhone) return null;
+    const norm = normalizeArPhone(customer.telefono);
+    if (!norm.ok) return null;
+    const cleanPhone = norm.normalized;
     const customers = this.getCustomers();
     customers[cleanPhone] = { ...customer, telefono: cleanPhone };
     safeSet(this.storageKeys.CUSTOMERS, customers);
-    if (this.supabase) {
-      this.supabase.from("clientes").upsert({
-        telefono: cleanPhone,
-        nombre: customer.nombre || "Cliente",
-        direccion: customer.direccion || "",
-        updated_at: new Date().toISOString()
-      }).then(() => {});
-    }
+    // Anónimo/cliente nunca escribe directamente en tabla clientes por RLS (sólo create_order_atomic o staff).
     this.setCurrentUser(customers[cleanPhone]);
     this.notify("customers_changed");
     return customers[cleanPhone];
@@ -1753,6 +1969,36 @@ class Store {
     return { items, totalEstimado, totalItems };
   }
 
+  getCartAvailabilityIssues() {
+    const cart = this.getCart();
+    const items = Object.values(cart);
+    if (items.length === 0) return [];
+    const products = this.getAdminProducts();
+    const issues = [];
+    for (const item of items) {
+      const product = products.find((p) => p.id === item.producto_id);
+      if (!product) {
+        issues.push({ producto_id: item.producto_id, nombre: item.nombre, reason: "removed", message: `${item.nombre} ya no forma parte del catálogo.` });
+      } else if (product.archivado) {
+        issues.push({ producto_id: item.producto_id, nombre: item.nombre, reason: "archived", message: `${item.nombre} fue archivado por el comercio.` });
+      } else if (!product.disponible) {
+        issues.push({ producto_id: item.producto_id, nombre: item.nombre, reason: "paused", message: `${item.nombre} quedó sin stock o pausado.` });
+      } else if (product.precio !== item.precio_unitario || product.unidad_medida !== item.unidad_medida || (item.paso_solicitado !== undefined && product.paso !== item.paso_solicitado)) {
+        issues.push({ producto_id: item.producto_id, nombre: item.nombre, reason: "changed", message: `Cambió el precio, unidad o paso de ${item.nombre}.` });
+      }
+    }
+    return issues;
+  }
+
+  revalidateCartAgainstCatalog() {
+    const issues = this.getCartAvailabilityIssues();
+    this.cartWarnings = issues;
+    if (issues.length > 0) {
+      this.notify("cart_changed", { issues });
+    }
+    return issues;
+  }
+
   // --- Pedidos ---
   parseStrictRemoteNumber(value) {
     if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
@@ -1788,7 +2034,7 @@ class Store {
     if (!["PENDIENTE", "EN_PREPARACION", "LISTO", "ENTREGADO", "CANCELADO"].includes(order.estado)) {
       throw new Error("Estado de pedido inválido.");
     }
-    if (!["RETIRO", "DELIVERY"].includes(order.tipo_entrega)) {
+    if (order.tipo_entrega !== undefined && !["RETIRO", "DELIVERY"].includes(order.tipo_entrega)) {
       throw new Error("Tipo de entrega inválido.");
     }
     if (!order.cliente || typeof order.cliente !== "object" || Array.isArray(order.cliente) || typeof order.cliente.nombre !== "string" || !order.cliente.nombre.trim() || typeof order.cliente.telefono !== "string") {
@@ -1848,22 +2094,186 @@ class Store {
 
   isSameCustomer(phoneA, phoneB) {
     if (!phoneA || !phoneB) return false;
-    const a = String(phoneA).replace(/\D/g, "");
-    const b = String(phoneB).replace(/\D/g, "");
-    if (a === b) return true;
-    // Manejo de prefijos internacionales y locales (ej: 54911 vs 11)
-    if (a.length >= 8 && b.length >= 8) {
-      return a.slice(-8) === b.slice(-8);
+    const normA = normalizeArPhone(phoneA);
+    const normB = normalizeArPhone(phoneB);
+    if (!normA.ok || !normB.ok) return false;
+    return normA.normalized === normB.normalized;
+  }
+
+  // --- Referencias locales de seguimiento por token opaco (AUD-06) ---
+  getOwnTrackingRefs() {
+    const raw = safeGet(this.storageKeys.OWN_TRACKING_REFS, []);
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((ref) => ref && Number.isSafeInteger(Number(ref.orderId)) && typeof ref.token === "string" && ref.token.length >= 32);
+  }
+
+  saveOwnTrackingRef(orderId, token) {
+    const numId = Number(orderId);
+    if (!Number.isSafeInteger(numId) || numId <= 0 || typeof token !== "string" || token.trim().length < 32) return;
+    const cleanToken = token.trim();
+    const refs = this.getOwnTrackingRefs().filter((r) => Number(r.orderId) !== numId);
+    refs.unshift({ orderId: numId, token: cleanToken, savedAt: new Date().toISOString() });
+    safeSet(this.storageKeys.OWN_TRACKING_REFS, refs.slice(0, 30));
+  }
+
+  removeOwnTrackingRef(orderId) {
+    const numId = Number(orderId);
+    const refs = this.getOwnTrackingRefs().filter((r) => Number(r.orderId) !== numId);
+    safeSet(this.storageKeys.OWN_TRACKING_REFS, refs);
+  }
+
+  getTrackingTokenForOrder(orderId) {
+    const numId = Number(orderId);
+    const found = this.getOwnTrackingRefs().find((r) => Number(r.orderId) === numId);
+    return found ? found.token : null;
+  }
+
+  getTrackingLink(orderId, token = null) {
+    const effectiveToken = token || this.getTrackingTokenForOrder(orderId);
+    if (!effectiveToken || !orderId) return "";
+    // Fragmento URL (#track=...) para que el token jamás viaje en query string ni logs HTTP.
+    return `#track=${Number(orderId)}:${encodeURIComponent(effectiveToken)}`;
+  }
+
+  parseTrackingHash(hashStr = null) {
+    const source = hashStr !== null
+      ? String(hashStr)
+      : (typeof window !== "undefined" ? String(window.location.hash || "") : "");
+    const match = source.match(/^#?track=(\d+):([^&\s]+)$/);
+    if (!match) return null;
+    const orderId = Number(match[1]);
+    let token = "";
+    try { token = decodeURIComponent(match[2]).trim(); } catch { return null; }
+    if (!Number.isSafeInteger(orderId) || orderId <= 0 || token.length < 32 || !/^[A-Za-z0-9_-]{32,128}$/.test(token)) {
+      return null;
     }
-    return false;
+    return { orderId, token };
+  }
+
+  async resolvePrivateTrackingLink(hashOrRef = null) {
+    const parsed = this.parseTrackingHash(hashOrRef);
+    if (!parsed) {
+      return { ok: false, error: "El enlace de seguimiento es inválido o está incompleto." };
+    }
+    if (this.isDemo()) {
+      const expectedToken = this.getTrackingTokenForOrder(parsed.orderId);
+      const localOrder = this.getOrders().find((o) => o.id === parsed.orderId);
+      if (!expectedToken || expectedToken !== parsed.token || !localOrder) {
+        return { ok: false, notFoundOrRevoked: true, error: "Pedido no disponible o enlace revocado." };
+      }
+      this.setActiveOrderId(localOrder.id);
+      return { ok: true, order: localOrder };
+    }
+    if (!this.supabase) {
+      return { ok: false, error: "Sin conexión con el servidor para verificar el seguimiento." };
+    }
+    const res = await this.supabase.rpc("get_order_by_tracking_token", {
+      p_order_id: parsed.orderId,
+      p_token: parsed.token
+    });
+    const rows = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []);
+    if (res?.error || rows.length === 0) {
+      this.removeOwnTrackingRef(parsed.orderId);
+      return { ok: false, notFoundOrRevoked: true, error: "Pedido no disponible o enlace revocado." };
+    }
+    const mapped = this.mapRemoteOrderRow(rows[0]);
+    this.validateOrderRecord(mapped);
+    this.saveOwnTrackingRef(mapped.id, parsed.token);
+    const others = this.getOrders().filter((o) => o.id !== mapped.id);
+    this.persistOrders([mapped, ...others]);
+    this.setActiveOrderId(mapped.id);
+    this.notify("orders_changed");
+    return { ok: true, order: mapped };
+  }
+
+  async refreshOwnTrackingOrders() {
+    if (!this.supabase || this.isDemo()) return;
+    const refs = this.getOwnTrackingRefs();
+    if (refs.length === 0) {
+      this.persistOrders([]);
+      this.notify("orders_changed");
+      return;
+    }
+    const validOrders = [];
+    let revokedCount = 0;
+    for (const ref of refs) {
+      const res = await this.supabase.rpc("get_order_by_tracking_token", {
+        p_order_id: ref.orderId,
+        p_token: ref.token
+      });
+      if (res?.error) {
+        // Error transitorio: no borrar la referencia ni falsificar estado.
+        const cached = this.getOrders().find((o) => o.id === ref.orderId);
+        if (cached) validOrders.push(cached);
+        continue;
+      }
+      const rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
+      if (rows.length === 0) {
+        revokedCount++;
+        this.removeOwnTrackingRef(ref.orderId);
+        continue;
+      }
+      try {
+        const mapped = this.mapRemoteOrderRow(rows[0]);
+        this.validateOrderRecord(mapped);
+        validOrders.push(mapped);
+      } catch {
+        // Ignorar fila corrupta
+      }
+    }
+    if (revokedCount > 0 && validOrders.length === 0 && this.getActiveOrderId()) {
+      this.setActiveOrderId(null);
+    }
+    this.persistOrders(validOrders);
+    this.notify("orders_changed");
+  }
+
+  async revokeOrderTrackingTokenAsync(orderId) {
+    if (this.isDemo()) {
+      this.removeOwnTrackingRef(orderId);
+      if (this.getActiveOrderId() === orderId) this.setActiveOrderId(null);
+      this.notify("orders_changed");
+      return true;
+    }
+    if (!this.supabase || !this.isStaffUnlocked()) {
+      throw new Error("Sólo el personal autenticado puede revocar enlaces de seguimiento.");
+    }
+    const res = await this.supabase.rpc("revoke_order_tracking_token", { p_order_id: Number(orderId) });
+    if (res?.error) throw new Error(res.error.message || "No se pudo revocar el enlace.");
+    this.removeOwnTrackingRef(orderId);
+    this.notify("orders_changed");
+    return Boolean(res?.data ?? true);
+  }
+
+  getPendingCheckout() {
+    return safeGet(this.storageKeys.PENDING_CHECKOUT, null);
+  }
+
+  clearPendingCheckout() {
+    safeRemove(this.storageKeys.PENDING_CHECKOUT);
+    this.notify("pending_checkout_changed", null);
   }
 
   getActiveOrder(userPhone = null) {
     const orders = this.getOrders();
+    if (!this.isDemo() && !this.isStaffUnlocked()) {
+      const ownIds = new Set(this.getOwnTrackingRefs().map((r) => Number(r.orderId)));
+      const activeId = this.getActiveOrderId();
+      if (activeId && ownIds.has(Number(activeId))) {
+        const active = orders.find((o) => o.id === Number(activeId));
+        if (active && active.estado !== "ENTREGADO" && active.estado !== "CANCELADO") return active;
+      }
+      const ongoingOwn = orders.find((o) => ownIds.has(Number(o.id)) && o.estado !== "ENTREGADO" && o.estado !== "CANCELADO");
+      if (ongoingOwn) {
+        this.setActiveOrderId(ongoingOwn.id);
+        return ongoingOwn;
+      }
+      return null;
+    }
+
     const targetPhone = userPhone || this.getCurrentUser()?.telefono;
     if (!targetPhone) return null;
 
-    // Recover a durable receipt even if the previous active shortcut could not be updated.
     const received = orders.find((o) => o.checkout_cart_key && this.isSameCustomer(o.cliente?.telefono, targetPhone));
     if (received && received.estado !== "ENTREGADO" && received.estado !== "CANCELADO") return received;
     const activeId = this.getActiveOrderId();
@@ -1876,7 +2286,6 @@ class Store {
       }
     }
 
-    // Si el ID guardado no pertenece a este cliente o ya fue entregado, buscar su pedido activo más reciente
     const latestUserOrder = orders.find((o) => {
       const isOwner = this.isSameCustomer(o.cliente?.telefono, targetPhone);
       const isOngoing = o.estado !== "ENTREGADO" && o.estado !== "CANCELADO";
@@ -1892,6 +2301,10 @@ class Store {
   }
 
   getOrdersByCustomer(phone) {
+    if (!this.isDemo() && !this.isStaffUnlocked()) {
+      const ownIds = new Set(this.getOwnTrackingRefs().map((r) => Number(r.orderId)));
+      return this.getOrders().filter((o) => ownIds.has(Number(o.id)));
+    }
     if (!phone) return [];
     return this.getOrders().filter((o) => this.isSameCustomer(o.cliente?.telefono, phone));
   }
@@ -1905,7 +2318,7 @@ class Store {
     const warnings = [];
     try { writeCritical(this.storageKeys.ACTIVE_ORDER, order.id); }
     catch { warnings.push("No se pudo actualizar el acceso al pedido."); }
-    if (this.checkoutCartKey() === order.checkout_cart_key) {
+    if (!order.checkout_cart_key || this.checkoutCartKey() === order.checkout_cart_key) {
       try {
         localStorage.removeItem(this.storageKeys.CART);
         delete memoryFallback[this.storageKeys.CART];
@@ -1914,6 +2327,7 @@ class Store {
     this.checkoutWarning = warnings.length
       ? `Pedido #${order.id} recibido y guardado. ${warnings.join(" ")} Podés volver a abrirlo y reintentar la limpieza cuando se restablezca el almacenamiento.`
       : null;
+    this.notify("cart_changed");
     return order;
   }
 
@@ -1923,6 +2337,9 @@ class Store {
 
   createOrder({ cliente, tipo_entrega, direccion_entrega }) {
     if (!this.config.ok) return null;
+    if (!this.isDemo()) {
+      throw new Error("En producción el pedido se confirma de forma atómica contra el servidor (submitOrder).");
+    }
     const { items, totalEstimado } = this.getCartSummary();
     const orders = this.getOrders();
     const cartKey = this.checkoutCartKey();
@@ -1944,8 +2361,8 @@ class Store {
       id: newId, cliente, tipo_entrega,
       direccion_entrega: tipo_entrega === "DELIVERY" ? direccion_entrega : "Retiro en Mostrador",
       estado: "PENDIENTE", fecha: new Date().toISOString(),
+      version: 1,
       total_estimado: totalEstimado, total_real: null, checkout_cart_key: cartKey,
-      _isNew: true,
       items: items.map((item) => ({
         producto_id: item.producto_id, nombre: item.nombre, categoria: item.categoria,
         unidad_medida: item.unidad_medida, precio_unitario: item.precio_unitario,
@@ -1957,27 +2374,250 @@ class Store {
     };
     this.persistOrders([newOrder, ...orders]);
     this.finishCheckout(newOrder);
-    this.syncOrderToSupabase(newOrder);
     this.playAudioAlert();
     this.notify("order_created", newOrder);
     return newOrder;
   }
 
+  async submitOrder({ cliente, tipo_entrega, direccion_entrega }) {
+    if (!this.config.ok) {
+      return { ok: false, status: "failed", error: "Configuración inválida; no se puede crear el pedido." };
+    }
+
+    if (this.isDemo()) {
+      try {
+        const order = this.createOrder({ cliente, tipo_entrega, direccion_entrega });
+        if (!order) {
+          return { ok: false, status: "failed", error: "El carrito está vacío." };
+        }
+        let token = this.getTrackingTokenForOrder(order.id);
+        if (!token) {
+          token = generateTrackingToken();
+          this.saveOwnTrackingRef(order.id, token);
+        }
+        return {
+          ok: true,
+          status: "confirmed",
+          order,
+          idempotent: false,
+          trackingToken: token,
+          trackingLink: this.getTrackingLink(order.id, token)
+        };
+      } catch (err) {
+        return { ok: false, status: "failed", error: String(err?.message || err) };
+      }
+    }
+
+    if (!this.supabase) {
+      return { ok: false, status: "failed", error: this.cloudError || "Sin conexión con el servidor para enviar el pedido." };
+    }
+    if (this.syncError || this.catalogError) {
+      return { ok: false, status: "failed", error: this.syncError || this.catalogError };
+    }
+
+    const { items } = this.getCartSummary();
+    if (items.length === 0) {
+      return { ok: false, status: "failed", error: "El carrito está vacío." };
+    }
+
+    const issues = this.getCartAvailabilityIssues();
+    if (issues.length > 0) {
+      return { ok: false, status: "failed", error: issues[0].message, issues };
+    }
+
+    const normPhone = normalizeArPhone(cliente?.telefono);
+    if (!normPhone.ok) {
+      return { ok: false, status: "failed", error: "Ingresá un número de WhatsApp válido con código de área (10 dígitos AR)." };
+    }
+    const cleanPhone = normPhone.normalized;
+    const cleanName = String(cliente?.nombre || "").trim();
+    if (cleanName.length < 2) {
+      return { ok: false, status: "failed", error: "Ingresá tu nombre completo para identificar el pedido." };
+    }
+    const cleanDelivery = tipo_entrega === "DELIVERY" ? "DELIVERY" : "RETIRO";
+    const cleanAddress = cleanDelivery === "DELIVERY"
+      ? String(direccion_entrega || "").trim()
+      : "Retiro en Mostrador";
+    if (cleanDelivery === "DELIVERY" && !cleanAddress) {
+      return { ok: false, status: "failed", error: "Ingresá la dirección de entrega para delivery." };
+    }
+
+    const itemsPayload = items
+      .map((i) => ({ producto_id: i.producto_id, cantidad: i.cantidad }))
+      .sort((a, b) => String(a.producto_id).localeCompare(String(b.producto_id)));
+
+    const payloadSignature = JSON.stringify({
+      telefono: cleanPhone,
+      nombre: cleanName,
+      tipo_entrega: cleanDelivery,
+      direccion: cleanAddress,
+      items: itemsPayload
+    });
+
+    const cartKey = this.checkoutCartKey();
+    const existingPending = this.getPendingCheckout();
+    let pending;
+    if (
+      existingPending &&
+      existingPending.payloadSignature === payloadSignature &&
+      typeof existingPending.attemptKey === "string" &&
+      typeof existingPending.token === "string" &&
+      typeof existingPending.tokenHash === "string"
+    ) {
+      pending = { ...existingPending, status: "pending", cartKey };
+    } else {
+      const token = generateTrackingToken();
+      const tokenHash = await sha256Hex(token);
+      pending = {
+        attemptKey: this.localProductId(),
+        token,
+        tokenHash,
+        payloadSignature,
+        cartKey,
+        status: "pending",
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    writeCritical(this.storageKeys.PENDING_CHECKOUT, pending);
+    this.notify("pending_checkout_changed", pending);
+
+    try {
+      const res = await this.supabase.rpc("create_order_atomic", {
+        p_cliente_telefono: cleanPhone,
+        p_cliente_nombre: cleanName,
+        p_tipo_entrega: cleanDelivery,
+        p_direccion_entrega: cleanAddress,
+        p_items: itemsPayload,
+        p_checkout_cart_key: pending.attemptKey,
+        p_tracking_token_hash: pending.tokenHash
+      });
+
+      if (res?.error) {
+        return this.handleCheckoutError(res.error, pending);
+      }
+
+      const payload = res?.data;
+      if (!payload || !payload.order) {
+        safeSet(this.storageKeys.PENDING_CHECKOUT, { ...pending, status: "unknown", updatedAt: new Date().toISOString() });
+        this.notify("pending_checkout_changed", this.getPendingCheckout());
+        return {
+          ok: false,
+          status: "unknown",
+          canRetry: true,
+          attemptKey: pending.attemptKey,
+          error: "Respuesta incompleta del servidor. Tu carrito sigue guardado; reintentá verificar sin riesgo de duplicar."
+        };
+      }
+
+      const effectiveToken = typeof payload.tracking_token === "string" && payload.tracking_token.length >= 32
+        ? payload.tracking_token
+        : pending.token;
+
+      const mappedOrder = this.mapRemoteOrderRow(payload.order);
+      this.validateOrderRecord(mappedOrder);
+
+      this.saveOwnTrackingRef(mappedOrder.id, effectiveToken);
+      const others = this.getOrders().filter((o) => o.id !== mappedOrder.id);
+      this.persistOrders([mappedOrder, ...others]);
+      this.clearPendingCheckout();
+      this.finishCheckout({ ...mappedOrder, checkout_cart_key: cartKey });
+      this.playAudioAlert();
+      this.notify("order_created", mappedOrder);
+      this.notify("orders_changed");
+
+      return {
+        ok: true,
+        status: "confirmed",
+        order: mappedOrder,
+        idempotent: Boolean(payload.idempotent),
+        trackingToken: effectiveToken,
+        trackingLink: this.getTrackingLink(mappedOrder.id, effectiveToken)
+      };
+    } catch (err) {
+      return this.handleCheckoutError(err, pending);
+    }
+  }
+
+  async handleCheckoutError(err, pending) {
+    const rawMsg = String(err?.message || err || "Error desconocido");
+    const status = Number(err?.status || err?.code || 0);
+    const isRateLimit = /RATE_LIMIT_EXCEEDED/i.test(rawMsg);
+    const isRateUnconfigured = /RATE_LIMIT_UNCONFIGURED/i.test(rawMsg);
+    const isProductUnavailable = /PRODUCT_UNAVAILABLE/i.test(rawMsg);
+    const isConflict = /CONFLICT/i.test(rawMsg);
+    const isValidation = /VALIDATION_ERROR/i.test(rawMsg);
+    const isDeterministicRejection =
+      isRateLimit ||
+      isRateUnconfigured ||
+      isProductUnavailable ||
+      isConflict ||
+      isValidation ||
+      (status >= 400 && status < 500 && status !== 408);
+
+    if (isDeterministicRejection) {
+      this.clearPendingCheckout();
+      if (isProductUnavailable) {
+        try { await this.pullFromSupabase(); } catch {}
+      }
+      const retryAfterSeconds = extractRetryAfterSeconds(rawMsg);
+      let friendly = rawMsg.replace(/^(RATE_LIMIT_EXCEEDED|RATE_LIMIT_UNCONFIGURED|PRODUCT_UNAVAILABLE|VALIDATION_ERROR|CONFLICT):\s*/i, "");
+      if (isRateLimit) {
+        friendly = retryAfterSeconds
+          ? `Demasiados pedidos seguidos. Esperá ${retryAfterSeconds} segundos para volver a intentar.`
+          : "Demasiados pedidos seguidos. Esperá unos instantes antes de volver a intentar.";
+      }
+      if (isRateUnconfigured) {
+        friendly = "El sistema de límites no está disponible en el servidor; por seguridad el checkout quedó bloqueado temporalmente.";
+      }
+      return {
+        ok: false,
+        status: "failed",
+        retryAfterSeconds,
+        error: friendly
+      };
+    }
+
+    // Falla de transporte, timeout, caída de red o HTTP 5xx: estado desconocido (NO limpiar carrito ni attemptKey)
+    const unknownState = {
+      ...pending,
+      status: "unknown",
+      lastError: rawMsg,
+      updatedAt: new Date().toISOString()
+    };
+    safeSet(this.storageKeys.PENDING_CHECKOUT, unknownState);
+    this.notify("pending_checkout_changed", unknownState);
+    return {
+      ok: false,
+      status: "unknown",
+      canRetry: true,
+      attemptKey: pending.attemptKey,
+      error: "No pudimos verificar si el servidor recibió tu pedido por un corte o demora de conexión. Tu carrito sigue guardado; reintentá para recuperar o confirmar sin duplicar."
+    };
+  }
+
+  requireDemoOrSyncGuard() {
+    if (!this.isDemo()) {
+      throw new Error("En producción esta operación requiere sincronización autoritativa con el servidor.");
+    }
+  }
+
   updateOrderStatus(orderId, newStatus) {
+    this.requireDemoOrSyncGuard();
     if (newStatus === "LISTO") return this.finalizeOrderWeighing(orderId);
     const previous = this.getOrders().find((o) => o.id === orderId);
     if (previous && ["LISTO", "ENTREGADO"].includes(previous.estado) && ["PENDIENTE", "EN_PREPARACION"].includes(newStatus)) throw new Error("Un pedido finalizado no se puede reabrir desde preparación.");
     let targetOrder = null;
     const orders = this.getOrders().map((order) => {
       if (order.id === orderId) {
-        targetOrder = { ...order, estado: newStatus, updated_at: new Date().toISOString() };
+        targetOrder = { ...order, estado: newStatus, version: (order.version || 1) + 1, updated_at: new Date().toISOString() };
         return targetOrder;
       }
       return order;
     });
     this.persistOrders(orders);
-    if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
+    return targetOrder;
   }
 
   preparationItemResolved(item) {
@@ -1999,186 +2639,215 @@ class Store {
     return Number.isFinite(parsed) && parsed > 0 && (unit === "KG" || Number.isInteger(parsed)) ? parsed : null;
   }
 
-  updateItemWeight(orderId, itemIndex, pesoReal, { notify = true, confirmUnit = false } = {}) {
-    const orders = this.getOrders();
-    const order = orders.find((o) => o.id === orderId);
-    if (!order || !order.items[itemIndex] || !["PENDIENTE", "EN_PREPARACION"].includes(order.estado)) throw new Error("El pedido o ítem no está disponible para preparación.");
+  computeWeightUpdateOrder(order, itemIndex, pesoReal, { confirmUnit = false } = {}) {
+    if (!order || !order.items[itemIndex] || !["PENDIENTE", "EN_PREPARACION"].includes(order.estado)) {
+      throw new Error("El pedido o ítem no está disponible para preparación.");
+    }
     const previous = order.items[itemIndex];
     const peso = this.parsePreparedValue(pesoReal, previous.unidad_medida);
-    if (confirmUnit && previous.unidad_medida === "UNIDAD" && peso === null) throw new Error("Ingresá una cantidad entera mayor que cero; para cero usá Sin Stock.");
-    if (peso !== null && !Number.isFinite(peso * previous.precio_unitario)) throw new Error("El importe de preparación no es válido.");
+    if (confirmUnit && previous.unidad_medida === "UNIDAD" && peso === null) {
+      throw new Error("Ingresá una cantidad entera mayor que cero; para cero usá Sin Stock.");
+    }
+    if (peso !== null && !Number.isFinite(peso * previous.precio_unitario)) {
+      throw new Error("El importe de preparación no es válido.");
+    }
     const item = { ...previous, peso_real: peso, subtotal: previous.sin_stock ? 0 : peso === null ? 0 : Math.round(peso * previous.precio_unitario) };
-    if (previous.unidad_medida === "UNIDAD") item.confirmado_preparacion = peso !== null && (confirmUnit || (previous.peso_real === peso && previous.confirmado_preparacion === true));
-    const items = order.items.map((i, index) => index === itemIndex ? item : i);
+    if (previous.unidad_medida === "UNIDAD") {
+      item.confirmado_preparacion = peso !== null && (confirmUnit || (previous.peso_real === peso && previous.confirmado_preparacion === true));
+    }
+    const items = order.items.map((i, index) => (index === itemIndex ? item : i));
     const totalReal = items.every((i) => i.sin_stock || this.parsePreparedValue(i.peso_real, i.unidad_medida) !== null)
-      ? items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0) : null;
-    const target = { ...order, items, total_real: totalReal };
+      ? items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0)
+      : null;
+    return { items, totalReal };
+  }
+
+  updateItemWeight(orderId, itemIndex, pesoReal, { notify = true, confirmUnit = false } = {}) {
+    this.requireDemoOrSyncGuard();
+    const orders = this.getOrders();
+    const order = orders.find((o) => o.id === orderId);
+    const { items, totalReal } = this.computeWeightUpdateOrder(order, itemIndex, pesoReal, { confirmUnit });
+    const target = { ...order, items, total_real: totalReal, version: (order.version || 1) + 1 };
     this.persistOrders(orders.map((o) => o.id === orderId ? target : o));
-    this.syncOrderToSupabase(target);
     if (notify) this.notify("orders_changed");
     return target;
   }
 
-  toggleItemOutOfStock(orderId, itemIndex) {
-    const orders = this.getOrders();
-    const order = orders.find((o) => o.id === orderId);
-    if (!order || !order.items[itemIndex] || !["PENDIENTE", "EN_PREPARACION"].includes(order.estado)) throw new Error("El ítem no está disponible para preparación.");
+  computeOutOfStockOrder(order, itemIndex) {
+    if (!order || !order.items[itemIndex] || !["PENDIENTE", "EN_PREPARACION"].includes(order.estado)) {
+      throw new Error("El ítem no está disponible para preparación.");
+    }
     const previous = order.items[itemIndex];
     const item = { ...previous, sin_stock: !previous.sin_stock };
     if (item.unidad_medida === "UNIDAD") item.confirmado_preparacion = false;
     const qty = this.parsePreparedValue(item.peso_real, item.unidad_medida);
     item.subtotal = item.sin_stock || qty === null ? 0 : Math.round(qty * item.precio_unitario);
-    const items = order.items.map((i, index) => index === itemIndex ? item : i);
-    const totalReal = items.filter((i) => !i.sin_stock && i.peso_real !== null).reduce((sum, i) => sum + i.subtotal, 0);
-    const target = { ...order, items, total_real: totalReal };
+    const items = order.items.map((i, index) => (index === itemIndex ? item : i));
+    const allResolved = items.every((i) => i.sin_stock || this.parsePreparedValue(i.peso_real, i.unidad_medida) !== null);
+    const totalReal = allResolved
+      ? items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0)
+      : items.some((i) => !i.sin_stock && i.peso_real !== null)
+      ? items.filter((i) => !i.sin_stock && i.peso_real !== null).reduce((sum, i) => sum + i.subtotal, 0)
+      : null;
+    return { items, totalReal };
+  }
+
+  toggleItemOutOfStock(orderId, itemIndex) {
+    this.requireDemoOrSyncGuard();
+    const orders = this.getOrders();
+    const order = orders.find((o) => o.id === orderId);
+    const { items, totalReal } = this.computeOutOfStockOrder(order, itemIndex);
+    const target = { ...order, items, total_real: totalReal, version: (order.version || 1) + 1 };
     this.persistOrders(orders.map((o) => o.id === orderId ? target : o));
-    this.syncOrderToSupabase(target);
     this.notify("orders_changed");
     return target;
   }
 
-  finalizeOrderWeighing(orderId, weightsMap = null) {
-    const orders = this.getOrders();
-    const order = orders.find((o) => o.id === orderId);
+  computeFinalizeItems(order, weightsMap = null) {
     if (!order) throw new Error("No se encontró el pedido.");
-    if (["LISTO", "ENTREGADO"].includes(order.estado)) return order;
-    if (order.estado === "CANCELADO" || order.items.length === 0) throw new Error("Agregá un ítem o cancelá el pedido vacío; no se puede finalizar así.");
+    if (["LISTO", "ENTREGADO"].includes(order.estado)) return { alreadyFinalized: true, items: order.items, totalReal: order.total_real };
+    if (order.estado === "CANCELADO" || order.items.length === 0) {
+      throw new Error("Agregá un ítem o cancelá el pedido vacío; no se puede finalizar así.");
+    }
     const items = order.items.map((item, index) => {
       if (item.sin_stock) return { ...item, subtotal: 0 };
       const value = weightsMap && Object.hasOwn(weightsMap, index) ? weightsMap[index] : item.peso_real;
       const qty = this.parsePreparedValue(value, item.unidad_medida);
       const prepared = { ...item, peso_real: qty };
-      if (!this.preparationItemResolved(prepared) || (item.unidad_medida === "UNIDAD" && qty !== item.peso_real)) throw new Error("Falta preparar o confirmar ítems. Revisá cantidades y pesos antes de finalizar.");
-      if (!Number.isFinite(item.precio_unitario) || item.precio_unitario < 0) throw new Error("El precio del pedido no es válido.");
+      if (!this.preparationItemResolved(prepared) || (item.unidad_medida === "UNIDAD" && qty !== item.peso_real)) {
+        throw new Error("Falta preparar o confirmar ítems. Revisá cantidades y pesos antes de finalizar.");
+      }
+      if (!Number.isFinite(item.precio_unitario) || item.precio_unitario < 0) {
+        throw new Error("El precio del pedido no es válido.");
+      }
       const subtotal = Math.round(qty * item.precio_unitario);
       if (!Number.isFinite(subtotal)) throw new Error("El importe final no es válido.");
       return { ...prepared, subtotal };
     });
-    const target = { ...order, items, total_real: items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0), estado: "LISTO", finalizado_at: new Date().toISOString() };
+    const totalReal = items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + i.subtotal, 0);
+    return { alreadyFinalized: false, items, totalReal };
+  }
+
+  finalizeOrderWeighing(orderId, weightsMap = null) {
+    this.requireDemoOrSyncGuard();
+    const orders = this.getOrders();
+    const order = orders.find((o) => o.id === orderId);
+    const { alreadyFinalized, items, totalReal } = this.computeFinalizeItems(order, weightsMap);
+    if (alreadyFinalized) return order;
+    const target = { ...order, items, total_real: totalReal, estado: "LISTO", finalizado_at: new Date().toISOString(), version: (order.version || 1) + 1 };
     this.persistOrders(orders.map((o) => o.id === orderId ? target : o));
-    this.syncOrderToSupabase(target);
     this.notify("orders_changed");
     this.notify("order_ready", orderId);
     return target;
   }
 
-  // Eliminar o cancelar completamente un pedido
   deleteOrder(orderId) {
+    this.requireDemoOrSyncGuard();
     const orders = this.getOrders().filter((o) => o.id !== orderId);
     this.persistOrders(orders);
-    if (this.supabase) {
-      this.supabase.from("pedidos").update({
-        estado: "CANCELADO",
-        cancelado_at: new Date().toISOString()
-      }).eq("id", orderId).then(() => {});
-    }
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);
     }
     this.notify("orders_changed");
   }
 
-  // Cancelar un pedido de forma lógica (soft cancellation)
   cancelOrder(orderId) {
+    this.requireDemoOrSyncGuard();
     let targetOrder = null;
     const orders = this.getOrders().map((order) => {
       if (order.id === orderId) {
         targetOrder = {
           ...order,
           estado: "CANCELADO",
-          cancelado_at: new Date().toISOString()
+          cancelado_at: new Date().toISOString(),
+          version: (order.version || 1) + 1
         };
         return targetOrder;
       }
       return order;
     });
     this.persistOrders(orders);
-    if (targetOrder) this.syncOrderToSupabase(targetOrder);
     if (this.getActiveOrderId() === orderId) {
       this.setActiveOrderId(null);
     }
     this.notify("orders_changed");
+    return targetOrder;
   }
 
-  // Quitar un producto específico del pedido
+  computeRemoveItemState(order, itemIndex) {
+    if (!order || !["PENDIENTE", "EN_PREPARACION"].includes(order.estado)) {
+      throw new Error("El pedido finalizado o cancelado conserva sus ítems.");
+    }
+    const items = order.items.filter((_, idx) => idx !== itemIndex);
+    const totalEstimado = items.reduce((sum, i) => sum + Math.round(i.cantidad_solicitada * i.precio_unitario), 0);
+    const hasWeighedItems = items.some((i) => i.peso_real !== null || i.sin_stock);
+    const totalReal = hasWeighedItems
+      ? items.filter((i) => !i.sin_stock && i.peso_real !== null).reduce((sum, i) => sum + (i.subtotal || 0), 0)
+      : null;
+    return { items, totalEstimado, totalReal };
+  }
+
   removeItemFromOrder(orderId, itemIndex) {
-    const current = this.getOrders().find((o) => o.id === orderId);
-    if (current && !["PENDIENTE", "EN_PREPARACION"].includes(current.estado)) throw new Error("El pedido finalizado o cancelado conserva sus ítems.");
-    let targetOrder = null;
-    const orders = this.getOrders().map((order) => {
-      if (order.id === orderId) {
-        const items = order.items.filter((_, idx) => idx !== itemIndex);
-        const totalEstimado = items.reduce((sum, i) => sum + Math.round(i.cantidad_solicitada * i.precio_unitario), 0);
-
-        // Recalcular total_real si habia pesaje en curso o total_real existente
-        const hasWeighedItems = items.some((i) => i.peso_real !== null);
-        const totalReal = hasWeighedItems
-          ? items.filter((i) => !i.sin_stock && i.peso_real !== null).reduce((sum, i) => sum + (i.subtotal || 0), 0)
-          : null;
-
-        targetOrder = { ...order, items, total_estimado: totalEstimado, total_real: totalReal };
-        return targetOrder;
-      }
-      return order;
-    });
-    this.persistOrders(orders);
-    if (targetOrder) this.syncOrderToSupabase(targetOrder);
+    this.requireDemoOrSyncGuard();
+    const orders = this.getOrders();
+    const order = orders.find((o) => o.id === orderId);
+    const { items, totalEstimado, totalReal } = this.computeRemoveItemState(order, itemIndex);
+    const targetOrder = { ...order, items, total_estimado: totalEstimado, total_real: totalReal, version: (order.version || 1) + 1 };
+    this.persistOrders(orders.map((o) => (o.id === orderId ? targetOrder : o)));
     this.notify("orders_changed");
+    return targetOrder;
   }
 
-  // Agregar un producto al pedido en preparación
-  addProductToOrder(orderId, productId, cantidad) {
+  computeAddItemState(order, productId, cantidad) {
     const product = this.getProducts().find((p) => p.id === productId);
     if (!product || !product.disponible) throw new Error("El producto está pausado, archivado o no disponible.");
-    const current = this.getOrders().find((o) => o.id === orderId);
-    if (!current || !["PENDIENTE", "EN_PREPARACION"].includes(current.estado)) throw new Error("El pedido no está disponible para agregar productos.");
+    if (!order || !["PENDIENTE", "EN_PREPARACION"].includes(order.estado)) {
+      throw new Error("El pedido no está disponible para agregar productos.");
+    }
     const qty = this.parsePreparedValue(cantidad, product.unidad_medida);
     if (qty === null) throw new Error("Ingresá una cantidad válida mayor que cero.");
     const subtotal = Math.round(qty * product.precio);
     if (!Number.isFinite(subtotal)) throw new Error("El importe del producto no es válido.");
-
-    let targetOrder = null;
-    const orders = this.getOrders().map((order) => {
-      if (order.id === orderId) {
-        const newItem = {
-          producto_id: product.id,
-          nombre: product.nombre,
-          categoria: product.categoria,
-          unidad_medida: product.unidad_medida,
-          precio_unitario: product.precio,
-          cantidad_solicitada: qty,
-          peso_real: product.unidad_medida === "UNIDAD" ? qty : null,
-          subtotal: subtotal,
-          sin_stock: false,
-          ...(product.unidad_medida === "UNIDAD" ? { confirmado_preparacion: false } : {})
-        };
-        const items = [...order.items, newItem];
-        const totalEstimado = items.reduce((sum, i) => sum + Math.round(i.cantidad_solicitada * i.precio_unitario), 0);
-
-        // Si el pedido ya estaba en preparación o tenía pesaje, recalcular total_real
-        const allWeighed = items.every((i) => i.sin_stock || i.peso_real !== null);
-        let totalReal = order.total_real;
-        if (allWeighed) {
-          totalReal = items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + (i.subtotal || 0), 0);
-        } else if (order.total_real !== null) {
-          const hasWeighedItems = items.some((i) => i.peso_real !== null);
-          totalReal = hasWeighedItems
-            ? items.filter((i) => !i.sin_stock && i.peso_real !== null).reduce((sum, i) => sum + (i.subtotal || 0), 0)
-            : null;
-        }
-
-        targetOrder = { ...order, items, total_estimado: totalEstimado, total_real: totalReal };
-        return targetOrder;
-      }
-      return order;
-    });
-    this.persistOrders(orders);
-    if (targetOrder) this.syncOrderToSupabase(targetOrder);
-    this.notify("orders_changed");
+    const newItem = {
+      producto_id: product.id,
+      nombre: product.nombre,
+      categoria: product.categoria,
+      unidad_medida: product.unidad_medida,
+      precio_unitario: product.precio,
+      cantidad_solicitada: qty,
+      peso_real: product.unidad_medida === "UNIDAD" ? qty : null,
+      subtotal,
+      sin_stock: false,
+      ...(product.unidad_medida === "UNIDAD" ? { confirmado_preparacion: false } : {})
+    };
+    const items = [...order.items, newItem];
+    const totalEstimado = items.reduce((sum, i) => sum + Math.round(i.cantidad_solicitada * i.precio_unitario), 0);
+    const allWeighed = items.every((i) => i.sin_stock || this.parsePreparedValue(i.peso_real, i.unidad_medida) !== null);
+    let totalReal = order.total_real;
+    if (allWeighed) {
+      totalReal = items.filter((i) => !i.sin_stock).reduce((sum, i) => sum + (i.subtotal || 0), 0);
+    } else if (order.total_real !== null) {
+      const hasWeighedItems = items.some((i) => i.peso_real !== null);
+      totalReal = hasWeighedItems
+        ? items.filter((i) => !i.sin_stock && i.peso_real !== null).reduce((sum, i) => sum + (i.subtotal || 0), 0)
+        : null;
+    }
+    return { items, totalEstimado, totalReal };
   }
 
-  // Modificar datos de entrega y contacto del pedido
+  addProductToOrder(orderId, productId, cantidad) {
+    this.requireDemoOrSyncGuard();
+    const orders = this.getOrders();
+    const order = orders.find((o) => o.id === orderId);
+    const { items, totalEstimado, totalReal } = this.computeAddItemState(order, productId, cantidad);
+    const targetOrder = { ...order, items, total_estimado: totalEstimado, total_real: totalReal, version: (order.version || 1) + 1 };
+    this.persistOrders(orders.map((o) => (o.id === orderId ? targetOrder : o)));
+    this.notify("orders_changed");
+    return targetOrder;
+  }
+
   updateOrderDetails(orderId, details) {
+    this.requireDemoOrSyncGuard();
     let targetOrder = null;
     const orders = this.getOrders().map((order) => {
       if (order.id === orderId) {
@@ -2190,15 +2859,156 @@ class Store {
             telefono: details.telefono !== undefined ? details.telefono : order.cliente.telefono
           },
           tipo_entrega: details.tipo_entrega || order.tipo_entrega,
-          direccion_entrega: details.direccion_entrega || order.direccion_entrega
+          direccion_entrega: details.direccion_entrega || order.direccion_entrega,
+          version: (order.version || 1) + 1
         };
         return targetOrder;
       }
       return order;
     });
     this.persistOrders(orders);
-    if (targetOrder) this.syncOrderToSupabase(targetOrder);
     this.notify("orders_changed");
+    return targetOrder;
+  }
+
+  // --- Operaciones autoritativas y concurrencia optimista para personal (AUD-09) ---
+  applyServerOrderResult(rawRow) {
+    const mapped = this.mapRemoteOrderRow(rawRow);
+    this.validateOrderRecord(mapped);
+    const current = this.getOrders();
+    const exists = current.some((o) => o.id === mapped.id);
+    const updated = exists ? current.map((o) => (o.id === mapped.id ? mapped : o)) : [mapped, ...current];
+    this.persistOrders(updated);
+    this.notify("orders_changed");
+    return mapped;
+  }
+
+  async invokeStaffOrderRpc(rpcName, params) {
+    if (!this.supabase || !this.isStaffUnlocked()) {
+      throw new Error("Sesión de personal autenticada requerida.");
+    }
+    const res = await this.supabase.rpc(rpcName, params);
+    if (res?.error) {
+      const msg = String(res.error.message || "Error al actualizar el pedido.");
+      if (/CONFLICT/i.test(msg)) {
+        try { await this.pullFromSupabase(); } catch {}
+        throw new Error(msg.replace(/^CONFLICT:\s*/i, "") + " Recargamos los datos actuales.");
+      }
+      throw new Error(msg.replace(/^(FORBIDDEN|NOT_FOUND|INVALID_TRANSITION|VALIDATION_ERROR):\s*/i, ""));
+    }
+    if (!res?.data) {
+      throw new Error("El servidor no devolvió el pedido actualizado.");
+    }
+    return this.applyServerOrderResult(res.data);
+  }
+
+  async takeOrderAsync(orderId) {
+    if (this.isDemo()) return this.updateOrderStatus(orderId, "EN_PREPARACION");
+    const order = this.getOrders().find((o) => o.id === orderId);
+    if (!order) throw new Error("No se encontró el pedido.");
+    return this.invokeStaffOrderRpc("take_order", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1
+    });
+  }
+
+  async saveItemWeightAsync(orderId, itemIndex, pesoReal, opts = {}) {
+    if (this.isDemo()) return this.updateItemWeight(orderId, itemIndex, pesoReal, opts);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    const { items, totalReal } = this.computeWeightUpdateOrder(order, itemIndex, pesoReal, opts);
+    return this.invokeStaffOrderRpc("update_order_preparation", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_items: items,
+      p_total_real: totalReal
+    });
+  }
+
+  async toggleItemOutOfStockAsync(orderId, itemIndex) {
+    if (this.isDemo()) return this.toggleItemOutOfStock(orderId, itemIndex);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    const { items, totalReal } = this.computeOutOfStockOrder(order, itemIndex);
+    return this.invokeStaffOrderRpc("update_order_preparation", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_items: items,
+      p_total_real: totalReal
+    });
+  }
+
+  async finalizeOrderWeighingAsync(orderId, weightsMap = null) {
+    if (this.isDemo()) return this.finalizeOrderWeighing(orderId, weightsMap);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    const { alreadyFinalized, items } = this.computeFinalizeItems(order, weightsMap);
+    if (alreadyFinalized) return order;
+    const saved = await this.invokeStaffOrderRpc("finalize_order_preparation", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_items: items
+    });
+    this.notify("order_ready", orderId);
+    return saved;
+  }
+
+  async transitionOrderStatusAsync(orderId, newStatus) {
+    if (newStatus === "LISTO") return this.finalizeOrderWeighingAsync(orderId);
+    if (newStatus === "EN_PREPARACION") {
+      const order = this.getOrders().find((o) => o.id === orderId);
+      if (order?.estado === "PENDIENTE") return this.takeOrderAsync(orderId);
+    }
+    if (this.isDemo()) return this.updateOrderStatus(orderId, newStatus);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    if (!order) throw new Error("No se encontró el pedido.");
+    return this.invokeStaffOrderRpc("transition_order_status", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_new_status: newStatus
+    });
+  }
+
+  async cancelOrderAsync(orderId) {
+    if (this.isDemo()) return this.cancelOrder(orderId);
+    const saved = await this.transitionOrderStatusAsync(orderId, "CANCELADO");
+    if (this.getActiveOrderId() === orderId) this.setActiveOrderId(null);
+    return saved;
+  }
+
+  async removeItemFromOrderAsync(orderId, itemIndex) {
+    if (this.isDemo()) return this.removeItemFromOrder(orderId, itemIndex);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    const { items, totalReal } = this.computeRemoveItemState(order, itemIndex);
+    return this.invokeStaffOrderRpc("update_order_preparation", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_items: items,
+      p_total_real: totalReal
+    });
+  }
+
+  async addProductToOrderAsync(orderId, productId, cantidad) {
+    if (this.isDemo()) return this.addProductToOrder(orderId, productId, cantidad);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    const { items, totalReal } = this.computeAddItemState(order, productId, cantidad);
+    return this.invokeStaffOrderRpc("update_order_preparation", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_items: items,
+      p_total_real: totalReal
+    });
+  }
+
+  async updateOrderDetailsAsync(orderId, details) {
+    if (this.isDemo()) return this.updateOrderDetails(orderId, details);
+    const order = this.getOrders().find((o) => o.id === orderId);
+    if (!order) throw new Error("No se encontró el pedido.");
+    return this.invokeStaffOrderRpc("update_order_details_staff", {
+      p_order_id: orderId,
+      p_expected_version: order.version || 1,
+      p_nombre: details.nombre !== undefined ? details.nombre : order.cliente.nombre,
+      p_telefono: details.telefono !== undefined ? details.telefono : order.cliente.telefono,
+      p_tipo_entrega: details.tipo_entrega || order.tipo_entrega,
+      p_direccion_entrega: details.direccion_entrega || order.direccion_entrega
+    });
   }
 
   // ========================================================
@@ -2296,7 +3106,13 @@ function renderClientView(container) {
   let deliveryMode = "RETIRO"; // RETIRO | DELIVERY
   let deliveryAddress = "";
   let checkoutError = "";
+  let checkoutStatus = store.getPendingCheckout()?.status === "unknown"
+    ? { status: "unknown", error: "Hay un envío anterior pendiente de verificación. Reintentá para confirmar sin duplicar tu pedido." }
+    : null;
+  let isSubmittingCheckout = false;
   let catalogRecoveryError = "";
+  let trackingLookupError = "";
+  let lastTrackingHashAttempt = "";
 
   let catalogScrollBeforeCart = 0;
 
@@ -2308,14 +3124,38 @@ function renderClientView(container) {
     selectedOrderId = initialActive.id;
   }
 
+  function maybeResolveHashTracking() {
+    const hash = typeof window !== "undefined" ? String(window.location.hash || "") : "";
+    if (!hash.startsWith("#track=")) return false;
+    if (hash !== lastTrackingHashAttempt) {
+      lastTrackingHashAttempt = hash;
+      trackingLookupError = "";
+      viewMode = "order_detail";
+      const parsed = store.parseTrackingHash(hash);
+      if (parsed) selectedOrderId = parsed.orderId;
+      store.resolvePrivateTrackingLink(hash).then((res) => {
+        if (res?.ok && res.order) {
+          selectedOrderId = res.order.id;
+          trackingLookupError = "";
+        } else {
+          selectedOrderId = null;
+          trackingLookupError = res?.error || "Pedido no disponible o enlace revocado.";
+        }
+        update();
+      });
+    }
+    return true;
+  }
+
   const imageLoader = createScopedImageLoader();
   let renderedUserKey = initialUser?.telefono ? String(initialUser.telefono).replace(/\D/g, "") : null;
 
   function update() {
     imageLoader.revokeAll();
+    const isTrackingHash = maybeResolveHashTracking();
     const user = store.getCurrentUser();
     const userKey = user?.telefono ? String(user.telefono).replace(/\D/g, "") : null;
-    if (!user || userKey !== renderedUserKey) {
+    if (!isTrackingHash && (!user || userKey !== renderedUserKey)) {
       isCartOpen = false;
       isDrawerFirstOpen = true;
       selectedOrderId = null;
@@ -2331,20 +3171,34 @@ function renderClientView(container) {
       renderedUserKey = userKey;
       window.scrollTo(0, 0);
     }
-    if (!user) {
-      renderPhoneGate();
+
+    if (isTrackingHash || viewMode === "order_detail") {
+      if (trackingLookupError) {
+        renderOrderNotFound(trackingLookupError);
+        return;
+      }
+      const order = store.getOrders().find(o => o.id === selectedOrderId);
+      const hasTokenAccess = order && Boolean(store.getTrackingTokenForOrder(order.id));
+      const hasPhoneAccess = order && user && store.isSameCustomer(order.cliente?.telefono, user.telefono);
+      if (order && (hasTokenAccess || hasPhoneAccess)) {
+        renderOrderTracking(order);
+        return;
+      }
+      if (isTrackingHash) {
+        renderOrderNotFound("Verificando enlace de seguimiento...");
+        return;
+      }
+      if (!user) {
+        renderPhoneGate();
+        return;
+      }
+      renderOrderNotFound();
       return;
     }
 
-    if (viewMode === "order_detail") {
-      const order = store.getOrders().find(o => o.id === selectedOrderId);
-      if (order && store.isSameCustomer(order.cliente?.telefono, user.telefono)) {
-        renderOrderTracking(order);
-        return;
-      } else {
-        renderOrderNotFound();
-        return;
-      }
+    if (!user) {
+      renderPhoneGate();
+      return;
     }
 
     if (viewMode === "orders") {
@@ -2600,6 +3454,16 @@ function renderClientView(container) {
         direccion: address
       });
 
+      if (!user) {
+        if (phoneError) {
+          phoneError.textContent = "Ingresá un número de WhatsApp válido con código de área (ej: 1100000001).";
+          phoneError.classList.remove("hidden");
+        }
+        phoneInput?.classList.add("border-rose-500", "focus:ring-rose-500");
+        phoneInput?.focus();
+        return;
+      }
+
       store.setCurrentUser(user);
       deliveryAddress = user.direccion || "";
       update();
@@ -2625,7 +3489,9 @@ function renderClientView(container) {
     if (!categories.includes(selectedCategory)) selectedCategory = "Todos";
 
     const catalogError = catalogRecoveryError || store.getCatalogError();
+    const syncError = store.getSyncError();
     const storageWarning = store.getStorageWarning();
+    const cartIssues = store.getCartAvailabilityIssues();
     const cart = store.getCart();
     const { items: cartItems, totalEstimado, totalItems } = store.getCartSummary();
 
@@ -2659,7 +3525,9 @@ function renderClientView(container) {
           <p>${escapeHtml(catalogError)}</p>
           ${store.isDemo() ? `<p class="mt-2">Recuperar conserva un respaldo del original y las filas válidas; si no hay filas válidas, usa el catálogo sintético.</p><button id="btn-recover-catalog" class="min-h-[44px] mt-2 px-4 py-2 rounded-xl bg-amber-900 text-white font-bold">Recuperar catálogo demo</button>` : ""}
         </div>` : ""}
+        ${syncError ? `<p id="client-sync-error" role="alert" class="m-4 p-3 rounded-xl border border-rose-300 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 text-sm font-medium">${escapeHtml(syncError)}</p>` : ""}
         ${storageWarning ? `<p role="alert" class="m-4 p-3 rounded-xl bg-amber-50 text-amber-950 text-sm">${escapeHtml(storageWarning)}</p>` : ""}
+        ${cartIssues.length > 0 && !isCartOpen ? `<p role="alert" class="m-4 p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 text-sm font-medium">${escapeHtml(cartIssues[0].message)} Abrí tu pedido para revisarlo.</p>` : ""}
         ${checkoutError && !isCartOpen ? `<p role="alert" class="m-4 p-3 rounded-xl bg-red-50 text-red-900 text-sm">${escapeHtml(checkoutError)}</p>` : ""}
 
         <!-- Área de Cabecera y Usuario FUERA del Sticky (Scrolla con la página) -->
@@ -3055,6 +3923,19 @@ function renderClientView(container) {
   function renderCartModal(user, items, totalEstimado) {
     const isDelivery = deliveryMode === "DELIVERY";
     const isEmpty = items.length === 0;
+    const cartIssues = store.getCartAvailabilityIssues();
+    const hasSyncErr = Boolean(store.getSyncError());
+    const statusBox = checkoutStatus && checkoutStatus.status === "unknown"
+      ? `<div id="checkout-status-banner" data-checkout-status="unknown" role="alert" class="p-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 text-xs font-medium">${escapeHtml(checkoutStatus.error)}</div>`
+      : checkoutStatus && checkoutStatus.status === "failed"
+      ? `<div id="checkout-status-banner" data-checkout-status="failed" role="alert" class="p-3 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 text-xs font-medium">${escapeHtml(checkoutStatus.error)}</div>`
+      : "";
+    const confirmLabel = isSubmittingCheckout
+      ? "Enviando al comercio..."
+      : checkoutStatus?.status === "unknown"
+      ? "Reintentar verificación (sin duplicar)"
+      : "Confirmar Pedido";
+    const blockConfirm = isSubmittingCheckout || cartIssues.length > 0 || hasSyncErr;
 
     return `
       <!-- Backdrop Modal con z-index 70 (sobre cabecera demo z-50) -->
@@ -3067,6 +3948,7 @@ function renderClientView(container) {
           class="cart-modal-dialog shadow-2xl ${isDrawerFirstOpen ? "animate-slide-up" : ""}"
         >
           ${checkoutError ? `<p role="alert" class="m-4 p-3 rounded-xl border border-red-300 bg-red-50 text-red-900 text-sm">${escapeHtml(checkoutError)}</p>` : ""}
+          ${cartIssues.length > 0 ? `<div id="cart-availability-warning" role="alert" class="m-4 p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 text-xs font-semibold">${escapeHtml(cartIssues.map(i => i.message).join(" "))} Quitá los ítems afectados antes de confirmar.</div>` : ""}
 
           <!-- Asa táctil exclusiva para arrastre y cierre downward >=80px -->
           <div id="cart-drag-handle" class="py-3 px-6 cursor-grab active:cursor-grabbing touch-none select-none flex flex-col items-center">
@@ -3217,6 +4099,7 @@ function renderClientView(container) {
 
           <!-- Footer con Safe Area Pad y Confirmación -->
           <div class="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-b-3xl space-y-3 safe-pb">
+            ${statusBox}
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-bold tracking-wider">Total Estimado</span>
@@ -3236,9 +4119,10 @@ function renderClientView(container) {
             ` : `
               <button
                 id="btn-confirm-order"
-                class="w-full min-h-[50px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-950/20 text-sm transition tap-feedback flex items-center justify-center gap-2 touch-target"
+                ${blockConfirm ? "disabled" : ""}
+                class="w-full min-h-[50px] bg-slate-950 hover:bg-slate-900 active:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-950/20 text-sm transition tap-feedback flex items-center justify-center gap-2 touch-target"
               >
-                <span>Confirmar Pedido</span>
+                <span>${confirmLabel}</span>
               </button>
             `}
           </div>
@@ -3427,7 +4311,8 @@ function renderClientView(container) {
     });
 
     const btnConfirm = container.querySelector("#btn-confirm-order");
-    btnConfirm?.addEventListener("click", () => {
+    btnConfirm?.addEventListener("click", async () => {
+      if (isSubmittingCheckout) return;
       const { items } = store.getCartSummary();
       if (items.length === 0) {
         closeCartModal();
@@ -3438,28 +4323,45 @@ function renderClientView(container) {
       const finalAddress = mode === "DELIVERY" ? deliveryAddress.trim() : "Retiro en Mostrador";
 
       if (mode === "DELIVERY" && !finalAddress) {
-        alert("Por favor ingresá tu dirección para coordinar el envío a domicilio.");
-        addressInput?.focus();
+        checkoutStatus = { status: "failed", error: "Ingresá tu dirección para coordinar el envío a domicilio." };
+        renderCatalog();
+        container.querySelector("#delivery-address-input")?.focus();
         return;
       }
 
       if (navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
 
+      isSubmittingCheckout = true;
+      checkoutError = "";
+      checkoutStatus = null;
+      btnConfirm.disabled = true;
+
       try {
-        checkoutError = "";
-        const newOrder = store.createOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
-        if (newOrder) {
+        const result = await store.submitOrder({ cliente: user, tipo_entrega: mode, direccion_entrega: finalAddress });
+        if (result?.ok && result.order) {
           isCartOpen = false;
           isDrawerFirstOpen = true;
+          checkoutStatus = null;
           document.getElementById("nexo-top-stack")?.removeAttribute("inert");
           document.body.style.overflow = "";
-          selectedOrderId = newOrder.id;
+          selectedOrderId = result.order.id;
           viewMode = "order_detail";
           update();
+          return;
         }
-      } catch (error) {
-        checkoutError = error.message || "No se pudo guardar el pedido. Reintentá.";
+        checkoutStatus = {
+          status: result?.status === "unknown" ? "unknown" : "failed",
+          error: result?.error || "No se pudo confirmar el pedido. Reintentá."
+        };
         renderCatalog();
+      } catch (error) {
+        checkoutStatus = {
+          status: "failed",
+          error: error.message || "No se pudo guardar el pedido. Reintentá."
+        };
+        renderCatalog();
+      } finally {
+        isSubmittingCheckout = false;
       }
     });
   }
@@ -3620,13 +4522,13 @@ function renderClientView(container) {
     `;
   }
 
-  function renderOrderNotFound() {
+  function renderOrderNotFound(customMessage = null) {
     container.innerHTML = `
       <div class="max-w-md mx-auto p-4 pt-12 text-center">
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
-          <h2 class="text-lg font-black text-slate-900 dark:text-white">Pedido no encontrado</h2>
+          <h2 class="text-lg font-black text-slate-900 dark:text-white">Pedido no disponible</h2>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            El pedido solicitado no existe o ya no está disponible en este dispositivo.
+            ${escapeHtml(customMessage || "El pedido solicitado no existe, fue revocado o ya no está disponible en este dispositivo.")}
           </p>
           <div class="flex gap-2">
             <button
@@ -3647,10 +4549,14 @@ function renderClientView(container) {
     `;
 
     container.querySelector("#btn-not-found-orders")?.addEventListener("click", () => {
+      trackingLookupError = "";
       viewMode = "orders";
       update();
     });
     container.querySelector("#btn-not-found-catalog")?.addEventListener("click", () => {
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "catalog";
       update();
     });
@@ -3819,6 +4725,18 @@ function renderClientView(container) {
             </div>
           </div>
 
+          ${(() => {
+            const trackFragment = store.getTrackingLink(currentOrder.id);
+            if (!trackFragment) return "";
+            return `
+              <div id="private-tracking-box" class="mt-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Enlace privado de seguimiento</span>
+                <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">Guardá este enlace privado (el token viaja sólo en el fragmento <code class="font-mono">#track=</code> y no se consulta historial remoto por teléfono si lo perdés):</p>
+                <a id="private-tracking-link" href="${escapeHtml(trackFragment)}" class="block text-[11px] font-mono text-emerald-700 dark:text-emerald-400 break-all underline">${escapeHtml(trackFragment)}</a>
+              </div>
+            `;
+          })()}
+
           <!-- Botón de consulta al local por WhatsApp (simulado en Modo Demo) -->
           <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
             <button
@@ -3844,11 +4762,17 @@ function renderClientView(container) {
     `;
 
     container.querySelector("#btn-back-to-catalog")?.addEventListener("click", () => {
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "catalog";
       update();
     });
 
     container.querySelector("#btn-back-to-orders")?.addEventListener("click", () => {
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "orders";
       update();
     });
@@ -3869,6 +4793,9 @@ function renderClientView(container) {
 
     container.querySelector("#btn-new-order")?.addEventListener("click", () => {
       store.setActiveOrderId(null);
+      trackingLookupError = "";
+      lastTrackingHashAttempt = "";
+      if (String(window.location.hash || "").startsWith("#track=")) window.location.hash = "client";
       viewMode = "catalog";
       update();
     });
@@ -3882,7 +4809,10 @@ function renderClientView(container) {
       event === "orders_changed" ||
       event === "active_order_changed" ||
       event === "storage_sync" ||
-      event === "user_changed"
+      event === "user_changed" ||
+      event === "sync_error" ||
+      event === "catalog_error" ||
+      event === "pending_checkout_changed"
     ) {
       update();
     }
@@ -4038,8 +4968,8 @@ function renderOperatorView(container) {
       store.playAudioAlert();
     });
 
-    container.querySelector("#btn-operator-logout")?.addEventListener("click", () => {
-      store.lockStaff();
+    container.querySelector("#btn-operator-logout")?.addEventListener("click", async () => {
+      await store.logoutStaff();
       window.location.href = "?view=cliente";
     });
 
@@ -4428,11 +5358,11 @@ Alias para transferir: ${businessAlias}
   function attachActions(orders) {
     // Tomar y pesar
     container.querySelectorAll(".btn-start-prep").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
         const id = Number(btn.dataset.startId);
         try {
-          store.updateOrderStatus(id, "EN_PREPARACION");
+          await store.takeOrderAsync(id);
           actionError = "";
           activeTab = "EN_PREPARACION";
           update();
@@ -4442,14 +5372,14 @@ Alias para transferir: ${businessAlias}
 
     // Cancelar Pedido (Cancelación lógica / soft cancellation preservando historial)
     container.querySelectorAll(".btn-cancel-order").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.cancelOrderId || btn.dataset.deleteOrderId);
         const order = orders.find((o) => o.id === id);
         const clientName = order ? order.cliente.nombre : "este cliente";
         const confirmCancel = confirm(`¿Estás seguro de que querés cancelar el pedido #${id} de ${clientName}?`);
         if (confirmCancel) {
           if (navigator.vibrate) { try { navigator.vibrate(25); } catch {} }
-          try { store.cancelOrder(id); update(); } catch (error) { showError(error.message); }
+          try { await store.cancelOrderAsync(id); update(); } catch (error) { showError(error.message); }
         }
       });
     });
@@ -4491,7 +5421,7 @@ Alias para transferir: ${businessAlias}
     }
     const btnConfirmAddItem = container.querySelector(".btn-confirm-add-item");
     if (btnConfirmAddItem) {
-      btnConfirmAddItem.addEventListener("click", () => {
+      btnConfirmAddItem.addEventListener("click", async () => {
         const orderId = Number(btnConfirmAddItem.dataset.confirmAddOrder);
         const select = container.querySelector("#select-new-product");
         const inputQty = container.querySelector("#input-new-quantity");
@@ -4501,7 +5431,7 @@ Alias para transferir: ${businessAlias}
             const isWeight = select.selectedOptions[0]?.dataset.unit === "KG";
             const qty = parseOperatorWeight(inputQty.value, isWeight);
             if (qty === null) throw new Error(isWeight ? "Ingresá kilos mayores a cero." : "Ingresá una cantidad entera mayor a cero.");
-            store.addProductToOrder(orderId, productId, qty);
+            await store.addProductToOrderAsync(orderId, productId, qty);
             addingProductOrderId = null;
             update();
           } catch (error) { showError(error.message); }
@@ -4511,12 +5441,12 @@ Alias para transferir: ${businessAlias}
 
     // Quitar un ítem específico del pedido
     container.querySelectorAll(".btn-remove-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const orderId = Number(btn.dataset.removeItemOrder);
         const itemIdx = Number(btn.dataset.itemIndex);
         const confirmRemove = confirm("¿Eliminar este producto de la lista?");
         if (confirmRemove) {
-          try { store.removeItemFromOrder(orderId, itemIdx); update(); } catch (error) { showError(error.message); }
+          try { await store.removeItemFromOrderAsync(orderId, itemIdx); update(); } catch (error) { showError(error.message); }
         }
       });
     });
@@ -4528,6 +5458,9 @@ Alias para transferir: ${businessAlias}
         const current = parseOperatorWeight(input.value, isWeight) ?? 0;
         input.value = Math.max(isWeight ? 0.001 : 1, Number((current + Number(btn.dataset.delta)).toFixed(3)));
         input.dispatchEvent(new Event("input", { bubbles: true }));
+        if (!store.isDemo()) {
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
       });
     });
 
@@ -4585,7 +5518,7 @@ Alias para transferir: ${businessAlias}
       });
 
       if (editForm) {
-        editForm.addEventListener("submit", (e) => {
+        editForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           const name = container.querySelector("#edit-name")?.value.trim() || "";
           const phone = (container.querySelector("#edit-phone")?.value || "").replace(/\D/g, "").trim();
@@ -4594,7 +5527,7 @@ Alias para transferir: ${businessAlias}
           const address = mode === "DELIVERY" ? container.querySelector("#edit-address")?.value.trim() || "" : "Retiro por mostrador";
 
           try {
-            store.updateOrderDetails(editingOrderId, { nombre: name, telefono: phone, tipo_entrega: mode, direccion_entrega: address });
+            await store.updateOrderDetailsAsync(editingOrderId, { nombre: name, telefono: phone, tipo_entrega: mode, direccion_entrega: address });
             editingOrderId = null;
             actionError = "";
             update();
@@ -4611,26 +5544,49 @@ Alias para transferir: ${businessAlias}
       input.addEventListener("input", () => {
         const id = Number(input.dataset.orderId), index = Number(input.dataset.itemIdx);
         const value = parseOperatorWeight(input.value, input.dataset.unit === "KG");
-        try {
-          store.updateItemWeight(id, index, value, { notify: false });
-          delete input.dataset.unsaved;
+        if (store.isDemo()) {
+          try {
+            store.updateItemWeight(id, index, value, { notify: false });
+            delete input.dataset.unsaved;
+            showError("");
+          } catch (error) {
+            input.dataset.unsaved = "true";
+            showError(error.message);
+          }
+        } else {
+          if (value === null) input.dataset.unsaved = "true";
+          else delete input.dataset.unsaved;
           showError("");
-        } catch (error) {
-          input.dataset.unsaved = "true";
-          showError(error.message);
         }
         input.setAttribute("aria-invalid", String(value === null));
         refreshPreparation(id);
       });
+
+      if (!store.isDemo()) {
+        input.addEventListener("change", async () => {
+          const id = Number(input.dataset.orderId), index = Number(input.dataset.itemIdx);
+          const value = parseOperatorWeight(input.value, input.dataset.unit === "KG");
+          try {
+            await store.saveItemWeightAsync(id, index, value, { notify: false });
+            delete input.dataset.unsaved;
+            showError("");
+          } catch (error) {
+            input.dataset.unsaved = "true";
+            showError(error.message);
+          }
+          input.setAttribute("aria-invalid", String(value === null));
+          refreshPreparation(id);
+        });
+      }
     });
     container.querySelectorAll(".btn-confirm-unit").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.confirmUnitOrder), index = Number(btn.dataset.itemIdx);
         const input = findPreparationInput(id, index);
         try {
           const value = parseOperatorWeight(input.value, false);
           if (value === null) throw new Error("Ingresá una cantidad entera mayor a cero o marcá Sin Stock.");
-          store.updateItemWeight(id, index, value, { notify: false, confirmUnit: true });
+          await store.saveItemWeightAsync(id, index, value, { notify: false, confirmUnit: true });
           delete input.dataset.unsaved;
           showError("");
         } catch (error) { showError(error.message); }
@@ -4638,18 +5594,25 @@ Alias para transferir: ${businessAlias}
       });
     });
     container.querySelectorAll(".btn-toggle-stock").forEach(btn => {
-      btn.addEventListener("click", () => {
-        try { store.toggleItemOutOfStock(Number(btn.dataset.toggleStockOrder), Number(btn.dataset.itemIndex)); update(); }
+      btn.addEventListener("click", async () => {
+        try { await store.toggleItemOutOfStockAsync(Number(btn.dataset.toggleStockOrder), Number(btn.dataset.itemIndex)); update(); }
         catch (error) { showError(error.message); }
       });
     });
     container.querySelectorAll(".btn-finish-weighing").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.finishOrderId);
         try {
           const inputs = Array.from(container.querySelectorAll(".input-weight")).filter(input => Number(input.dataset.orderId) === id);
-          if (inputs.some(input => input.dataset.unsaved || parseOperatorWeight(input.value, input.dataset.unit === "KG") === null)) throw new Error("Resolvé cada ítem antes de finalizar.");
-          store.finalizeOrderWeighing(id);
+          if (inputs.some(input => parseOperatorWeight(input.value, input.dataset.unit === "KG") === null)) {
+            throw new Error("Resolvé cada ítem antes de finalizar.");
+          }
+          const weightsMap = {};
+          inputs.forEach((input) => {
+            const idx = Number(input.dataset.itemIdx);
+            weightsMap[idx] = parseOperatorWeight(input.value, input.dataset.unit === "KG");
+          });
+          await store.finalizeOrderWeighingAsync(id, weightsMap);
           actionError = "";
           activeTab = "LISTO";
           update();
@@ -4686,10 +5649,10 @@ Alias para transferir: ${businessAlias}
     });
 
     container.querySelectorAll(".btn-deliver-order").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
         const id = Number(btn.dataset.deliverOrderId);
-        try { store.updateOrderStatus(id, "ENTREGADO"); update(); }
+        try { await store.transitionOrderStatusAsync(id, "ENTREGADO"); update(); }
         catch (error) { showError(error.message); }
       });
     });
@@ -4710,10 +5673,23 @@ Alias para transferir: ${businessAlias}
     const card = Array.from(container.querySelectorAll("[data-preparation-order]")).find(card => Number(card.dataset.preparationOrder) === id);
     if (!order || !card) return;
     const progress = store.getPreparationProgress(id);
-    card.querySelector("[data-preparation-progress]").textContent = `${progress.resolved} de ${progress.total} ítems preparados`;
-    card.querySelector("[data-preparation-bar]").value = progress.resolved;
+    let resolvedDom = 0;
+    order.items.forEach((item, idx) => {
+      if (item.sin_stock) { resolvedDom++; return; }
+      if (item.unidad_medida === "UNIDAD") {
+        if (store.preparationItemResolved(item)) resolvedDom++;
+        return;
+      }
+      const inp = findPreparationInput(id, idx);
+      const v = inp ? parseOperatorWeight(inp.value, true) : null;
+      if (v !== null || store.preparationItemResolved(item)) resolvedDom++;
+    });
+    const historical = ["LISTO", "ENTREGADO"].includes(order.estado);
+    const canFinishDom = !historical && order.estado !== "CANCELADO" && order.items.length > 0 && resolvedDom === order.items.length;
+    card.querySelector("[data-preparation-progress]").textContent = `${Math.max(progress.resolved, resolvedDom)} de ${progress.total} ítems preparados`;
+    card.querySelector("[data-preparation-bar]").value = Math.max(progress.resolved, resolvedDom);
     const inputs = Array.from(card.querySelectorAll(".input-weight"));
-    card.querySelector(".btn-finish-weighing").disabled = !progress.canFinalize || inputs.some(input => input.dataset.unsaved || parseOperatorWeight(input.value, input.dataset.unit === "KG") === null);
+    card.querySelector(".btn-finish-weighing").disabled = !(progress.canFinalize || canFinishDom) || inputs.some(input => input.dataset.unsaved || parseOperatorWeight(input.value, input.dataset.unit === "KG") === null);
     let total = 0;
     order.items.forEach((item, index) => {
       const input = findPreparationInput(id, index);
@@ -4810,14 +5786,14 @@ function renderAdminView(container) {
               <p class="text-xs text-slate-500 dark:text-slate-400">Productos, disponibilidad y valores del día.</p>
             </div>
             <div class="flex flex-wrap gap-1.5 items-center">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${store.isDemo() ? "Demo local" : store.isCloudConnected() ? "Conectado" : "Sin conexión"}</span>
-              <button id="btn-toggle-cloud" class="${buttonClass}">${showCloudSettings ? "Cerrar PIN" : "Config PIN"}</button>
+              <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${store.isDemo() ? "Demo local" : store.isCloudConnected() ? "Conectado (Dueño)" : "Sin conexión"}</span>
+              ${store.isDemo() ? `<button id="btn-toggle-cloud" class="${buttonClass}">${showCloudSettings ? "Cerrar PIN" : "Config PIN"}</button>` : ""}
               <button id="btn-admin-logout" class="${buttonClass}">Salir</button>
             </div>
           </div>
-          ${showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2">
+          ${store.isDemo() && showCloudSettings ? `<form id="cloud-config-form" class="mt-3 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-2">
             <label for="cfg-pin" class="block text-xs font-bold text-slate-700 dark:text-slate-200">PIN del negocio</label>
-            <input id="cfg-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin)}" class="${inputClass}" />
+            <input id="cfg-pin" type="password" inputmode="numeric" maxlength="8" value="${escapeHtml(localSettings.staffPin || "")}" class="${inputClass}" />
             <p class="text-xs text-slate-500 dark:text-slate-400">El PIN bloquea el acceso en este dispositivo.</p>
             <button class="${buttonClass}" type="submit">Guardar PIN Local</button>
             ${configSavedToast ? '<p class="text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">PIN guardado</p>' : ""}
@@ -5344,7 +6320,7 @@ function renderAdminView(container) {
         }
 
         try {
-          store.saveProduct(productPayload, targetId);
+          await store.saveProductAsync(productPayload, targetId);
         } catch (saveErr) {
           if (createdImageId) {
             await deleteImage(createdImageId);
@@ -5403,8 +6379,8 @@ function renderAdminView(container) {
     });
 
     container.querySelector("#btn-new-product")?.addEventListener("click", () => openProduct());
-    container.querySelector("#btn-admin-logout")?.addEventListener("click", () => {
-      store.lockStaff();
+    container.querySelector("#btn-admin-logout")?.addEventListener("click", async () => {
+      await store.logoutStaff();
       window.location.href = "?view=cliente";
     });
 
@@ -5454,10 +6430,12 @@ function renderAdminView(container) {
 
   function attachProductListeners() {
     container.querySelectorAll(".input-price").forEach(input => {
-      input.addEventListener("change", () => {
+      input.addEventListener("change", async () => {
         try {
           if (input.value.trim() === "") throw new Error("Ingresá un precio. Puede ser cero.");
-          store.updateProductPrice(input.dataset.productId, Number(input.value));
+          const product = store.getAdminProducts().find(p => p.id === input.dataset.productId);
+          if (!product) throw new Error("No se encontró el producto.");
+          await store.saveProductAsync({ ...product, precio: Number(input.value) }, input.dataset.productId);
           showNotice("");
         } catch (error) {
           showNotice(error.message);
@@ -5571,8 +6549,8 @@ class App {
     }
 
     if (this.btnLockPin) {
-      this.btnLockPin.addEventListener("click", () => {
-        store.lockStaff();
+      this.btnLockPin.addEventListener("click", async () => {
+        await store.logoutStaff();
         this.navigate("client");
       });
     }
@@ -5607,7 +6585,7 @@ class App {
       }
     });
 
-    // Actualización reactiva de etiquetas de tema
+    // Actualización reactiva de etiquetas de tema y bloqueos de sesión de personal
     store.subscribe((event) => {
       if (event === "theme_changed") {
         const isDark = store.getTheme() === "dark";
@@ -5615,14 +6593,25 @@ class App {
           el.textContent = isDark ? "Oscuro" : "Claro";
         });
       }
+      if (event === "staff_locked" && ["operator", "admin"].includes(this.currentView)) {
+        this.navigate(this.currentView);
+      }
     });
 
-    const initialView = urlParams.get("view") || window.location.hash.replace("#", "") || "client";
-    this.navigate(initialView);
+    const initialHash = String(window.location.hash || "");
+    const initialView = initialHash.startsWith("#track=")
+      ? "client"
+      : urlParams.get("view") || initialHash.replace("#", "") || "client";
+    this.navigate(initialView, { preserveHash: initialHash.startsWith("#track=") });
 
-    // Reaccionar a cambios manuales del hash (#operador, #admin) sin recargar
+    // Reaccionar a cambios manuales del hash (#operador, #admin, #track=...) sin recargar
     window.addEventListener("hashchange", () => {
-      const target = this.normalizeView(window.location.hash.replace("#", ""));
+      const h = String(window.location.hash || "");
+      if (h.startsWith("#track=")) {
+        this.navigate("client", { preserveHash: true });
+        return;
+      }
+      const target = this.normalizeView(h.replace("#", ""));
       if (target !== this.currentView) this.navigate(target);
     });
   }
@@ -5654,6 +6643,9 @@ class App {
   }
 
   renderPinGate(targetView) {
+    if (!store.isDemo()) {
+      return this.renderStaffAuthGate(targetView);
+    }
     const isOperario = targetView === "operator" || targetView === "operario";
     const roleLabel = isOperario ? "Puesto de Preparación (Operario)" : "Catálogo y Precios (Dueño)";
     this.container.innerHTML = `
@@ -5661,13 +6653,14 @@ class App {
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl text-center">
           <div class="flex items-center justify-between mb-3">
             <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-              Acceso Personal del Local
+              Acceso Personal del Local (Demo)
             </span>
-            </div>
+          </div>
           <h2 class="text-xl font-black text-slate-900 dark:text-white">${roleLabel}</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de 4 dígitos del comercio (Por defecto: <strong>1234</strong>)</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Ingresá el PIN numérico de demostración del comercio (Demo: <strong>1234</strong>)</p>
 
           <form id="pin-gate-form" class="space-y-4">
+            <label for="pin-input" class="sr-only">PIN del comercio</label>
             <input
               type="password"
               id="pin-input"
@@ -5678,7 +6671,7 @@ class App {
               required
               class="w-40 mx-auto block text-center tracking-[0.5em] py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-2xl font-black text-2xl text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition"
             />
-            <p id="pin-error" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400">PIN incorrecto. Intentá nuevamente.</p>
+            <p id="pin-error" role="alert" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400">PIN incorrecto. Intentá nuevamente.</p>
             <div class="flex gap-2 pt-1">
               <button
                 type="button"
@@ -5730,6 +6723,123 @@ class App {
     }
   }
 
+  renderStaffAuthGate(targetView) {
+    const isOperario = targetView === "operator" || targetView === "operario";
+    const roleLabel = isOperario ? "Puesto de Preparación (Operario)" : "Catálogo y Precios (Dueño)";
+    this.container.innerHTML = `
+      <div class="max-w-sm mx-auto p-4 pt-12">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl">
+          <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 mb-3">
+            Acceso Personal Autorizado
+          </span>
+          <h2 class="text-xl font-black text-slate-900 dark:text-white">${roleLabel}</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">Iniciá sesión con tu cuenta individual habilitada por el comercio. Sin registro público.</p>
+
+          <form id="staff-auth-form" class="space-y-4">
+            <div>
+              <label for="staff-email-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Correo de personal</label>
+              <input
+                type="email"
+                id="staff-email-input"
+                autocomplete="username"
+                required
+                placeholder="operario@comercio.local"
+                class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-emerald-500 transition"
+              />
+            </div>
+            <div>
+              <label for="staff-password-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Contraseña</label>
+              <input
+                type="password"
+                id="staff-password-input"
+                autocomplete="current-password"
+                required
+                placeholder="••••••••"
+                class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-emerald-500 transition"
+              />
+            </div>
+            <p id="staff-auth-error" role="alert" class="hidden text-xs font-bold text-rose-600 dark:text-rose-400"></p>
+            <div class="flex gap-2 pt-1">
+              <button
+                type="button"
+                id="btn-staff-auth-back"
+                class="flex-1 min-h-[48px] py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition touch-target"
+              >
+                Volver al Catálogo
+              </button>
+              <button
+                type="submit"
+                id="btn-staff-auth-submit"
+                class="flex-1 min-h-[48px] py-3 bg-slate-950 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md touch-target"
+              >
+                Iniciar Sesión
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    const emailInput = this.container.querySelector("#staff-email-input");
+    const passwordInput = this.container.querySelector("#staff-password-input");
+    const form = this.container.querySelector("#staff-auth-form");
+    const errorEl = this.container.querySelector("#staff-auth-error");
+    const submitBtn = this.container.querySelector("#btn-staff-auth-submit");
+    const btnBack = this.container.querySelector("#btn-staff-auth-back");
+
+    if (emailInput) emailInput.focus();
+    if (btnBack) btnBack.addEventListener("click", () => this.navigate("client"));
+
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (errorEl) {
+          errorEl.textContent = "";
+          errorEl.classList.add("hidden");
+        }
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          await store.signInStaff(emailInput?.value || "", passwordInput?.value || "");
+          this.navigate(targetView);
+        } catch (err) {
+          if (errorEl) {
+            errorEl.textContent = String(err?.message || "No se pudo iniciar sesión.");
+            errorEl.classList.remove("hidden");
+          }
+          if (passwordInput) passwordInput.value = "";
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  renderForbiddenStaffGate(targetView) {
+    const role = store.getStaffRole();
+    this.container.innerHTML = `
+      <div class="max-w-sm mx-auto p-4 pt-12">
+        <div id="staff-forbidden-card" role="alert" class="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-amber-300 dark:border-amber-800 shadow-xl space-y-4 text-center">
+          <span class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300">
+            Permisos insuficientes
+          </span>
+          <h2 class="text-xl font-black text-slate-900 dark:text-white">Acceso restringido al dueño</h2>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Tu sesión actual tiene rol <strong>${escapeHtml(role || "sin rol")}</strong> y no puede administrar <strong>${escapeHtml(targetView)}</strong>.
+          </p>
+          <div class="flex gap-2">
+            ${role === "operator" ? `<button id="btn-go-operator" class="flex-1 min-h-[48px] py-3 bg-slate-950 dark:bg-emerald-600 text-white font-bold rounded-xl text-xs touch-target">Ir a Preparación</button>` : ""}
+            <button id="btn-forbidden-logout" class="flex-1 min-h-[48px] py-3 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs touch-target">Cerrar Sesión</button>
+          </div>
+        </div>
+      </div>
+    `;
+    this.container.querySelector("#btn-go-operator")?.addEventListener("click", () => this.navigate("operator"));
+    this.container.querySelector("#btn-forbidden-logout")?.addEventListener("click", async () => {
+      await store.logoutStaff();
+      this.navigate("client");
+    });
+  }
+
   // Normaliza alias de URL (#operador, #precios, #administrador...) a vistas canónicas
   normalizeView(name) {
     const key = String(name || "").toLowerCase().trim();
@@ -5743,7 +6853,7 @@ class App {
     return aliases[key] || "client";
   }
 
-  navigate(viewName) {
+  navigate(viewName, { preserveHash = false } = {}) {
     if (store.getConfigErrors().length > 0) {
       this.renderConfigErrorGate(store.getConfigErrors());
       return;
@@ -5756,7 +6866,9 @@ class App {
     }
 
     this.currentView = viewName;
-    window.location.hash = viewName;
+    if (!preserveHash && !(viewName === "client" && String(window.location.hash || "").startsWith("#track="))) {
+      window.location.hash = viewName;
+    }
 
     this.navButtons.forEach((btn) => {
       const isActive = btn.dataset.view === viewName;
@@ -5769,11 +6881,17 @@ class App {
       }
     });
 
-    // Control estricto de acceso por PIN: si no está desbloqueado, exige PIN
     const isStaffView = ["operator", "operario", "admin", "dueno"].includes(viewName);
-    if (isStaffView && !store.isStaffUnlocked()) {
-      this.renderPinGate(viewName);
-      return;
+    if (isStaffView) {
+      if (!store.isStaffUnlocked()) {
+        if (store.isDemo()) this.renderPinGate(viewName);
+        else this.renderStaffAuthGate(viewName);
+        return;
+      }
+      if (!store.canAccessStaffView(viewName)) {
+        this.renderForbiddenStaffGate(viewName);
+        return;
+      }
     }
 
     switch (viewName) {
